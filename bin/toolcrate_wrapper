@@ -1,0 +1,6 @@
+#!/bin/bash
+# Wrapper script for toolcrate
+
+# Activate virtual environment and run the command
+source "/Users/tleo/Music/git-projects/toolcrate/.venv/bin/activate"
+"/Users/tleo/Music/git-projects/toolcrate/.venv/bin/toolcrate" "$@"

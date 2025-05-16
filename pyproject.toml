@@ -1,0 +1,36 @@
+[build-system]
+requires = ["poetry-core>=1.0.0"]
+build-backend = "poetry.core.masonry.api"
+
+[tool.poetry]
+name = "toolcrate"
+version = "0.1.0"
+description = "A unified tool suite for music management and processing"
+authors = ["User <user@example.com>"]
+readme = "README.md"
+packages = [{include = "toolcrate", from = "src"}]
+
+[tool.poetry.dependencies]
+python = ">=3.8,<4.0"
+click = "^8.1.3"  # For CLI interface
+pydantic = "^2.0.0"  # For data validation
+loguru = "^0.7.0"  # For logging
+
+[tool.poetry.dev-dependencies]
+pytest = "^7.3.1"
+black = "^23.3.0"
+isort = "^5.12.0"
+mypy = "^1.3.0"
+
+[tool.poetry.scripts]
+toolcrate = "toolcrate.cli.main:main"
+slsk-tool = "toolcrate.cli.wrappers:run_slsk"
+shazam-tool = "toolcrate.cli.wrappers:run_shazam"
+mdl-tool = "toolcrate.cli.wrappers:run_mdl"
+
+[tool.black]
+line-length = 88
+
+[tool.isort]
+profile = "black"
+line_length = 88 

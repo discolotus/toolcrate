@@ -37,14 +37,14 @@ else
     # Handle slsk-batchdl
     if [ ! -d "src/slsk-batchdl" ]; then
         echo -e "${GREEN}Cloning slsk-batchdl...${NC}"
-        git clone https://github.com/fiso64/slsk-batchdl.git src/slsk-batchdl
-        cd src/slsk-batchdl && git checkout main && cd ../../
+        git clone https://github.com/discolotus/slsk-batchdl.git src/slsk-batchdl
+        cd src/slsk-batchdl && git checkout v2.4.6 && cd ../../
     fi
-    
+
     # Handle Shazam-Tool
     if [ ! -d "src/Shazam-Tool" ]; then
         echo -e "${GREEN}Cloning Shazam-Tool...${NC}"
-        git clone https://github.com/in0vik/Shazam-Tool.git src/Shazam-Tool
+        git clone https://github.com/discolotus/Shazam-Tool.git src/Shazam-Tool
         cd src/Shazam-Tool && git checkout main && cd ../../
     fi
 fi
@@ -60,7 +60,7 @@ if [[ "$(uname)" == "Darwin" && "$(uname -m)" == "arm64" ]]; then
         chmod +x src/bin/sldl
     else
         echo -e "${GREEN}dotnet not found, downloading pre-built binary...${NC}"
-        curl -L -o src/sldl_osx-arm64.zip https://github.com/fiso64/slsk-batchdl/releases/download/v2.4.6/sldl_osx-arm64.zip
+        curl -L -o src/sldl_osx-arm64.zip https://github.com/discolotus/slsk-batchdl/releases/download/v2.4.6/sldl_osx-arm64.zip
         unzip src/sldl_osx-arm64.zip -d src/bin/
         chmod +x src/bin/sldl
         rm src/sldl_osx-arm64.zip

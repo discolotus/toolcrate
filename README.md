@@ -16,10 +16,33 @@ A unified tool suite for music management and processing. ToolCrate integrates m
 pip install toolcrate
 
 # Development installation
-git clone https://github.com/username/toolcrate.git
+git clone https://github.com/discolotus/toolcrate.git
 cd toolcrate
 pip install -e .
 ```
+
+### Development Setup with Forked Repositories
+
+For development, this project uses forked versions of external tools to ensure compatibility and control:
+
+```bash
+# Clone the main repository
+git clone https://github.com/discolotus/toolcrate.git
+cd toolcrate
+
+# Run development setup (uses forked repositories)
+python setup_dev.py
+
+# Or run individual setup steps:
+python setup_dev.py clone      # Clone/update forked repos
+python setup_dev.py build      # Build SLSK binary
+python setup_dev.py deps       # Install Python dependencies
+python setup_dev.py submodules # Update git submodules
+```
+
+**Forked Repositories Used:**
+- **slsk-batchdl**: https://github.com/discolotus/slsk-batchdl.git
+- **Shazam-Tool**: https://github.com/discolotus/Shazam-Tool.git
 
 ### External Tools Setup
 

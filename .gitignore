@@ -150,9 +150,16 @@ config/*.log
 config/cron.log
 config/wishlist.log
 
+# Auto-generated configuration files (generated from toolcrate.yaml)
+config/docker-compose.yml
+config/sldl.conf
+config/.env
+config/validate-config.py
+config/README.md
+
 # User-specific configuration (contains credentials)
 sldl.conf
-config/sldl.conf
+**/sldl.conf
 
 # Test artifacts
 .pytest_cache/
@@ -178,3 +185,5 @@ src/Shazam-Tool/
 
 # Virtual environment
 .venv/
+**/toolcrate.yaml
+

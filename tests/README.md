@@ -153,48 +153,122 @@ This directory contains comprehensive unit tests for the ToolCrate package, cove
 
 ## Running Tests
 
+ToolCrate now supports **unified testing** that runs both Python and shell tests together, with Poetry for dependency management.
+
+### Quick Start
+
+```bash
+# Setup with Poetry (recommended)
+make setup
+
+# Run all tests (Python + shell)
+make test
+
+# Run quick tests for development
+make test-quick
+```
+
 ### Prerequisites
+
+#### Option 1: Poetry (Recommended)
+```bash
+# Install Poetry
+curl -sSL https://install.python-poetry.org | python3 -
+
+# Setup project
+make setup
+```
+
+#### Option 2: Traditional pip
 ```bash
 # Install test dependencies
-pip install pytest pytest-asyncio
-
-# Optional: Install coverage
-pip install coverage
+pip install pytest pytest-asyncio coverage
 ```
 
-### Running All Tests
-```bash
-# Using pytest directly
-pytest tests/ -v
+### Unified Test Runner
 
-# Using the test runner
-python tests/test_runner.py all
+The new unified test runner supports both Python and shell tests:
+
+```bash
+# Run all tests (Python + shell)
+python tests/test_runner_unified.py all
+
+# Run only Python tests
+python tests/test_runner_unified.py python
+
+# Run only shell tests
+python tests/test_runner_unified.py shell
+
+# Run specific categories
+python tests/test_runner_unified.py unit
+python tests/test_runner_unified.py integration
+python tests/test_runner_unified.py coverage
+python tests/test_runner_unified.py quick
+
+# Run specific module
+python tests/test_runner_unified.py module:wrappers
 ```
 
-### Running Specific Test Categories
-```bash
-# Unit tests only
-python tests/test_runner.py unit
+### Make Commands
 
-# Integration tests only
-python tests/test_runner.py integration
+```bash
+# All tests
+make test
+
+# Specific test types
+make test-python      # Python tests only
+make test-shell       # Shell tests only
+make test-unit        # Unit tests only
+make test-integration # Integration tests only
+make test-coverage    # With coverage report
+make test-quick       # Quick subset for development
 
 # Specific module
-python tests/test_runner.py module:main_cli
-python tests/test_runner.py module:wrappers
-python tests/test_runner.py module:shazam_tool
+make test-module MODULE=wrappers
 ```
 
-### Running with Coverage
+### Poetry Task Runner
+
 ```bash
+# Using the task runner
+python tasks.py test all
+python tasks.py test python
+python tasks.py test shell
+python tasks.py test coverage
+python tasks.py test quick
+
+# Code quality
+python tasks.py format
+python tasks.py lint
+python tasks.py check
+```
+
+### Direct Poetry Commands
+
+```bash
+# Run pytest with Poetry
+poetry run pytest tests/ -v
+
+# Run with coverage
+poetry run pytest tests/ --cov=src/toolcrate --cov-report=html
+
+# Run specific test file
+poetry run pytest tests/test_wrappers.py -v
+
+# Run shell tests
+poetry run python tests/test_runner_unified.py shell
+```
+
+### Legacy Test Runner
+
+The original test runner is still available:
+
+```bash
+python tests/test_runner.py all
+python tests/test_runner.py unit
+python tests/test_runner.py integration
 python tests/test_runner.py coverage
-```
-
-### Running Individual Test Files
-```bash
-pytest tests/test_main_cli.py -v
-pytest tests/test_wrappers.py -v
-pytest tests/test_shazam_tool.py -v
+python tests/test_runner.py module:wrappers
 ```
 
 ## Test Configuration

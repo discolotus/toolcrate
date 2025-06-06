@@ -4,62 +4,68 @@ A unified tool suite for music management and processing. ToolCrate integrates m
 
 ## Features
 
-- Music recognition (powered by Shazam)
-- Batch downloading from Soulseek
-- Music metadata utilities
-- Unified command-line interface
+- **Music Recognition**: Powered by Shazam-Tool for identifying songs from audio files
+- **Batch Downloading**: Soulseek integration for downloading music collections
+- **Unified CLI**: Single command-line interface for all tools
+- **Configuration Management**: Centralized configuration with example templates
+- **Cross-Platform**: Works on Linux, macOS, and Windows
 
 ## Installation
 
+### From PyPI (Recommended)
+
 ```bash
-# Install from PyPI
 pip install toolcrate
-
-# Development installation
-git clone https://github.com/username/toolcrate.git
-cd toolcrate
-pip install -e .
 ```
 
-### External Tools Setup
-
-ToolCrate integrates several external tools that are set up automatically during installation. The following tools are included:
-
-- **slsk-batchdl (sldl)**: Soulseek batch download tool
-- **Shazam-Tool**: Music recognition tool
-
-If you need to manually set up these tools, you can run:
+### Development Installation
 
 ```bash
-# Run the installation script
-./install.sh
+git clone https://github.com/yourusername/toolcrate.git
+cd toolcrate
+poetry install
 ```
 
-For macOS ARM64 (Apple Silicon) users, the installation will automatically:
-1. Either build from source using dotnet (if installed)
-2. Or download the pre-built binary for macOS ARM64
+## Configuration
+
+ToolCrate uses configuration files to manage credentials and settings. Example configuration files are provided in the `examples/` directory.
+
+### Initial Setup
+
+1. **Copy example configuration files:**
+   ```bash
+   # Create config directory
+   mkdir -p ~/.config/toolcrate
+   
+   # Copy and edit configuration files
+   cp examples/sldl.conf.example ~/.config/toolcrate/sldl.conf
+   cp examples/toolcrate.conf.example ~/.config/toolcrate/toolcrate.conf
+   ```
+
+2. **Edit configuration files:**
+   - `~/.config/toolcrate/sldl.conf`: Add your Soulseek credentials
+   - `~/.config/toolcrate/toolcrate.conf`: Configure download paths and preferences
+
+### Configuration File Locations
+
+ToolCrate looks for configuration files in the following order:
+1. `~/.config/toolcrate/` (Linux/macOS) or `%APPDATA%/toolcrate/` (Windows)
+2. Current working directory
+3. Project root directory
 
 ## Usage
 
+### Main Interface
+
 ```bash
-# Main interface
+# Show available commands
 toolcrate --help
 
-# Direct access to integrated tools
-slsk-tool search "artist - title"
-shazam-tool identify sample.mp3
-mdl-tool get-metadata track.mp3
+# Show version information
+toolcrate --version
 ```
 
-### Using sldl (Soulseek Batch Downloader)
-
-ToolCrate integrates slsk-batchdl via Docker for cross-platform compatibility. The first time you run the tool, it will:
-
-1. Create a configuration directory at `~/.config/sldl`
-2. Prompt for your Soulseek username and password
-3. Build and start a persistent Docker container 
-
-The tool maintains downloaded files in `~/Music/downloads`, organized by source (Spotify, YouTube, etc.).
+### Soulseek Downloads (sldl)
 
 ```bash
 # Search and download a song
@@ -68,69 +74,114 @@ toolcrate sldl "Artist - Song Title"
 # Download from a Spotify playlist
 toolcrate sldl "https://open.spotify.com/playlist/your_playlist_id"
 
-# Download an album interactively (with selection menu)
+# Download an album interactively
 toolcrate sldl "Artist - Album Name" -at
 
-# Process multiple links from a text file (one link per line)
-toolcrate sldl --links-file ~/path/to/urls.txt
-
-# Set or update Soulseek credentials
-toolcrate sldl --set-credentials
-
-# Recreate the container (in case of issues)
-toolcrate sldl --recreate
+# Process multiple links from a file
+toolcrate sldl --links-file urls.txt
 ```
 
-The tool automatically creates appropriate download directories for playlist content:
-- Spotify playlists: `~/Music/downloads/spotify/playlist-name/`
-- YouTube playlists: `~/Music/downloads/youtube/playlist-name/`
-
-For more advanced usage, refer to the [slsk-batchdl documentation](https://github.com/fiso64/slsk-batchdl).
-
-## Running Tests
-
-ToolCrate includes a test suite with both unit and integration tests. The easiest way to run the tests is to use the provided shell script, which automatically activates the virtual environment:
+### Music Recognition (Shazam)
 
 ```bash
-# Using the shell script (recommended)
-./run_tests.sh                # Run all tests
-./run_tests.sh --unit         # Run only unit tests
-./run_tests.sh --integration  # Run only integration tests
-./run_tests.sh --verbose      # Run with verbose output
-./run_tests.sh --pytest       # Run tests using pytest instead of the custom runner
+# Identify a song from an audio file
+toolcrate shazam identify audio_file.mp3
+
+# Process a video file for music recognition
+toolcrate shazam video video_file.mp4
 ```
 
-Alternatively, you can run the tests manually after activating the virtual environment:
+### Direct Tool Access
+
+You can also access the integrated tools directly:
 
 ```bash
-# Using the provided Python script
-source .venv/bin/activate
-python -m tests.run_tests        # Run all tests
-python -m tests.run_tests --unit  # Run only unit tests
-python -m tests.run_tests --integration  # Run only integration tests
+slsk-tool search "artist - title"
+shazam-tool identify sample.mp3
+```
 
-# Using pytest
-source .venv/bin/activate
-pytest                      # Run all tests
-pytest tests/unit/          # Run only unit tests
-pytest tests/integration/   # Run only integration tests
-pytest -v                   # Run with verbose output
-deactivate
+## Development
+
+### Project Structure
+
+```
+toolcrate/
+├── src/toolcrate/          # Main Python package
+├── src/slsk-batchdl/       # Soulseek tool (git submodule)
+├── src/Shazam-Tool/        # Shazam tool (git submodule)
+├── scripts/                # Utility scripts
+├── tests/                  # Test suite
+├── examples/               # Configuration examples
+└── pyproject.toml          # Project configuration
+```
+
+### Running Tests
+
+```bash
+# Using Poetry (recommended)
+poetry run pytest
+
+# Using the test script
+./scripts/run_tests.sh
+
+# Run specific test types
+poetry run pytest tests/unit/
+poetry run pytest tests/integration/
+```
+
+### Code Quality
+
+```bash
+# Format code
+poetry run black src/ tests/
+
+# Sort imports
+poetry run isort src/ tests/
+
+# Type checking
+poetry run mypy src/
 ```
 
 ## Requirements
 
-- Python 3.11 or 3.12 (Python 3.13 is not supported due to compatibility issues with certain dependencies)
-- External dependencies:
-  - For building from source: .NET SDK 6.0+
-  - For downloading from Soulseek: valid Soulseek account credentials
-  - For Shazam-Tool: FFmpeg
-  - For testing: pytest (optional)
+- **Python**: 3.8+ (3.11+ recommended)
+- **External Tools**:
+  - FFmpeg (for audio processing)
+  - Docker (optional, for containerized sldl)
+- **Credentials**:
+  - Valid Soulseek account for downloading
+  - Internet connection for Shazam recognition
 
-### Known Issues
+## Troubleshooting
 
-- **Python 3.13 Compatibility**: The Shazam-Tool has known issues with Python 3.13 due to the removal of the `audioop` module, which is used by some of its dependencies.
+### Configuration Issues
+
+If you encounter configuration-related errors:
+
+1. Check that configuration files exist in the expected locations
+2. Verify that credentials are correctly set in `sldl.conf`
+3. Ensure file permissions allow reading the configuration files
+
+### Tool-Specific Issues
+
+- **sldl**: Check Docker installation and Soulseek credentials
+- **Shazam**: Verify FFmpeg installation and audio file formats
+- **General**: Check Python version compatibility
+
+## Contributing
+
+1. Fork the repository
+2. Create a feature branch
+3. Make your changes
+4. Add tests for new functionality
+5. Run the test suite
+6. Submit a pull request
 
 ## License
 
-MIT
+This project is licensed under the GNU General Public License v3.0 - see the [LICENSE](LICENSE) file for details.
+
+## Acknowledgments
+
+- [slsk-batchdl](https://github.com/fiso64/slsk-batchdl) - Soulseek batch download tool
+- [Shazam-Tool](https://github.com/in0vik/Shazam-Tool) - Music recognition tool

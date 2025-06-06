@@ -142,17 +142,29 @@ Network Trash Folder
 Temporary Items
 .apdisk
 
-# Project-specific ignores
+# ToolCrate-specific ignores
 # Runtime files and logs
 logs/
 tmp/
-config/*.log
-config/cron.log
-config/wishlist.log
+*.log
 
-# User-specific configuration (contains credentials)
+# User-specific configuration files (contain credentials)
 sldl.conf
+toolcrate.conf
 config/sldl.conf
+config/toolcrate.conf
+
+# User data files
+config/wishlist.txt
+config/wishlist.log
+config/cron.log
+playlists.txt
+examples/urls.txt
+
+# Build and runtime artifacts
+src/bin/sldl
+src/bin/sldl.pdb
+config/crontabs/
 
 # Test artifacts
 .pytest_cache/
@@ -164,18 +176,14 @@ build/
 dist/
 *.egg-info/
 
-# IDE
+# IDE and editor files
 .vscode/
 .idea/
 *.swp
 *.swo
 *~
 
-config/wishlist.txt
-playlists.txt
-examples/urls.txt
-src/bin/sldl
-toolcrate.conf
-config/crontabs/abc
-src/bin/sldl.pdb
-config/crontabs/root
+# Downloaded content and user data
+downloads/
+data/
+recognised-lists/

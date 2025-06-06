@@ -174,3 +174,8 @@ dist/
 config/wishlist.txt
 playlists.txt
 examples/urls.txt
+src/bin/sldl
+toolcrate.conf
+config/crontabs/abc
+src/bin/sldl.pdb
+config/crontabs/root

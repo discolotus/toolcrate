@@ -1,5 +1,6 @@
 #!/bin/bash
-# Comprehensive setup script for toolcrate with YAML configuration
+# ToolCrate Configuration Generator
+# Comprehensive configuration setup script for toolcrate with YAML configuration
 
 # Set up colors for output
 GREEN='\033[0;32m'
@@ -8,16 +9,92 @@ YELLOW='\033[0;33m'
 RED='\033[0;31m'
 NC='\033[0m' # No Color
 
+# Parse command line arguments
+show_help() {
+    echo -e "${BLUE}ToolCrate Comprehensive Setup${NC}"
+    echo -e "${BLUE}=============================${NC}"
+    echo
+    echo "Usage: $0 [OPTIONS]"
+    echo "       make init-config [OPTIONS]"
+    echo
+    echo "Options:"
+    echo "  --use-poetry     Force use of Poetry for dependency management"
+    echo "  --no-poetry      Force use of manual virtual environment"
+    echo "  --help, -h       Show this help message"
+    echo
+    echo "This script creates comprehensive YAML configuration files for ToolCrate"
+    echo "with full slsk-batchdl integration, cron jobs, and Docker support."
+    echo
+    echo "Alternative usage:"
+    echo "  make init-config         # Run with auto-detection"
+    echo "  make init-config-poetry  # Force Poetry usage"
+    echo "  make init-config-venv    # Force virtual environment usage"
+    echo
+    echo "After initial setup, use 'make config' to regenerate tool configs from YAML."
+    echo
+    exit 0
+}
+
+# Parse arguments
+USE_POETRY=""
+for arg in "$@"; do
+    case $arg in
+        --use-poetry)
+            USE_POETRY="true"
+            shift
+            ;;
+        --no-poetry)
+            USE_POETRY="false"
+            shift
+            ;;
+        --help|-h)
+            show_help
+            ;;
+        *)
+            echo -e "${RED}Unknown option: $arg${NC}"
+            echo "Use --help for usage information."
+            exit 1
+            ;;
+    esac
+done
+
 echo -e "${BLUE}ToolCrate Comprehensive Setup${NC}"
 echo -e "${BLUE}=============================${NC}"
+echo -e "${GREEN}Enhanced setup with Poetry integration and comprehensive slsk-batchdl configuration${NC}"
+echo
 
 # Get the absolute path of the current directory
 TOOLCRATE_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 CONFIG_DIR="${TOOLCRATE_DIR}/config"
 CRON_DIR="${CONFIG_DIR}/crontabs"
 
-# Function to ensure virtual environment is active
-ensure_venv() {
+# Function to check if Poetry is available and setup environment
+setup_poetry_env() {
+    echo -e "${GREEN}Setting up Poetry environment...${NC}"
+
+    # Check if Poetry is installed
+    if ! command -v poetry >/dev/null 2>&1; then
+        echo -e "${YELLOW}Poetry not found. Installing Poetry...${NC}"
+        curl -sSL https://install.python-poetry.org | python3 -
+
+        # Add Poetry to PATH for current session
+        export PATH="$HOME/.local/bin:$PATH"
+
+        if ! command -v poetry >/dev/null 2>&1; then
+            echo -e "${RED}❌ Poetry installation failed. Please install manually.${NC}"
+            echo -e "${YELLOW}Visit: https://python-poetry.org/docs/#installation${NC}"
+            exit 1
+        fi
+    fi
+
+    echo -e "${GREEN}Installing dependencies with Poetry...${NC}"
+    poetry install --with dev
+
+    echo -e "${GREEN}✅ Poetry environment ready!${NC}"
+}
+
+# Function to ensure virtual environment is active (fallback)
+ensure_venv_fallback() {
     if [ -z "$VIRTUAL_ENV" ]; then
         if [ -f "${TOOLCRATE_DIR}/.venv/bin/activate" ]; then
             echo -e "${GREEN}Activating existing virtual environment...${NC}"
@@ -27,14 +104,25 @@ ensure_venv() {
             python3 -m venv "${TOOLCRATE_DIR}/.venv"
             source "${TOOLCRATE_DIR}/.venv/bin/activate"
             pip install --upgrade pip
+            pip install PyYAML
         fi
     else
         echo -e "${GREEN}Virtual environment already active: $VIRTUAL_ENV${NC}"
     fi
 }
 
-# Ensure we're using a virtual environment
-ensure_venv
+# Determine which environment setup to use
+if [ "$USE_POETRY" = "false" ]; then
+    echo -e "${YELLOW}Using manual virtual environment setup (--no-poetry specified).${NC}"
+    ensure_venv_fallback
+elif [ "$USE_POETRY" = "true" ] || (command -v poetry >/dev/null 2>&1 && [ -f "pyproject.toml" ]); then
+    setup_poetry_env
+else
+    echo -e "${YELLOW}Poetry not found. Using manual virtual environment setup.${NC}"
+    echo -e "${YELLOW}For better experience, install Poetry or run: ./configure_toolcrate.sh --use-poetry${NC}"
+    echo -e "${YELLOW}Or use: make init-config-poetry${NC}"
+    ensure_venv_fallback
+fi
 
 # Function to prompt for input with default value
 prompt_with_default() {
@@ -107,32 +195,60 @@ prompt_with_default "Log directory" "${TOOLCRATE_DIR}/logs" "log_dir"
 
 # Soulseek Settings
 echo -e "\n${BLUE}=== Soulseek (slsk-batchdl) Settings ===${NC}"
+echo -e "${YELLOW}Basic Authentication and Directories${NC}"
 prompt_with_default "Soulseek username" "" "slsk_username"
 prompt_with_default "Soulseek password" "" "slsk_password"
 prompt_with_default "Download directory" "${data_dir}/downloads" "download_dir"
 prompt_with_default "Music library directory (for skip checking)" "${data_dir}/music" "music_dir"
+prompt_with_default "Failed downloads directory" "${data_dir}/failed" "failed_dir"
+
+echo -e "\n${YELLOW}Audio Quality Preferences${NC}"
 prompt_with_default "Preferred audio formats (comma-separated)" "flac,mp3" "preferred_formats"
-prompt_with_default "Minimum bitrate" "200" "min_bitrate"
+prompt_with_default "Minimum bitrate" "320" "min_bitrate"
 prompt_with_default "Maximum bitrate" "2500" "max_bitrate"
-prompt_with_default "Maximum sample rate" "48000" "max_sample_rate"
+prompt_with_default "Maximum sample rate" "192000" "max_sample_rate"
+
+# Set defaults for advanced audio settings (not prompted to reduce complexity)
+length_tolerance="3"
+strict_title="true"
+strict_album="true"
+
+echo -e "\n${YELLOW}Search and Download Settings${NC}"
 prompt_with_default "Concurrent downloads" "2" "concurrent_downloads"
-prompt_with_default "Search timeout (ms)" "6000" "search_timeout"
-prompt_with_default "Listen port" "49998" "listen_port"
+
+# Set defaults for advanced search settings (not prompted to reduce complexity)
+search_timeout="6000"
+listen_port="49998"
+max_stale_time="30000"
+max_retries_per_track="30"
+unknown_error_retries="2"
+
+echo -e "\n${YELLOW}Fast Search Settings${NC}"
 prompt_yes_no "Enable fast search" "y" "fast_search"
-prompt_yes_no "Skip existing files" "y" "skip_existing"
-prompt_yes_no "Write index file" "y" "write_index"
-prompt_yes_no "Interactive mode by default" "n" "interactive_mode"
 
-# Spotify API Settings
-echo -e "\n${BLUE}=== Spotify API Settings ===${NC}"
-echo -e "${YELLOW}Get these from: https://developer.spotify.com/dashboard${NC}"
-prompt_with_default "Spotify Client ID" "" "spotify_client_id"
-prompt_with_default "Spotify Client Secret" "" "spotify_client_secret"
+# Set defaults for fast search advanced settings (not prompted to reduce complexity)
+fast_search_delay="300"
+fast_search_min_up_speed="1.0"
 
-# YouTube API Settings
-echo -e "\n${BLUE}=== YouTube API Settings ===${NC}"
-echo -e "${YELLOW}Get this from: https://console.developers.google.com${NC}"
-prompt_with_default "YouTube API Key" "" "youtube_api_key"
+echo -e "\n${YELLOW}General Options${NC}"
+prompt_yes_no "Skip existing files (don't re-download files that already exist)" "y" "skip_existing"
+prompt_yes_no "Interactive mode by default (manual selection for each track)" "n" "interactive_mode"
+
+# Set defaults for advanced general options (not prompted to reduce complexity)
+write_index="true"  # Creates index file to track downloads
+remove_tracks_from_source="false"  # Don't remove tracks from playlists after download
+desperate_search="false"  # Don't use relaxed matching by default
+
+# API Settings (optional - set to empty by default, can be configured later)
+echo -e "\n${BLUE}=== API Settings (Optional) ===${NC}"
+echo -e "${YELLOW}These can be configured later by editing config/toolcrate.yaml${NC}"
+echo -e "${YELLOW}Spotify API: https://developer.spotify.com/dashboard${NC}"
+echo -e "${YELLOW}YouTube API: https://console.developers.google.com${NC}"
+
+# Set empty defaults for API settings (not prompted to reduce complexity)
+spotify_client_id=""
+spotify_client_secret=""
+youtube_api_key=""
 
 # Cron Job Settings
 echo -e "\n${BLUE}=== Cron Job Settings ===${NC}"
@@ -154,69 +270,88 @@ echo -e "\n${GREEN}Creating configuration files...${NC}"
 cat > "${CONFIG_DIR}/toolcrate.yaml" << EOF
 # ToolCrate Configuration File
 # Generated on $(date)
+#
+# This file contains comprehensive configuration for ToolCrate and its integrated tools.
+# Edit this file to customize behavior, then regenerate tool-specific configs with:
+#   make config-generate-sldl
 
 # General Settings
 general:
   project_name: "${project_name}"
-  log_level: "${log_level}"
-  data_directory: "${data_dir}"
-  log_directory: "${log_dir}"
+  log_level: "${log_level}"  # debug, info, warning, error
+  data_directory: "${data_dir}"  # Main data storage location
+  log_directory: "${log_dir}"   # Log files location
 
 # Soulseek (slsk-batchdl) Configuration
+# Complete configuration for the slsk-batchdl tool
 slsk_batchdl:
-  # Authentication
+  # Authentication - Required for Soulseek network access
   username: "${slsk_username}"
   password: "${slsk_password}"
 
-  # Directories
-  parent_dir: "${download_dir}"
-  skip_music_dir: "${music_dir}"
-  index_file_path: "${data_dir}/index.sldl"
-  m3u_file_path: "${data_dir}/playlist.m3u"
-  failed_album_path: "${data_dir}/failed"
-  log_file_path: "${log_dir}/sldl.log"
+  # Directory Configuration
+  parent_dir: "${download_dir}"           # Where downloaded files are saved
+  skip_music_dir: "${music_dir}"          # Directory to check for existing files (skip if found)
+  index_file_path: "${data_dir}/index.sldl"     # Tracks download history
+  m3u_file_path: "${data_dir}/playlist.m3u"     # Generated playlist file
+  failed_album_path: "${failed_dir}"      # Where failed downloads are moved
+  log_file_path: "${log_dir}/sldl.log"    # Detailed download logs
 
-  # Audio Format Preferences
+  # Audio Quality Preferences (primary matching criteria)
   preferred_conditions:
-    formats: [$(echo "$preferred_formats" | sed 's/,/, /g' | sed 's/\([^,]*\)/"\1"/g')]
-    min_bitrate: ${min_bitrate}
-    max_bitrate: ${max_bitrate}
-    max_sample_rate: ${max_sample_rate}
-    length_tolerance: 3
-    strict_title: true
-    strict_album: true
+    formats: [$(echo "$preferred_formats" | sed 's/,/, /g' | sed 's/\([^,]*\)/"\1"/g')]  # Preferred audio formats in order of preference
+    min_bitrate: ${min_bitrate}            # Minimum acceptable bitrate (kbps)
+    max_bitrate: ${max_bitrate}            # Maximum bitrate to avoid huge files
+    max_sample_rate: ${max_sample_rate}    # Maximum sample rate (Hz)
+    length_tolerance: ${length_tolerance}   # Acceptable difference in track length (seconds)
+    strict_title: ${strict_title}          # Require exact title match
+    strict_album: ${strict_album}          # Require exact album match
 
-  # Necessary Conditions (fallback)
+  # Fallback Conditions (used when preferred conditions can't be met)
   necessary_conditions:
-    formats: ["mp3", "flac", "ogg", "m4a", "opus", "wav", "aac", "alac"]
+    formats: ["mp3", "flac", "ogg", "m4a", "opus", "wav", "aac", "alac"]  # Any of these formats acceptable
 
-  # Search and Download Settings
-  concurrent_processes: ${concurrent_downloads}
-  search_timeout: ${search_timeout}
-  listen_port: ${listen_port}
-  fast_search: ${fast_search}
-  fast_search_delay: 300
-  fast_search_min_up_speed: 1.0
-  skip_existing: ${skip_existing}
-  write_index: ${write_index}
-  interactive_mode: ${interactive_mode}
+  # Search and Download Performance
+  concurrent_processes: ${concurrent_downloads}    # Number of simultaneous downloads
+  search_timeout: ${search_timeout}               # How long to wait for search results (ms)
+  listen_port: ${listen_port}                     # Port for Soulseek connections
+  max_stale_time: ${max_stale_time}              # Max time to wait for stalled downloads (ms)
+  max_retries_per_track: ${max_retries_per_track} # Retry attempts per failed track
+  unknown_error_retries: ${unknown_error_retries} # Retries for unknown errors
 
-  # Advanced Settings
-  max_tracks: 999999
-  offset: 0
-  max_stale_time: 30000
-  unknown_error_retries: 2
-  max_retries_per_track: 30
+  # Fast Search Configuration (optimizes search speed)
+  fast_search: ${fast_search}                     # Enable fast search mode
+  fast_search_delay: ${fast_search_delay}         # Delay between fast searches (ms)
+  fast_search_min_up_speed: ${fast_search_min_up_speed}  # Minimum upload speed for fast search (MB/s)
+
+  # Download Behavior
+  skip_existing: ${skip_existing}                 # Skip files that already exist locally
+  write_index: ${write_index}                     # Maintain download history index
+  interactive_mode: ${interactive_mode}           # Prompt user for each track selection
+  remove_tracks_from_source: ${remove_tracks_from_source}  # Remove tracks from playlists after download
+  desperate_search: ${desperate_search}           # Use relaxed matching when strict search fails
+
+  # Advanced Search Settings
   searches_per_time: 34
   search_renew_time: 220
   min_shares_aggregate: 2
   aggregate_length_tol: 3
+  max_tracks: 999999
+  offset: 0
 
-  # Flags
+  # Album Settings
+  set_album_min_track_count: true
+  set_album_max_track_count: false
+  min_album_track_count: -1
+  max_album_track_count: -1
+  album_track_count_max_retries: 5
+  parallel_album_search: false
+  parallel_album_search_processes: 5
+
+  # Additional Flags (mostly false by default)
   album: false
   aggregate: false
   album_art_only: false
-  desperate_search: false
   no_remove_special_chars: false
   artist_maybe_wrong: false
   yt_parse: false
@@ -224,7 +359,6 @@ slsk_batchdl:
   remove_brackets: false
   reverse: false
   use_ytdlp: false
-  remove_tracks_from_source: false
   get_deleted: false
   deleted_only: false
   remove_single_character_search_terms: false
@@ -236,16 +370,7 @@ slsk_batchdl:
   skip_check_pref_cond: false
   no_progress: false
   write_playlist: false
-  parallel_album_search: false
   extract_artist: false
-
-  # Album Settings
-  set_album_min_track_count: true
-  set_album_max_track_count: false
-  min_album_track_count: -1
-  max_album_track_count: -1
-  album_track_count_max_retries: 5
-  parallel_album_search_processes: 5
 
   # String Settings
   time_unit: "s"
@@ -254,16 +379,21 @@ slsk_batchdl:
   ytdlp_argument: ""
   parse_title_template: ""
 
-# Spotify API Configuration
-spotify:
-  client_id: "${spotify_client_id}"
-  client_secret: "${spotify_client_secret}"
-  token: ""
-  refresh_token: ""
+# API Integration Configuration
+# These are optional and can be configured later for enhanced functionality
 
-# YouTube API Configuration
+# Spotify API Configuration (for playlist and track lookup)
+# Get credentials from: https://developer.spotify.com/dashboard
+spotify:
+  client_id: "${spotify_client_id}"        # Spotify application client ID
+  client_secret: "${spotify_client_secret}" # Spotify application client secret
+  token: ""                                # OAuth token (auto-generated)
+  refresh_token: ""                        # OAuth refresh token (auto-generated)
+
+# YouTube API Configuration (for video and playlist processing)
+# Get API key from: https://console.developers.google.com
 youtube:
-  api_key: "${youtube_api_key}"
+  api_key: "${youtube_api_key}"            # YouTube Data API v3 key
 
 # Cron Job Configuration
 cron:
@@ -305,28 +435,31 @@ environment:
   PGID: 1000
 
 # Profiles (can be activated with --profile flag)
+# Usage: slsk-tool --profile <profile_name> <search_term>
 profiles:
   lossless:
-    description: "High quality lossless audio"
+    description: "High quality lossless audio downloads"
     settings:
       preferred_conditions:
-        formats: ["flac", "wav", "alac"]
-        min_bitrate: 1000
+        formats: ["flac", "wav", "alac"]  # Lossless formats only
+        min_bitrate: 1000                 # High bitrate requirement
+        max_sample_rate: 192000           # Support high-res audio
 
   quick:
-    description: "Fast downloads with lower quality"
+    description: "Fast downloads with standard quality"
     settings:
       preferred_conditions:
-        formats: ["mp3"]
-        min_bitrate: 128
-        max_bitrate: 320
-      fast_search: true
+        formats: ["mp3"]                  # MP3 only for speed
+        min_bitrate: 128                  # Lower quality for speed
+        max_bitrate: 320                  # Standard MP3 range
+      fast_search: true                   # Enable fast search
+      desperate_search: true              # Use relaxed matching
 
   interactive:
-    description: "Interactive mode with user prompts"
+    description: "Manual selection mode with user prompts"
     settings:
-      interactive_mode: true
-      max_stale_time: 9999999
+      interactive_mode: true              # Prompt for each track
+      max_stale_time: 9999999            # Never timeout in interactive mode
 EOF
 
 echo -e "${GREEN}Created: ${CONFIG_DIR}/toolcrate.yaml${NC}"
@@ -337,43 +470,52 @@ echo -e "${GREEN}Generating sldl.conf for slsk-batchdl compatibility...${NC}"
 cat > "${CONFIG_DIR}/sldl.conf" << EOF
 # sldl.conf - Generated from toolcrate.yaml on $(date)
 # This file is automatically generated. Edit toolcrate.yaml instead.
+#
+# Configuration file for slsk-batchdl (Soulseek batch downloader)
+# For more information: https://github.com/fiso64/slsk-batchdl
 
-# Authentication
+# Authentication - Required for Soulseek network access
 username = ${slsk_username}
 password = ${slsk_password}
 
-# Directories
-parent-dir = ${download_dir}
-skip-music-dir = ${music_dir}
-index-path = ${data_dir}/index.sldl
-m3u-path = ${data_dir}/playlist.m3u
-failed-album-path = ${data_dir}/failed
-log-path = ${log_dir}/sldl.log
+# Directory Configuration
+parent-dir = ${download_dir}              # Main download directory
+skip-music-dir = ${music_dir}             # Check this directory to skip existing files
+index-path = ${data_dir}/index.sldl       # Download history tracking
+m3u-path = ${data_dir}/playlist.m3u       # Generated playlist file
+failed-album-path = ${failed_dir}         # Failed downloads location
+log-path = ${log_dir}/sldl.log           # Detailed logging
 
-# Audio Format Preferences
-pref-format = ${preferred_formats}
-pref-min-bitrate = ${min_bitrate}
-pref-max-bitrate = ${max_bitrate}
-pref-max-sample-rate = ${max_sample_rate}
-pref-length-tol = 3
-pref-strict-title = true
-pref-strict-album = true
+# Audio Quality Preferences
+pref-format = ${preferred_formats}                    # Preferred audio formats (comma-separated)
+pref-min-bitrate = ${min_bitrate}                     # Minimum acceptable bitrate (kbps)
+pref-max-bitrate = ${max_bitrate}                     # Maximum bitrate to avoid huge files
+pref-max-sample-rate = ${max_sample_rate}             # Maximum sample rate (Hz)
+pref-length-tol = ${length_tolerance}                 # Acceptable track length difference (seconds)
+pref-strict-title = ${strict_title}                   # Require exact title match
+pref-strict-album = ${strict_album}                   # Require exact album match
 
-# Search and Download Settings
-concurrent-processes = ${concurrent_downloads}
-search-timeout = ${search_timeout}
-listen-port = ${listen_port}
-fast-search = ${fast_search}
-fast-search-delay = 300
-fast-search-min-up-speed = 1.0
-skip-existing = ${skip_existing}
-write-index = ${write_index}
-interactive = ${interactive_mode}
+# Search and Download Performance
+concurrent-processes = ${concurrent_downloads}        # Number of simultaneous downloads
+search-timeout = ${search_timeout}                    # Search timeout (milliseconds)
+listen-port = ${listen_port}                          # Soulseek connection port
+max-stale-time = ${max_stale_time}                   # Max time for stalled downloads (ms)
+max-retries-per-track = ${max_retries_per_track}     # Retry attempts per failed track
+unknown-error-retries = ${unknown_error_retries}     # Retries for unknown errors
+
+# Fast Search Configuration
+fast-search = ${fast_search}                          # Enable optimized search mode
+fast-search-delay = ${fast_search_delay}              # Delay between searches (ms)
+fast-search-min-up-speed = ${fast_search_min_up_speed} # Min upload speed for fast search (MB/s)
+
+# Download Behavior
+skip-existing = ${skip_existing}                      # Skip files that already exist locally
+write-index = ${write_index}                          # Maintain download history index
+interactive = ${interactive_mode}                     # Prompt user for each track selection
+remove-tracks-from-source = ${remove_tracks_from_source} # Remove tracks from playlists after download
+desperate-search = ${desperate_search}                # Use relaxed matching when strict search fails
 
 # Advanced Settings
-max-stale-time = 30000
-unknown-error-retries = 2
-max-retries-per-track = 30
 searches-per-time = 34
 search-renew-time = 220
 min-shares-aggregate = 2
@@ -645,8 +787,11 @@ python3 validate-config.py toolcrate.yaml
 ### Update sldl.conf from YAML
 After editing \`toolcrate.yaml\`, regenerate \`sldl.conf\`:
 \`\`\`bash
-# Re-run the setup script to regenerate
-../setup.sh
+# Update tool configs from YAML
+make config
+
+# Or re-run the configuration script to regenerate everything
+../configure_toolcrate.sh
 \`\`\`
 
 ### Docker Deployment
@@ -708,23 +853,48 @@ if [ -f "${CRON_DIR}/toolcrate" ]; then
     chmod 644 "${CRON_DIR}/toolcrate"
 fi
 
-# Install PyYAML if needed (in virtual environment)
+# Install Python dependencies
 echo -e "\n${GREEN}Checking Python dependencies...${NC}"
-if [ -z "$VIRTUAL_ENV" ]; then
-    echo -e "${RED}❌ Virtual environment not active! This should not happen.${NC}"
-    exit 1
-fi
 
-if ! python -c "import yaml" 2>/dev/null; then
-    echo -e "${YELLOW}Installing PyYAML in virtual environment...${NC}"
-    pip install PyYAML
+# Check if we're using Poetry
+if command -v poetry >/dev/null 2>&1 && [ -f "pyproject.toml" ]; then
+    echo -e "${GREEN}Using Poetry for dependency management...${NC}"
+
+    # Ensure dependencies are installed
+    if ! poetry run python -c "import yaml" 2>/dev/null; then
+        echo -e "${YELLOW}Installing dependencies with Poetry...${NC}"
+        poetry install --with dev
+    else
+        echo -e "${GREEN}Dependencies already installed with Poetry${NC}"
+    fi
 else
-    echo -e "${GREEN}PyYAML already installed in virtual environment${NC}"
+    # Fallback to pip in virtual environment
+    if [ -z "$VIRTUAL_ENV" ]; then
+        echo -e "${RED}❌ Virtual environment not active! This should not happen.${NC}"
+        exit 1
+    fi
+
+    if ! python -c "import yaml" 2>/dev/null; then
+        echo -e "${YELLOW}Installing PyYAML in virtual environment...${NC}"
+        pip install PyYAML
+    else
+        echo -e "${GREEN}PyYAML already installed in virtual environment${NC}"
+    fi
 fi
 
 # Validate the generated configuration
 echo -e "\n${GREEN}Validating configuration...${NC}"
-if [ -n "$VIRTUAL_ENV" ] && command -v python &> /dev/null; then
+
+# Use Poetry if available, otherwise use virtual environment
+if command -v poetry >/dev/null 2>&1 && [ -f "pyproject.toml" ]; then
+    cd "$CONFIG_DIR"
+    if poetry run python validate-config.py toolcrate.yaml; then
+        echo -e "${GREEN}✅ Configuration validation passed!${NC}"
+    else
+        echo -e "${YELLOW}⚠️  Configuration validation found issues. Please review.${NC}"
+    fi
+    cd "$TOOLCRATE_DIR"
+elif [ -n "$VIRTUAL_ENV" ] && command -v python &> /dev/null; then
     cd "$CONFIG_DIR"
     if python validate-config.py toolcrate.yaml; then
         echo -e "${GREEN}✅ Configuration validation passed!${NC}"
@@ -733,7 +903,8 @@ if [ -n "$VIRTUAL_ENV" ] && command -v python &> /dev/null; then
     fi
     cd "$TOOLCRATE_DIR"
 else
-    echo -e "${YELLOW}Virtual environment not active or Python not found. Skipping configuration validation.${NC}"
+    echo -e "${YELLOW}Poetry or virtual environment not available. Skipping configuration validation.${NC}"
+    echo -e "${YELLOW}Run manually: poetry run python config/validate-config.py config/toolcrate.yaml${NC}"
 fi
 
 # Summary
@@ -748,11 +919,19 @@ echo
 echo -e "${YELLOW}Next steps:${NC}"
 echo -e "1. Review and edit ${CONFIG_DIR}/toolcrate.yaml if needed"
 echo -e "2. Run the main installation: ./install.sh"
-echo -e "3. Always activate virtual environment: source .venv/bin/activate"
-echo -e "4. Test your configuration: slsk-tool --help"
+
+# Show appropriate environment activation instructions
+if command -v poetry >/dev/null 2>&1 && [ -f "pyproject.toml" ]; then
+    echo -e "3. Use Poetry for commands: poetry run <command>"
+    echo -e "   Or activate manually: source \$(poetry env info --path)/bin/activate"
+    echo -e "4. Test your configuration: poetry run slsk-tool --help"
+else
+    echo -e "3. Always activate virtual environment: source .venv/bin/activate"
+    echo -e "4. Test your configuration: slsk-tool --help"
+fi
 
 if [ "$setup_cron" = "true" ]; then
-    echo -e "4. Activate cron jobs: sudo cp ${CRON_DIR}/toolcrate /etc/cron.d/"
+    echo -e "5. Activate cron jobs: sudo cp ${CRON_DIR}/toolcrate /etc/cron.d/"
 fi
 
 echo
@@ -769,12 +948,29 @@ if [ "$setup_cron" = "true" ]; then
 fi
 
 echo
-echo -e "${YELLOW}Usage examples (remember to activate virtual environment first):${NC}"
+echo -e "${YELLOW}Usage examples:${NC}"
+
+# Show Poetry examples if available
+if command -v poetry >/dev/null 2>&1 && [ -f "pyproject.toml" ]; then
+    echo -e "${BLUE}Using Poetry (recommended):${NC}"
+    echo -e "  poetry run slsk-tool 'artist - song title'"
+    echo -e "  poetry run slsk-tool --config ${CONFIG_DIR}/sldl.conf 'playlist-url'"
+    echo -e "  poetry run slsk-tool --profile lossless 'album search'"
+    echo -e "  poetry run python config_manager.py validate"
+    echo -e "  make test  # Run all tests"
+    echo -e "  make setup  # Setup Poetry environment"
+    echo
+fi
+
+echo -e "${BLUE}Using virtual environment:${NC}"
 echo -e "  source .venv/bin/activate"
 echo -e "  slsk-tool 'artist - song title'"
 echo -e "  slsk-tool --config ${CONFIG_DIR}/sldl.conf 'playlist-url'"
 echo -e "  slsk-tool --profile lossless 'album search'"
 echo -e "  python config_manager.py validate"
+
+echo
+echo -e "${BLUE}Docker deployment:${NC}"
 echo -e "  docker-compose -f ${CONFIG_DIR}/docker-compose.yml up -d"
 
 echo

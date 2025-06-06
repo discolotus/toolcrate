@@ -6,6 +6,7 @@ This directory contains comprehensive unit tests for the ToolCrate package, cove
 
 ### Test Files
 
+#### Python Tests
 - **`conftest.py`** - Shared fixtures and test configuration
 - **`test_package.py`** - Package metadata and structure tests
 - **`test_main_cli.py`** - Main CLI interface tests
@@ -14,6 +15,11 @@ This directory contains comprehensive unit tests for the ToolCrate package, cove
 - **`test_integration.py`** - Integration and end-to-end tests
 - **`test_setup_build.py`** - Setup and build process tests
 - **`test_runner.py`** - Test runner utilities
+
+#### Shell Tests
+- **`test_config_generator.sh`** - Configuration generator tests
+- **`test_setup.sh`** - Setup script tests
+- **`test_setup_enhanced.sh`** - Enhanced setup script tests
 
 ### Test Categories
 

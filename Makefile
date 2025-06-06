@@ -1,6 +1,6 @@
 # ToolCrate Makefile for unified testing with Poetry
 
-.PHONY: help test test-all test-python test-shell test-unit test-integration test-coverage test-quick clean install setup dev-install format lint check
+.PHONY: help test test-all test-python test-shell test-unit test-integration test-coverage test-quick clean install setup dev-install format lint check init-config config config-validate config-generate-sldl config-show
 
 # Default target
 help:
@@ -11,6 +11,12 @@ help:
 	@echo "  make setup          - Install Poetry and setup project"
 	@echo "  make install        - Install dependencies with Poetry"
 	@echo "  make dev-install    - Install with dev dependencies"
+	@echo ""
+	@echo "Configuration:"
+	@echo "  make init-config    - Run interactive configuration setup (first time)"
+	@echo "  make config         - Update tool configs from YAML (regenerate)"
+	@echo "  make config-validate - Validate existing configuration"
+	@echo "  make config-show    - Show current configuration"
 	@echo ""
 	@echo "Testing:"
 	@echo "  make test           - Run all tests (Python + shell)"
@@ -31,10 +37,12 @@ help:
 	@echo "  make clean          - Clean test artifacts"
 	@echo ""
 	@echo "Examples:"
-	@echo "  make setup"
-	@echo "  make test"
-	@echo "  make format"
-	@echo "  make lint"
+	@echo "  make setup          # Initial project setup"
+	@echo "  make init-config    # Initial configuration setup"
+	@echo "  make config         # Update configs from YAML"
+	@echo "  make test           # Run all tests"
+	@echo "  make format         # Format code"
+	@echo "  make lint           # Lint code"
 
 # Setup Poetry and project
 setup:
@@ -153,3 +161,37 @@ show:
 
 update:
 	poetry update
+
+# Configuration management commands
+
+# Initial configuration setup (interactive)
+init-config:
+	@echo "Running ToolCrate initial configuration setup..."
+	./configure_toolcrate.sh
+
+# Update tool configurations from YAML (regenerate configs)
+config:
+	@echo "Updating tool configurations from YAML..."
+	@if [ ! -f "config/toolcrate.yaml" ]; then \
+		echo "❌ No configuration found. Run 'make init-config' first."; \
+		exit 1; \
+	fi
+	poetry run python -m toolcrate.config.manager generate-sldl
+	@echo "✅ Tool configurations updated from config/toolcrate.yaml"
+
+config-validate:
+	@echo "Validating ToolCrate configuration..."
+	poetry run python -m toolcrate.config.manager validate
+
+config-show:
+	@echo "Showing current ToolCrate configuration..."
+	poetry run python -m toolcrate.config.manager show
+
+# Initial configuration shortcuts with different options
+init-config-poetry:
+	@echo "Running ToolCrate configuration setup with Poetry..."
+	./configure_toolcrate.sh --use-poetry
+
+init-config-venv:
+	@echo "Running ToolCrate configuration setup with virtual environment..."
+	./configure_toolcrate.sh --no-poetry

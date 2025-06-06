@@ -26,7 +26,8 @@ pip install --upgrade pip
 
 # Copy the setup script
 cp "$OLDPWD/setup.sh" .
-cp "$OLDPWD/config_manager.py" .
+# Copy the config manager from the new location
+cp "$OLDPWD/src/toolcrate/config/manager.py" ./config_manager.py
 
 # Create test input file
 cat > test_input.txt << 'EOF'

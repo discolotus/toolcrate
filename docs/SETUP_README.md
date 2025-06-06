@@ -5,8 +5,10 @@ This guide covers the comprehensive setup script for ToolCrate with YAML-based c
 ## Quick Start
 
 ```bash
-# Run the interactive setup script (creates virtual environment automatically)
-./setup.sh
+# Run the interactive configuration generator (creates virtual environment automatically)
+./configure_toolcrate.sh
+# OR use the convenient Make command
+make init-config
 
 # Or run the existing installation script
 ./install.sh
@@ -23,9 +25,9 @@ The setup script **automatically creates and uses a Python virtual environment**
 - Consistent environment across different systems
 - Easy cleanup and management
 
-## New Setup Script Features
+## ToolCrate Configuration Generator Features
 
-The new `setup.sh` script provides a comprehensive configuration system with:
+The new `configure_toolcrate.sh` script provides a comprehensive configuration system with:
 
 ### ✨ Key Features
 
@@ -145,8 +147,10 @@ profiles:
 
 ### Basic Setup
 ```bash
-# Run interactive setup (automatically creates virtual environment)
-./setup.sh
+# Run interactive configuration generator (automatically creates virtual environment)
+./configure_toolcrate.sh
+# OR use the convenient Make command
+make init-config
 
 # Follow the prompts to configure:
 # - Project settings
@@ -177,13 +181,13 @@ pip install PyYAML
 ### Configuration Management
 ```bash
 # Validate configuration
-python3 config_manager.py validate
+python3 -m toolcrate.config.manager validate
 
 # Generate sldl.conf from YAML
-python3 config_manager.py generate-sldl
+python3 -m toolcrate.config.manager generate-sldl
 
 # Show current configuration
-python3 config_manager.py show
+python3 -m toolcrate.config.manager show
 ```
 
 ### Using Profiles
@@ -286,13 +290,19 @@ python3 config/validate-config.py config/toolcrate.yaml
 ### Regenerating sldl.conf
 ```bash
 # If you edit toolcrate.yaml, regenerate sldl.conf
-python3 config_manager.py generate-sldl
+python3 -m toolcrate.config.manager generate-sldl
 ```
 
 ### Testing Configuration
 ```bash
-# Test the setup script
-./test_setup.sh
+# Test the configuration generator
+./tests/test_config_generator.sh
+
+# Validate configuration
+make config-validate
+
+# Update tool configs from YAML
+make config
 
 # Dry run with slsk-tool
 slsk-tool --config config/sldl.conf --help
@@ -320,8 +330,8 @@ Optional:
 
 ## Support
 
-For issues with the setup script:
-1. Run `./test_setup.sh` to verify functionality
-2. Check configuration with `python3 config_manager.py validate`
+For issues with the configuration generator:
+1. Run `./test_config_generator.sh` to verify functionality
+2. Check configuration with `make config-validate`
 3. Review generated files in the `config/` directory
 4. Consult `config/README.md` for detailed configuration help

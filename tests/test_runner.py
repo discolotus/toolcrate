@@ -11,14 +11,14 @@ import pytest
 def run_shell_tests():
     """Run shell script tests."""
     project_root = Path(__file__).parent.parent
+    tests_dir = Path(__file__).parent
     shell_tests = []
 
-    # Find shell test scripts
-    test_setup_script = project_root / "test_setup.sh"
-    if test_setup_script.exists():
-        shell_tests.append(test_setup_script)
+    # Find shell test scripts in tests directory
+    for script in tests_dir.glob("test_*.sh"):
+        shell_tests.append(script)
 
-    # Look for other shell test scripts
+    # Look for shell test scripts in project root (legacy)
     for script in project_root.glob("test_*.sh"):
         if script not in shell_tests:
             shell_tests.append(script)

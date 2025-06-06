@@ -12,11 +12,27 @@ import sys
 from pathlib import Path
 from typing import Dict, Any
 
-# Check if we're in a virtual environment
-if not os.environ.get('VIRTUAL_ENV'):
+# Check if we're in a virtual environment (Poetry or manual)
+# Poetry runs in its own environment, so we check for both
+in_venv = os.environ.get('VIRTUAL_ENV') or os.environ.get('POETRY_ACTIVE')
+if not in_venv:
+    # Try to detect if we're running under Poetry
+    import subprocess
+    try:
+        result = subprocess.run(['poetry', 'env', 'info', '--path'],
+                              capture_output=True, text=True, check=True)
+        if result.stdout.strip():
+            # We're likely running under Poetry
+            in_venv = True
+    except (subprocess.CalledProcessError, FileNotFoundError):
+        pass
+
+if not in_venv:
     print("❌ Virtual environment not active!")
-    print("Please activate the virtual environment first:")
-    print("  source .venv/bin/activate")
+    print("Please use one of these methods:")
+    print("  poetry run python config_manager.py <command>")
+    print("  source .venv/bin/activate && python config_manager.py <command>")
+    print("  make config-<command>")
     sys.exit(1)
 
 try:
@@ -119,11 +135,11 @@ class ConfigManager:
                 'concurrent_processes': 'concurrent-processes',
                 'search_timeout': 'search-timeout',
                 'listen_port': 'listen-port',
+                'max_stale_time': 'max-stale-time',
+                'max_retries_per_track': 'max-retries-per-track',
+                'unknown_error_retries': 'unknown-error-retries',
                 'fast_search_delay': 'fast-search-delay',
                 'fast_search_min_up_speed': 'fast-search-min-up-speed',
-                'max_stale_time': 'max-stale-time',
-                'unknown_error_retries': 'unknown-error-retries',
-                'max_retries_per_track': 'max-retries-per-track',
                 'searches_per_time': 'searches-per-time',
                 'search_renew_time': 'search-renew-time',
                 'min_shares_aggregate': 'min-shares-aggregate',
@@ -140,10 +156,11 @@ class ConfigManager:
                 'skip_existing': 'skip-existing',
                 'write_index': 'write-index',
                 'interactive_mode': 'interactive',
+                'remove_tracks_from_source': 'remove-tracks-from-source',
+                'desperate_search': 'desperate-search',
                 'album': 'album',
                 'aggregate': 'aggregate',
                 'album_art_only': 'album-art-only',
-                'desperate_search': 'desperate-search',
                 'no_remove_special_chars': 'no-remove-special-chars',
                 'artist_maybe_wrong': 'artist-maybe-wrong',
                 'yt_parse': 'yt-parse',
@@ -151,7 +168,6 @@ class ConfigManager:
                 'remove_brackets': 'remove-brackets',
                 'reverse': 'reverse',
                 'use_ytdlp': 'use-ytdlp',
-                'remove_tracks_from_source': 'remove-tracks-from-source',
                 'get_deleted': 'get-deleted',
                 'deleted_only': 'deleted-only',
                 'remove_single_character_search_terms': 'remove-single-character-search-terms',

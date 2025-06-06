@@ -20,11 +20,31 @@ pip install toolcrate
 
 ### Development Installation
 
+**Important**: This repository uses git submodules for external tools. Make sure to clone with submodules included:
+
+#### Method 1: Clone with submodules (Recommended)
 ```bash
-git clone https://github.com/yourusername/toolcrate.git
+git clone --recurse-submodules https://github.com/yourusername/toolcrate.git
 cd toolcrate
 poetry install
 ```
+
+#### Method 2: Clone and initialize submodules separately
+```bash
+git clone https://github.com/yourusername/toolcrate.git
+cd toolcrate
+git submodule update --init --recursive
+poetry install
+```
+
+#### Method 3: Quick setup with automated script
+```bash
+git clone --recurse-submodules https://github.com/yourusername/toolcrate.git
+cd toolcrate
+./scripts/setup-dev.sh
+```
+
+> **Note**: The external tools (slsk-batchdl and Shazam-Tool) are included as git submodules. Without proper submodule initialization, the integrated tools will not function correctly.
 
 ## Configuration
 
@@ -167,6 +187,21 @@ If you encounter configuration-related errors:
 - **sldl**: Check Docker installation and Soulseek credentials
 - **Shazam**: Verify FFmpeg installation and audio file formats
 - **General**: Check Python version compatibility
+
+### Submodule Issues
+
+If you're missing the external tools or getting import errors:
+
+```bash
+# Reinitialize submodules
+git submodule update --init --recursive
+
+# Force update submodules to latest commits
+git submodule update --remote --merge
+
+# Check submodule status
+git submodule status
+```
 
 ## Contributing
 

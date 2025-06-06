@@ -1,1 +1,1 @@
-"""CLI module for ToolCrate.""" 
+"""CLI module for ToolCrate."""

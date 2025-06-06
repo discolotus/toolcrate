@@ -87,9 +87,11 @@ if __name__ == "__main__":
                 "slsk-tool=toolcrate.cli.wrappers:run_slsk",
                 "shazam-tool=toolcrate.cli.wrappers:run_shazam",
                 "mdl-tool=toolcrate.cli.wrappers:run_mdl",
+                "toolcrate-identify-wishlist=toolcrate.scripts.process_wishlist:main",
+                "toolcrate-identify-djsets=toolcrate.scripts.process_wishlist:main",
             ],
         },
-        python_requires=">=3.8",
+        python_requires=">=3.11,<3.13",
         cmdclass={
             'develop': PostDevelopCommand,
             'install': PostInstallCommand,

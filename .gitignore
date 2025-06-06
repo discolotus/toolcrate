@@ -171,3 +171,6 @@ dist/
 *.swo
 *~
 
+config/wishlist.txt
+playlists.txt
+examples/urls.txt

@@ -1,0 +1,14 @@
+#!/bin/bash
+
+# Get the absolute path to the repository root
+REPO_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+
+# Check if the config file exists
+if [ ! -f "$REPO_ROOT/config/sldl.conf" ]; then
+    echo "Error: Config file not found at $REPO_ROOT/config/sldl.conf"
+    exit 1
+fi
+
+# Run the toolcrate sldl command - no need to pass config path as it's now automatic
+echo "Using config file from: $REPO_ROOT/config/sldl.conf"
+"$REPO_ROOT/.venv/bin/toolcrate" sldl "$@" 

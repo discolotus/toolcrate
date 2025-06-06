@@ -1,0 +1,11 @@
+#!/bin/sh
+# Run the identify-tracks script for items in dj-sets.txt
+
+# Get the directory of this script
+SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
+
+# Navigate to the project root
+PROJECT_ROOT="$(dirname "$(dirname "$SCRIPT_DIR")")"
+
+# Run the Python script with dj-sets file type
+python3 "${PROJECT_ROOT}/src/toolcrate/scripts/process_wishlist.py" --file-type dj-sets "$@" 

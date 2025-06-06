@@ -5,12 +5,28 @@
 GREEN='\033[0;32m'
 BLUE='\033[0;34m'
 YELLOW='\033[0;33m'
+RED='\033[0;31m'
 NC='\033[0m' # No Color
 
 echo -e "${BLUE}Setting up toolcrate...${NC}"
 
 # Get the absolute path of the current directory
 TOOLCRATE_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+
+# Check Python version
+echo -e "${GREEN}Checking Python version...${NC}"
+PYTHON_VERSION=$(python3 -c 'import sys; print(f"{sys.version_info.major}.{sys.version_info.minor}")')
+PYTHON_MAJOR=$(echo $PYTHON_VERSION | cut -d. -f1)
+PYTHON_MINOR=$(echo $PYTHON_VERSION | cut -d. -f2)
+
+if [[ "$PYTHON_MAJOR" -lt 3 || ($PYTHON_MAJOR -eq 3 && "$PYTHON_MINOR" -lt 11) || ($PYTHON_MAJOR -eq 3 && "$PYTHON_MINOR" -gt 12) ]]; then
+    echo -e "${RED}Error: toolcrate requires Python 3.11 or 3.12${NC}"
+    echo -e "${RED}Current Python version: ${PYTHON_VERSION}${NC}"
+    echo -e "${YELLOW}Please install Python 3.11 or 3.12 and try again${NC}"
+    exit 1
+else
+    echo -e "${GREEN}Using Python ${PYTHON_VERSION}${NC}"
+fi
 
 # Create Python virtual environment in .venv directory
 if [ ! -d ".venv" ]; then
@@ -26,27 +42,25 @@ fi
 # Create src directory if it doesn't exist
 mkdir -p src/bin
 
-# Initialize git submodules if in a git repository
-# This section handles setting up the required tools (moved from setup_tools.sh)
+# Try to initialize git submodules if in a git repository
 if [ -d ".git" ]; then
-    echo -e "${GREEN}Setting up git submodules...${NC}"
+    echo -e "${GREEN}Attempting to set up git submodules...${NC}"
     git submodule update --init --recursive
-else
-    echo -e "${GREEN}Not a git repository, cloning tools directly...${NC}"
-    
-    # Handle slsk-batchdl
-    if [ ! -d "src/slsk-batchdl" ]; then
-        echo -e "${GREEN}Cloning slsk-batchdl...${NC}"
-        git clone https://github.com/gfrancesco-ul/slsk-batchdl.git src/slsk-batchdl
-        cd src/slsk-batchdl && git checkout v2.4.6 && cd ../../
-    fi
-    
-    # Handle Shazam-Tool
-    if [ ! -d "src/Shazam-Tool" ]; then
-        echo -e "${GREEN}Cloning Shazam-Tool...${NC}"
-        git clone https://github.com/in0vik/Shazam-Tool.git src/Shazam-Tool
-        cd src/Shazam-Tool && git checkout main && cd ../../
-    fi
+fi
+
+# Always check if the repositories exist, and clone them if they don't
+# Handle slsk-batchdl
+if [ ! -d "src/slsk-batchdl" ]; then
+    echo -e "${GREEN}Cloning slsk-batchdl...${NC}"
+    git clone https://github.com/fiso64/slsk-batchdl.git src/slsk-batchdl
+    cd src/slsk-batchdl && git checkout v2.4.6 && cd ../../
+fi
+
+# Handle Shazam-Tool
+if [ ! -d "src/Shazam-Tool" ]; then
+    echo -e "${GREEN}Cloning Shazam-Tool...${NC}"
+    git clone https://github.com/in0vik/Shazam-Tool.git src/Shazam-Tool
+    cd src/Shazam-Tool && git checkout main && cd ../../
 fi
 
 # Check if we're on macOS ARM64
@@ -60,7 +74,7 @@ if [[ "$(uname)" == "Darwin" && "$(uname -m)" == "arm64" ]]; then
         chmod +x src/bin/sldl
     else
         echo -e "${GREEN}dotnet not found, downloading pre-built binary...${NC}"
-        curl -L -o src/sldl_osx-arm64.zip https://github.com/gfrancesco-ul/slsk-batchdl/releases/download/v2.4.6/sldl_osx-arm64.zip
+        curl -L -o src/sldl_osx-arm64.zip https://github.com/fiso64/slsk-batchdl/releases/download/v2.4.6/sldl_osx-arm64.zip
         unzip src/sldl_osx-arm64.zip -d src/bin/
         chmod +x src/bin/sldl
         rm src/sldl_osx-arm64.zip

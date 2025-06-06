@@ -1,0 +1,18 @@
+#!/bin/bash
+# A simple wrapper for downloading videos using yt-dlp within the sldl container
+
+if [ -z "$1" ]; then
+  echo "Usage: $0 <youtube_url> [output_directory]"
+  exit 1
+fi
+
+YOUTUBE_URL="$1"
+OUTPUT_DIR="${2:-$HOME/Music/downloads/sldl}"
+
+# Make sure the output directory exists
+mkdir -p "$OUTPUT_DIR"
+
+# Run yt-dlp in the container
+docker exec slsk-batchdl-sldl-1 yt-dlp "$YOUTUBE_URL" -o "/data/%(title)s.%(ext)s" -x --audio-format mp3
+
+echo "Download complete! Files saved to $OUTPUT_DIR" 

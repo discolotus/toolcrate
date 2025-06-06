@@ -171,3 +171,10 @@ dist/
 *.swo
 *~
 
+# External tools and binaries
+src/bin/
+src/slsk-batchdl/
+src/Shazam-Tool/
+
+# Virtual environment
+.venv/

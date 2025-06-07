@@ -210,6 +210,13 @@ docker-compose up -d
 
 # View logs
 docker-compose logs -f sldl
+
+# Rebuild Docker image (after code changes)
+make buildimage
+
+# Rebuild and restart services
+cd config
+docker-compose up --build --force-recreate sldl
 ```
 
 ### Cron Jobs

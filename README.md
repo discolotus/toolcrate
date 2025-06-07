@@ -63,6 +63,8 @@ For macOS ARM64 (Apple Silicon) users, the installation will automatically:
 
 ## Usage
 
+### Basic Commands
+
 ```bash
 # Main interface
 toolcrate --help
@@ -71,6 +73,48 @@ toolcrate --help
 slsk-tool search "artist - title"
 shazam-tool identify sample.mp3
 mdl-tool get-metadata track.mp3
+```
+
+### Docker Integration
+
+ToolCrate includes Docker integration for slsk-batchdl:
+
+```bash
+# Run slsk-batchdl commands in Docker container
+toolcrate sldl -a "Artist Name" -t "Track Name"
+
+# Enter interactive shell in container
+toolcrate sldl
+```
+
+### Wishlist & Scheduled Downloads
+
+ToolCrate supports automated wishlist downloading with scheduling:
+
+```bash
+# Add items to config/wishlist.txt, then:
+toolcrate schedule daily                    # Daily at 2 AM
+toolcrate schedule hourly                   # Every hour
+toolcrate schedule enable
+toolcrate schedule install
+
+# Test wishlist processing
+make wishlist-test
+```
+
+See [docs/WISHLIST_SCHEDULING.md](docs/WISHLIST_SCHEDULING.md) for detailed documentation.
+
+### Configuration and Setup
+
+```bash
+# Initial configuration setup
+make init-config
+
+# Update configurations from YAML
+make config
+
+# Run tests
+make test
 ```
 
 ## Requirements

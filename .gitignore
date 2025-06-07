@@ -187,3 +187,18 @@ src/Shazam-Tool/
 .venv/
 **/toolcrate.yaml
 
+config/sldl-wishlist.conf
+config/wishlist.txt
+config/crontabs/
+**index.sldl
+**.mp3
+**.flac
+**.wav
+**.alac
+**.m4a
+**.opus
+**.ogg
+**.aac
+**.incomplete
+
+

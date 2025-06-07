@@ -47,6 +47,7 @@ class TestMainCLI:
         assert "slsk-tool: Soulseek batch download tool" in result.output
         assert "shazam-tool: Music recognition tool" in result.output
         assert "mdl-tool: Music metadata utility" in result.output
+        assert "sldl: Run commands in slsk-batchdl docker container" in result.output
 
     def test_info_command_help(self):
         """Test that info command help works."""
@@ -69,7 +70,11 @@ class TestMainCLI:
     def test_info_command_direct_call(self):
         """Test calling info command directly."""
         with patch("click.echo") as mock_echo:
-            info()
+            # Use the CliRunner to avoid sys.argv interference
+            result = self.runner.invoke(info, [])
+
+            # Verify the command executed successfully
+            assert result.exit_code == 0
 
             # Verify all expected calls were made
             expected_calls = [
@@ -77,6 +82,7 @@ class TestMainCLI:
                 "  - slsk-tool: Soulseek batch download tool",
                 "  - shazam-tool: Music recognition tool",
                 "  - mdl-tool: Music metadata utility",
+                "  - sldl: Run commands in slsk-batchdl docker container",
             ]
 
             assert mock_echo.call_count == len(expected_calls)
@@ -89,6 +95,20 @@ class TestMainCLI:
         assert result.exit_code == 0
         assert "Commands:" in result.output
         assert "info" in result.output
+        assert "sldl" in result.output
+
+    def test_sldl_command_exists(self):
+        """Test that sldl command exists."""
+        result = self.runner.invoke(main, ["sldl", "--help"])
+        # The command should exist, but may fail due to docker dependencies
+        # We just check that it's recognized as a valid command
+        assert "sldl" in result.output or "docker" in result.output.lower()
+
+    def test_sldl_command_help(self):
+        """Test that sldl command shows help information."""
+        result = self.runner.invoke(main, ["sldl", "--help"])
+        # Should show help or error about docker
+        assert result.exit_code in [0, 1]  # May exit with 1 if docker not available
 
     def test_main_entry_point(self):
         """Test that main can be called as entry point."""

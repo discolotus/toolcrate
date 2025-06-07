@@ -258,3 +258,178 @@ def run_mdl():
     # Not found
     click.echo("Error: mdl-utils not found. Please install it or its Docker image.")
     sys.exit(1)
+
+
+def run_sldl_docker_command(params, args, build=False):
+    """Run a command in the slsk-batchdl docker container.
+
+    Args:
+        params: Click parameters (currently unused)
+        args: List of command arguments to pass to the container
+        build: Whether to rebuild the container before running
+    """
+    import subprocess
+    from ..config.manager import ConfigManager
+
+    # Check if docker is available
+    if not check_dependency("docker"):
+        click.echo("Error: Docker is not installed or not available in PATH.")
+        click.echo("Please install Docker to use the sldl command.")
+        sys.exit(1)
+
+    # Check if docker-compose is available
+    if not check_dependency("docker-compose") and not check_dependency("docker"):
+        click.echo("Error: Neither docker-compose nor docker with compose plugin is available.")
+        click.echo("Please install Docker Compose to use the sldl command.")
+        sys.exit(1)
+
+    # Get the project root to find docker-compose.yml
+    root_dir = get_project_root()
+    compose_file = root_dir / "config" / "docker-compose.yml"
+
+    if not compose_file.exists():
+        click.echo(f"Error: Docker Compose file not found at {compose_file}")
+        click.echo("Please run 'make init-config' to generate the configuration files.")
+        sys.exit(1)
+
+    # Handle build flag - rebuild containers if requested
+    if build:
+        click.echo("🔄 Rebuilding containers...")
+
+        # Stop and remove existing containers
+        try:
+            # Check if we should use 'docker compose' instead of 'docker-compose'
+            if check_dependency("docker-compose"):
+                down_cmd = ["docker-compose", "-f", str(compose_file), "down"]
+                up_cmd = ["docker-compose", "-f", str(compose_file), "up", "--build", "-d"]
+            else:
+                down_cmd = ["docker", "compose", "-f", str(compose_file), "down"]
+                up_cmd = ["docker", "compose", "-f", str(compose_file), "up", "--build", "-d"]
+
+            # Stop containers
+            click.echo("🛑 Stopping existing containers...")
+            down_result = subprocess.run(down_cmd, capture_output=True, text=True)
+            if down_result.returncode != 0:
+                click.echo(f"Warning: Could not stop containers: {down_result.stderr}")
+
+            # Start containers with build
+            click.echo("🔨 Building and starting containers...")
+            up_result = subprocess.run(up_cmd, capture_output=True, text=True)
+            if up_result.returncode != 0:
+                click.echo(f"Error building containers: {up_result.stderr}")
+                sys.exit(1)
+
+            click.echo("✅ Containers rebuilt and started successfully.")
+
+        except Exception as e:
+            click.echo(f"Error during container rebuild: {e}")
+            sys.exit(1)
+
+    # Check if the sldl container is running
+    try:
+        # Look for containers with 'sldl' in the name (handles both 'sldl' and 'slsk-batchdl-sldl-1' naming)
+        result = subprocess.run(
+            ["docker", "ps", "--filter", "name=sldl", "--format", "{{.Names}}"],
+            capture_output=True,
+            text=True,
+            check=False,
+        )
+
+        container_name = None
+        container_names = []
+        if result.stdout.strip():
+            # Get all container names that contain 'sldl'
+            for line in result.stdout.strip().split('\n'):
+                if 'sldl' in line:
+                    container_names.append(line.strip())
+
+            if len(container_names) > 1:
+                click.echo(f"Warning: Found multiple containers with 'sldl' in name: {', '.join(container_names)}")
+                click.echo(f"Using the first one: {container_names[0]}")
+                container_name = container_names[0]
+            elif len(container_names) == 1:
+                container_name = container_names[0]
+
+        if not container_name and not build:
+            # Only start the container if we didn't just build it
+            click.echo("The sldl container is not running.")
+            click.echo("Starting the container with docker-compose...")
+
+            # Try to start the container
+            compose_cmd = ["docker-compose", "-f", str(compose_file), "up", "-d", "sldl"]
+
+            # Check if we should use 'docker compose' instead of 'docker-compose'
+            if not check_dependency("docker-compose"):
+                compose_cmd = ["docker", "compose", "-f", str(compose_file), "up", "-d", "sldl"]
+
+            start_result = subprocess.run(compose_cmd, capture_output=True, text=True)
+
+            if start_result.returncode != 0:
+                click.echo(f"Error starting sldl container: {start_result.stderr}")
+                sys.exit(1)
+
+            click.echo("Container started successfully.")
+
+        # After starting or building, get the container name again if we don't have it
+        if not container_name:
+            result = subprocess.run(
+                ["docker", "ps", "--filter", "name=sldl", "--format", "{{.Names}}"],
+                capture_output=True,
+                text=True,
+                check=False,
+            )
+            if result.stdout.strip():
+                container_names = []
+                for line in result.stdout.strip().split('\n'):
+                    if 'sldl' in line:
+                        container_names.append(line.strip())
+
+                if len(container_names) > 1:
+                    click.echo(f"Warning: Found multiple containers with 'sldl' in name: {', '.join(container_names)}")
+                    click.echo(f"Using the first one: {container_names[0]}")
+                    container_name = container_names[0]
+                elif len(container_names) == 1:
+                    container_name = container_names[0]
+
+    except FileNotFoundError:
+        click.echo("Error: Docker command not found.")
+        sys.exit(1)
+
+    # Ensure we have a container name
+    if not container_name:
+        click.echo("Error: Could not find or start sldl container.")
+        sys.exit(1)
+
+    # Regenerate sldl.conf from toolcrate.yaml before running command
+    try:
+        config_manager = ConfigManager()
+        config_manager.generate_sldl_conf()
+        logger.info("Updated sldl.conf from toolcrate.yaml")
+    except Exception as e:
+        logger.warning(f"Failed to update sldl.conf: {e}")
+        # Continue anyway - use existing config file
+
+    # Build the docker exec command
+    if not args:
+        # If no arguments provided, enter interactive shell
+        docker_cmd = [
+            "docker", "exec", "-it", container_name, "/bin/bash"
+        ]
+        logger.info(f"Entering interactive shell in {container_name} container")
+    else:
+        # The slsk-batchdl container should have the binary available as 'sldl' or 'slsk-batchdl'
+        # Always include the config file path for docker execution
+        docker_cmd = [
+            "docker", "exec", "-it", container_name, "sldl", "-c", "/config/sldl.conf"
+        ] + args
+        logger.info(f"Executing command in {container_name} container: {' '.join(['-c', '/config/sldl.conf'] + args)}")
+
+    # Execute the command in the container
+    try:
+        os.execvp("docker", docker_cmd)
+    except FileNotFoundError:
+        click.echo("Error: Docker command not found.")
+        sys.exit(1)
+    except Exception as e:
+        click.echo(f"Error executing command in container: {e}")
+        sys.exit(1)

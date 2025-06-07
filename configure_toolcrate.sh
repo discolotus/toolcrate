@@ -261,8 +261,24 @@ fi
 
 # Mount Settings (for Docker/containerized environments)
 echo -e "\n${BLUE}=== Mount and Path Settings ===${NC}"
-prompt_with_default "Host data mount point (for Docker)" "${TOOLCRATE_DIR}/data" "host_data_mount"
-prompt_with_default "Host config mount point (for Docker)" "${TOOLCRATE_DIR}/config" "host_config_mount"
+echo -e "${YELLOW}Docker mount configuration:${NC}"
+echo -e "  Default: Use relative paths (./config and ./data)"
+echo -e "  Custom: Specify absolute paths for different locations"
+echo ""
+
+read -p "Use default relative paths for Docker mounts? [Y/n]: " use_relative_mounts
+use_relative_mounts=${use_relative_mounts:-Y}
+
+if [[ "$use_relative_mounts" =~ ^[Yy]$ ]]; then
+    host_data_mount="./data"
+    host_config_mount="./config"
+    echo -e "${GREEN}Using relative paths:${NC}"
+    echo -e "  Config: ./config → /config"
+    echo -e "  Data: ./data → /data"
+else
+    prompt_with_default "Host data mount point (for Docker)" "${TOOLCRATE_DIR}/data" "host_data_mount"
+    prompt_with_default "Host config mount point (for Docker)" "${TOOLCRATE_DIR}/config" "host_config_mount"
+fi
 
 echo -e "\n${GREEN}Creating configuration files...${NC}"
 
@@ -591,23 +607,15 @@ echo -e "${GREEN}Creating Docker Compose configuration...${NC}"
 cat > "${CONFIG_DIR}/docker-compose.yml" << EOF
 # Docker Compose configuration for ToolCrate
 # Generated on $(date)
+#
+# Mount paths: ${host_config_mount} → /config, ${host_data_mount} → /data
+# Run from project root directory when using relative paths
 
 services:
-  toolcrate:
-    image: toolcrate:latest
-    container_name: toolcrate
-    environment:
-      - TZ=UTC
-      - PUID=1000
-      - PGID=1000
-    volumes:
-      - ${host_config_mount}:/config
-      - ${host_data_mount}:/data
-    restart: unless-stopped
-    networks:
-      - toolcrate-network
-
   sldl:
+    build:
+      context: ../src/slsk-batchdl
+      dockerfile: Dockerfile
     image: slsk-batchdl:latest
     container_name: sldl
     environment:
@@ -620,8 +628,6 @@ services:
     restart: unless-stopped
     networks:
       - toolcrate-network
-    depends_on:
-      - toolcrate
 
 networks:
   toolcrate-network:
@@ -971,6 +977,10 @@ echo -e "  python config_manager.py validate"
 
 echo
 echo -e "${BLUE}Docker deployment:${NC}"
+if [[ "$host_config_mount" == "./config" ]]; then
+    echo -e "  ${YELLOW}Note: Using relative paths - run from project root directory${NC}"
+    echo -e "  cd ${TOOLCRATE_DIR}"
+fi
 echo -e "  docker-compose -f ${CONFIG_DIR}/docker-compose.yml up -d"
 
 echo

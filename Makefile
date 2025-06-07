@@ -1,6 +1,6 @@
 # ToolCrate Makefile for unified testing with Poetry
 
-.PHONY: help test test-all test-python test-shell test-unit test-integration test-coverage test-quick clean install setup dev-install format lint check init-config config config-validate config-generate-sldl config-show
+.PHONY: help test test-all test-python test-shell test-unit test-integration test-coverage test-quick clean install setup dev-install format lint check init-config config config-validate config-generate-sldl config-generate-wishlist-sldl config-generate-docker config-check-mounts config-show wishlist-test wishlist-run wishlist-run-verbose
 
 # Default target
 help:
@@ -14,9 +14,17 @@ help:
 	@echo ""
 	@echo "Configuration:"
 	@echo "  make init-config    - Run interactive configuration setup (first time)"
-	@echo "  make config         - Update tool configs from YAML (regenerate)"
+	@echo "  make config         - Update tool configs from YAML (regenerate + check mounts)"
 	@echo "  make config-validate - Validate existing configuration"
 	@echo "  make config-show    - Show current configuration"
+	@echo "  make config-generate-docker - Generate docker-compose.yml from YAML"
+	@echo "  make config-check-mounts - Check mount changes and rebuild containers"
+	@echo ""
+	@echo "Wishlist & Scheduling:"
+	@echo "  make wishlist-test  - Test wishlist processing without scheduling"
+	@echo "  make wishlist-run   - Run wishlist processing once"
+	@echo "  make wishlist-run-verbose - Run wishlist processing with detailed output"
+	@echo "  make config-generate-wishlist-sldl - Generate wishlist-specific sldl.conf"
 	@echo ""
 	@echo "Testing:"
 	@echo "  make test           - Run all tests (Python + shell)"
@@ -33,6 +41,7 @@ help:
 	@echo "  make lint           - Lint code with ruff and mypy"
 	@echo "  make check          - Run all quality checks"
 	@echo ""
+
 	@echo "Maintenance:"
 	@echo "  make clean          - Clean test artifacts"
 	@echo ""
@@ -40,6 +49,7 @@ help:
 	@echo "  make setup          # Initial project setup"
 	@echo "  make init-config    # Initial configuration setup"
 	@echo "  make config         # Update configs from YAML"
+	@echo "  make wishlist-test  # Test wishlist processing"
 	@echo "  make test           # Run all tests"
 	@echo "  make format         # Format code"
 	@echo "  make lint           # Lint code"
@@ -176,6 +186,7 @@ config:
 		echo "❌ No configuration found. Run 'make init-config' first."; \
 		exit 1; \
 	fi
+	poetry run python -m toolcrate.config.manager check-mounts
 	poetry run python -m toolcrate.config.manager generate-sldl
 	@echo "✅ Tool configurations updated from config/toolcrate.yaml"
 
@@ -187,6 +198,31 @@ config-show:
 	@echo "Showing current ToolCrate configuration..."
 	poetry run python -m toolcrate.config.manager show
 
+config-generate-docker:
+	@echo "Generating Docker Compose configuration from YAML..."
+	poetry run python -m toolcrate.config.manager generate-docker
+
+config-check-mounts:
+	@echo "Checking for mount path changes and rebuilding containers if needed..."
+	poetry run python -m toolcrate.config.manager check-mounts
+
+config-generate-wishlist-sldl:
+	@echo "Generating wishlist-specific sldl.conf from YAML..."
+	poetry run python -m toolcrate.config.manager generate-wishlist-sldl
+
+# Wishlist commands
+wishlist-test:
+	@echo "Testing wishlist processing..."
+	poetry run toolcrate schedule test
+
+wishlist-run:
+	@echo "Running wishlist processing..."
+	poetry run python -m toolcrate.wishlist.processor
+
+wishlist-run-verbose:
+	@echo "Running wishlist processing with verbose output..."
+	poetry run python -m toolcrate.wishlist.processor --verbose
+
 # Initial configuration shortcuts with different options
 init-config-poetry:
 	@echo "Running ToolCrate configuration setup with Poetry..."
@@ -195,3 +231,5 @@ init-config-poetry:
 init-config-venv:
 	@echo "Running ToolCrate configuration setup with virtual environment..."
 	./configure_toolcrate.sh --no-poetry
+
+

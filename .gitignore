@@ -202,3 +202,4 @@ config/crontabs/
 **.incomplete
 
 
+config/download-queue.txt

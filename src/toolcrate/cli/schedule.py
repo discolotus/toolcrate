@@ -4,6 +4,8 @@
 import click
 import logging
 import subprocess
+import tempfile
+import os
 from pathlib import Path
 from typing import List, Dict, Any
 
@@ -11,6 +13,131 @@ from ..config.manager import ConfigManager
 from ..wishlist.processor import WishlistProcessor
 
 logger = logging.getLogger(__name__)
+
+
+def get_current_crontab() -> str:
+    """Get the current user's crontab content."""
+    try:
+        result = subprocess.run(['crontab', '-l'], capture_output=True, text=True)
+        if result.returncode == 0:
+            return result.stdout
+        else:
+            # No crontab exists yet
+            return ""
+    except Exception as e:
+        logger.debug(f"Error reading crontab: {e}")
+        return ""
+
+
+def update_crontab(content: str) -> bool:
+    """Update the user's crontab with new content."""
+    try:
+        with tempfile.NamedTemporaryFile(mode='w', suffix='.cron', delete=False) as f:
+            f.write(content)
+            temp_file = f.name
+
+        result = subprocess.run(['crontab', temp_file], capture_output=True, text=True)
+        os.unlink(temp_file)
+
+        if result.returncode == 0:
+            return True
+        else:
+            logger.error(f"Error updating crontab: {result.stderr}")
+            return False
+    except Exception as e:
+        logger.error(f"Error updating crontab: {e}")
+        return False
+
+
+def remove_toolcrate_jobs_from_crontab() -> str:
+    """Remove all ToolCrate jobs from crontab and return the cleaned content."""
+    current_crontab = get_current_crontab()
+    if not current_crontab:
+        return ""
+
+    lines = current_crontab.split('\n')
+    cleaned_lines = []
+    in_toolcrate_section = False
+
+    for line in lines:
+        if line.strip() == "# ToolCrate Scheduled Downloads":
+            in_toolcrate_section = True
+            continue
+        elif in_toolcrate_section and line.strip() and not line.startswith('#') and 'toolcrate' not in line.lower():
+            # End of ToolCrate section
+            in_toolcrate_section = False
+            cleaned_lines.append(line)
+        elif not in_toolcrate_section:
+            cleaned_lines.append(line)
+
+    # Remove trailing empty lines
+    while cleaned_lines and not cleaned_lines[-1].strip():
+        cleaned_lines.pop()
+
+    return '\n'.join(cleaned_lines)
+
+
+def add_toolcrate_jobs_to_crontab(config_manager: ConfigManager, jobs: List[Dict[str, Any]], cron_enabled: bool = True) -> bool:
+    """Add ToolCrate jobs to the user's crontab."""
+    # Remove existing ToolCrate jobs first
+    current_crontab = remove_toolcrate_jobs_from_crontab()
+
+    # Generate new ToolCrate section
+    toolcrate_section = generate_crontab_section(config_manager, jobs, cron_enabled)
+
+    # Combine existing crontab with new ToolCrate section
+    if current_crontab.strip():
+        new_crontab = current_crontab + '\n\n' + toolcrate_section
+    else:
+        new_crontab = toolcrate_section
+
+    return update_crontab(new_crontab)
+
+
+def generate_crontab_section(config_manager: ConfigManager, jobs: List[Dict[str, Any]], cron_enabled: bool = True) -> str:
+    """Generate the ToolCrate section for crontab."""
+    lines = [
+        "# ToolCrate Scheduled Downloads",
+        "# Generated automatically - do not edit manually",
+        "# Use 'toolcrate schedule' commands to manage",
+        "",
+    ]
+
+    if not jobs:
+        lines.append("# No jobs defined")
+        return '\n'.join(lines)
+
+    # Get project root for command paths
+    project_root = config_manager.config_dir.parent
+
+    for job in jobs:
+        name = job.get('name', 'unnamed')
+        schedule = job.get('schedule', '0 2 * * *')
+        description = job.get('description', '')
+        command = job.get('command', 'wishlist')
+        job_enabled = job.get('enabled', True)
+
+        lines.append(f"# {name}: {description}")
+
+        if command == 'wishlist':
+            # Wishlist processing command
+            cmd = f"cd {project_root} && poetry run python -m toolcrate.wishlist.processor"
+        elif command == 'queue':
+            # Queue processing command
+            cmd = f"cd {project_root} && poetry run python -m toolcrate.queue.processor"
+        else:
+            # Custom command
+            cmd = f"cd {project_root} && {command}"
+
+        # Comment out the job if cron is disabled or job is disabled
+        if not cron_enabled or not job_enabled:
+            lines.append(f"# {schedule} {cmd}")
+        else:
+            lines.append(f"{schedule} {cmd}")
+
+        lines.append("")
+
+    return '\n'.join(lines)
 
 
 @click.group()
@@ -89,13 +216,22 @@ def add(ctx, schedule: str, name: str, description: str):
 
         # Save configuration using safer method
         config_manager.update_cron_section(config['cron'])
-        
-        click.echo(f"✅ Added scheduled job '{name}' with schedule '{schedule}'")
-        click.echo(f"📝 Description: {description}")
-        click.echo()
-        click.echo("To activate the schedule:")
-        click.echo("1. Enable cron jobs: toolcrate schedule enable")
-        click.echo("2. Install the cron job: toolcrate schedule install")
+
+        # Automatically install to crontab
+        cron_enabled = config['cron'].get('enabled', False)
+        if add_toolcrate_jobs_to_crontab(config_manager, config['cron']['jobs'], cron_enabled):
+            click.echo(f"✅ Added scheduled job '{name}' with schedule '{schedule}'")
+            click.echo(f"📝 Description: {description}")
+            if cron_enabled:
+                click.echo(f"🕒 Job automatically installed to crontab and is active")
+            else:
+                click.echo(f"🕒 Job installed to crontab but is disabled")
+                click.echo("💡 Run 'toolcrate schedule enable' to activate all jobs")
+        else:
+            click.echo(f"✅ Added scheduled job '{name}' with schedule '{schedule}'")
+            click.echo(f"📝 Description: {description}")
+            click.echo("⚠️  Could not automatically install to crontab")
+            click.echo("💡 Run 'toolcrate schedule install' to install manually")
         
     except Exception as e:
         logger.error(f"Error adding scheduled job: {e}")
@@ -263,8 +399,15 @@ def remove(ctx, job_name: str):
                 if click.confirm(f"Remove scheduled job '{job_name}'?"):
                     jobs.pop(i)
                     config_manager.update_cron_section(config['cron'])
-                    click.echo(f"✅ Removed scheduled job '{job_name}'")
-                    
+
+                    # Update crontab
+                    cron_enabled = config['cron'].get('enabled', False)
+                    if add_toolcrate_jobs_to_crontab(config_manager, jobs, cron_enabled):
+                        click.echo(f"✅ Removed scheduled job '{job_name}' from config and crontab")
+                    else:
+                        click.echo(f"✅ Removed scheduled job '{job_name}' from config")
+                        click.echo("⚠️  Could not update crontab automatically")
+
                     # If no jobs left, suggest disabling cron
                     if not jobs:
                         click.echo("💡 No scheduled jobs remaining. Consider running 'toolcrate schedule disable'")
@@ -471,6 +614,9 @@ def generate_cron_file(config_manager: ConfigManager, jobs: List[Dict[str, Any]]
         if command == 'wishlist':
             # Wishlist processing command
             cmd = f"cd {project_root} && poetry run python -m toolcrate.wishlist.processor"
+        elif command == 'queue':
+            # Queue processing command
+            cmd = f"cd {project_root} && poetry run python -m toolcrate.queue.processor"
         else:
             # Custom command
             cmd = f"cd {project_root} && {command}"
@@ -520,4 +666,108 @@ def test(ctx):
     except Exception as e:
         logger.error(f"Error testing wishlist processing: {e}")
         click.echo(f"❌ Error testing wishlist processing: {e}")
+        raise click.Abort()
+
+
+@schedule.command()
+@click.pass_context
+def add_queue(ctx):
+    """Add hourly queue processing (every hour at 30 minutes past).
+
+    This adds queue processing that runs every hour at 30 minutes past the hour,
+    offset from wishlist processing to avoid conflicts.
+
+    This is equivalent to:
+    toolcrate schedule add -s "30 * * * *" -n "hourly_queue" -d "Hourly download queue processing"
+    """
+    config_manager = ctx.obj['config_manager']
+
+    try:
+        config_manager.load_config()
+        config = config_manager.config
+
+        # Check if job already exists
+        existing_jobs = config.get('cron', {}).get('jobs', [])
+        for job in existing_jobs:
+            if job.get('name') == 'hourly_queue':
+                click.echo("❌ Hourly queue job already exists")
+                click.echo("Use 'toolcrate schedule remove hourly_queue' to remove it first")
+                return
+
+        # Create new job entry
+        new_job = {
+            'name': 'hourly_queue',
+            'schedule': '30 * * * *',  # 30 minutes past every hour
+            'command': 'queue',
+            'description': 'Hourly download queue processing',
+            'enabled': True
+        }
+
+        # Add to jobs list
+        if 'cron' not in config:
+            config['cron'] = {'enabled': True, 'jobs': []}
+        if 'jobs' not in config['cron']:
+            config['cron']['jobs'] = []
+
+        config['cron']['jobs'].append(new_job)
+
+        # Save configuration using safer method
+        config_manager.update_cron_section(config['cron'])
+
+        click.echo("✅ Added hourly queue processing job (every hour at :30)")
+        click.echo("📝 Description: Hourly download queue processing")
+        click.echo("⏰ Schedule: 30 minutes past every hour (offset from wishlist)")
+        click.echo()
+        click.echo("To activate the schedule:")
+        click.echo("1. Enable cron jobs: toolcrate schedule enable")
+        click.echo("2. Install the cron job: toolcrate schedule install")
+
+    except Exception as e:
+        logger.error(f"Error adding queue job: {e}")
+        click.echo(f"❌ Error adding queue job: {e}")
+        raise click.Abort()
+
+
+@schedule.command()
+@click.pass_context
+def test_queue(ctx):
+    """Test queue processing without scheduling.
+
+    This runs the queue processor once to test your configuration.
+    """
+    config_manager = ctx.obj['config_manager']
+
+    try:
+        click.echo("🧪 Testing queue processing...")
+
+        from ..queue.processor import QueueProcessor
+        processor = QueueProcessor(config_manager)
+        results = processor.process_all_entries()
+
+        click.echo()
+        click.echo(f"Test Results: {results['status']}")
+
+        if results['status'] == 'completed':
+            click.echo(f"✅ Processed: {results['processed']}/{results['total']}")
+            click.echo(f"❌ Failed: {results['failed']}/{results['total']}")
+
+            if results['failed'] > 0:
+                click.echo()
+                click.echo("Failed entries:")
+                for result in results['results']:
+                    if not result['success']:
+                        click.echo(f"  - {result['entry']}")
+
+        elif results['status'] == 'disabled':
+            click.echo("❌ Queue processing is disabled in configuration")
+        elif results['status'] == 'empty':
+            click.echo("📝 No entries found in queue file")
+            click.echo(f"💡 Add entries to: {processor.queue_file_path}")
+            click.echo("💡 Use: toolcrate queue add <link>")
+        elif results['status'] == 'locked':
+            click.echo("🔒 Queue processing is already running")
+
+    except Exception as e:
+        logger.error(f"Error testing queue processing: {e}")
+        click.echo(f"❌ Error testing queue processing: {e}")
         raise click.Abort()

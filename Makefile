@@ -1,6 +1,6 @@
 # ToolCrate Makefile for unified testing with Poetry
 
-.PHONY: help test test-all test-python test-shell test-unit test-integration test-coverage test-quick clean install setup dev-install format lint check init-config config config-validate config-generate-sldl config-generate-wishlist-sldl config-generate-docker config-check-mounts config-show wishlist-test wishlist-run wishlist-run-verbose
+.PHONY: help test test-all test-python test-shell test-unit test-integration test-coverage test-quick clean install setup dev-install format lint check init-config config config-validate config-generate-sldl config-generate-wishlist-sldl config-generate-docker config-check-mounts config-show wishlist-test wishlist-run wishlist-run-verbose wishlist-logs wishlist-status
 
 # Default target
 help:
@@ -24,6 +24,8 @@ help:
 	@echo "  make wishlist-test  - Test wishlist processing without scheduling"
 	@echo "  make wishlist-run   - Run wishlist processing once"
 	@echo "  make wishlist-run-verbose - Run wishlist processing with detailed output"
+	@echo "  make wishlist-logs  - Show recent wishlist run logs"
+	@echo "  make wishlist-status - Show wishlist run status and summary"
 	@echo "  make config-generate-wishlist-sldl - Generate wishlist-specific sldl.conf"
 	@echo ""
 	@echo "Testing:"
@@ -222,6 +224,14 @@ wishlist-run:
 wishlist-run-verbose:
 	@echo "Running wishlist processing with verbose output..."
 	poetry run python -m toolcrate.wishlist.processor --verbose
+
+wishlist-logs:
+	@echo "Showing recent wishlist run logs..."
+	poetry run toolcrate wishlist-run logs
+
+wishlist-status:
+	@echo "Showing wishlist run status and summary..."
+	poetry run toolcrate wishlist-run status
 
 # Initial configuration shortcuts with different options
 init-config-poetry:

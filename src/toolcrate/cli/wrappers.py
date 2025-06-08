@@ -35,20 +35,51 @@ def check_docker_image(image_name):
 
 
 def get_project_root():
-    """Get the project root directory."""
+    """Get the project root directory.
+
+    This function handles both development and installed scenarios:
+    - Development: Look for setup.py or pyproject.toml in parent directories
+    - Installed: Use a predefined data directory or fallback to user's home
+    """
     # Start from the current file's directory
     current_dir = Path(os.path.dirname(os.path.abspath(__file__)))
 
-    # Navigate up until we find the project root (where setup.py is)
-    while current_dir != current_dir.parent:
-        if (current_dir / "setup.py").exists():
-            return current_dir
-        current_dir = current_dir.parent
+    # First, try to find the project root by looking for setup.py or pyproject.toml
+    search_dir = current_dir
+    while search_dir != search_dir.parent:
+        if (search_dir / "setup.py").exists() or (search_dir / "pyproject.toml").exists():
+            return search_dir
+        search_dir = search_dir.parent
 
-    # Fallback to package directory
-    return Path(
-        os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
-    )
+    # If we can't find the development root, we're likely in an installed package
+    # Check for environment variable first (allows user override)
+    if "TOOLCRATE_ROOT" in os.environ:
+        toolcrate_root = Path(os.environ["TOOLCRATE_ROOT"])
+        if toolcrate_root.exists():
+            return toolcrate_root
+
+    # Try to find toolcrate data directory in common locations
+    possible_roots = [
+        Path.home() / ".toolcrate",  # User's home directory
+        Path.home() / "toolcrate",   # User's home directory (alternative)
+        Path("/opt/toolcrate"),      # System-wide installation
+        Path("/usr/local/toolcrate"), # System-wide installation (alternative)
+    ]
+
+    for root in possible_roots:
+        if root.exists():
+            return root
+
+    # If none exist, create and return the default user directory
+    default_root = Path.home() / ".toolcrate"
+    default_root.mkdir(exist_ok=True)
+
+    # Create necessary subdirectories
+    (default_root / "config").mkdir(exist_ok=True)
+    (default_root / "data").mkdir(exist_ok=True)
+    (default_root / "logs").mkdir(exist_ok=True)
+
+    return default_root
 
 
 def run_slsk():
@@ -277,15 +308,21 @@ def run_sldl_docker_command(params, args, build=False):
         click.echo("Please install Docker to use the sldl command.")
         sys.exit(1)
 
+    # Get the project root to ensure we're working with the right paths
+    project_root = get_project_root()
+
+    # Initialize config manager with the correct config path
+    config_path = project_root / "config" / "toolcrate.yaml"
+    config_manager = ConfigManager(str(config_path))
+
     # Check if docker-compose is available
     if not check_dependency("docker-compose") and not check_dependency("docker"):
         click.echo("Error: Neither docker-compose nor docker with compose plugin is available.")
         click.echo("Please install Docker Compose to use the sldl command.")
         sys.exit(1)
 
-    # Get the project root to find docker-compose.yml
-    root_dir = get_project_root()
-    compose_file = root_dir / "config" / "docker-compose.yml"
+    # Use the project root to find docker-compose.yml
+    compose_file = project_root / "config" / "docker-compose.yml"
 
     if not compose_file.exists():
         click.echo(f"Error: Docker Compose file not found at {compose_file}")
@@ -402,7 +439,6 @@ def run_sldl_docker_command(params, args, build=False):
 
     # Regenerate sldl.conf from toolcrate.yaml before running command
     try:
-        config_manager = ConfigManager()
         config_manager.generate_sldl_conf()
         logger.info("Updated sldl.conf from toolcrate.yaml")
     except Exception as e:

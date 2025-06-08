@@ -92,6 +92,9 @@ cat > "$HOME/.local/bin/toolcrate" << EOF
 #!/bin/bash
 # Global entrypoint for toolcrate
 
+# Set the TOOLCRATE_ROOT environment variable to point to the project directory
+export TOOLCRATE_ROOT="${TOOLCRATE_DIR}"
+
 # Activate virtual environment and run the command
 source "${TOOLCRATE_DIR}/.venv/bin/activate"
 "${TOOLCRATE_DIR}/.venv/bin/toolcrate" "\$@"
@@ -167,6 +170,9 @@ if [ "$WRAPPER_WORKS" = false ]; then
         cat > "${TOOLCRATE_DIR}/bin/toolcrate_wrapper" << EOF
 #!/bin/bash
 # Wrapper script for toolcrate
+
+# Set the TOOLCRATE_ROOT environment variable to point to the project directory
+export TOOLCRATE_ROOT="${TOOLCRATE_DIR}"
 
 # Activate virtual environment and run the command
 source "${TOOLCRATE_DIR}/.venv/bin/activate"

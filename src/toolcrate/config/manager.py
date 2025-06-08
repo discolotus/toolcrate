@@ -45,11 +45,25 @@ except ImportError:
 
 class ConfigManager:
     """Manages ToolCrate configuration files."""
-    
+
     def __init__(self, config_path: str = "config/toolcrate.yaml"):
-        self.config_path = Path(config_path)
+        # Import here to avoid circular imports
+        from ..cli.wrappers import get_project_root
+
+        # Determine the project root
+        self.project_root = get_project_root()
+
+        # Handle both absolute and relative config paths
+        if Path(config_path).is_absolute():
+            self.config_path = Path(config_path)
+        else:
+            self.config_path = self.project_root / config_path
+
         self.config_dir = self.config_path.parent
         self.config = {}
+
+        # Ensure config directory exists
+        self.config_dir.mkdir(parents=True, exist_ok=True)
         
     def load_config(self) -> Dict[str, Any]:
         """Load the YAML configuration."""

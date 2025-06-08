@@ -9,6 +9,16 @@ description = "A unified tool suite for music management and processing"
 authors = ["User <user@example.com>"]
 readme = "README.md"
 packages = [{include = "toolcrate", from = "src"}]
+include = [
+    "config/*.yaml",
+    "config/*.yml",
+    "config/*.conf",
+    "config/README.md",
+    "docs/*.md",
+    "bin/*",
+    "install.sh",
+    "Makefile"
+]
 
 [tool.poetry.dependencies]
 python = ">=3.9,<4.0"

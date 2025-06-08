@@ -5,6 +5,8 @@ import click
 
 from .wrappers import run_sldl_docker_command
 from .schedule import schedule
+from .wishlist_run import wishlist_run
+from .queue import queue
 
 
 @click.group()
@@ -28,6 +30,14 @@ def info():
     click.echo("  - sldl: Run commands in slsk-batchdl docker container")
     click.echo("  - schedule: Manage scheduled downloads and cron jobs")
     click.echo("    • toolcrate schedule daily/hourly/weekly - Easy scheduling")
+    click.echo("  - wishlist-run: View logs and status from scheduled wishlist runs")
+    click.echo("    • toolcrate wishlist-run logs - Show recent logs")
+    click.echo("    • toolcrate wishlist-run status - Show run status and summary")
+    click.echo("    • toolcrate wishlist-run tail - Follow logs in real-time")
+    click.echo("  - queue: Manage download queue for individual links")
+    click.echo("    • toolcrate queue add <link> - Add link to queue")
+    click.echo("    • toolcrate queue list - Show current queue")
+    click.echo("    • toolcrate queue run - Process queue immediately")
 
 
 @main.command(context_settings=dict(ignore_unknown_options=True, allow_extra_args=True))
@@ -56,6 +66,12 @@ def sldl(ctx):
 
 # Add the schedule command group
 main.add_command(schedule)
+
+# Add the wishlist-run command group
+main.add_command(wishlist_run)
+
+# Add the queue command group
+main.add_command(queue)
 
 
 if __name__ == "__main__":

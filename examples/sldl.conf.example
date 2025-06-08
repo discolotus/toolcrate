@@ -1,0 +1,29 @@
+# SLDL Configuration Example
+# Copy this file to your user config directory and fill in your credentials
+# Location: ~/.config/toolcrate/sldl.conf (Linux/macOS) or %APPDATA%/toolcrate/sldl.conf (Windows)
+
+# Main config portion
+username = your_soulseek_username
+password = your_soulseek_password
+path = ~/Music/downloads/
+fast-search = true
+
+# profile for lossless downloads
+[lossless]
+pref-format = flac,wav
+
+# download to another location for youtube
+[youtube]
+profile-cond = input-type == "youtube"  
+path = ~/downloads/sldl-youtube
+
+[wishlist]
+pref-format = flac,wav
+yt-dlp = true
+input = ~/sldl/wishlist.txt 
+input-type = list
+index-path = ~/sldl/wishlist-index.sldl
+album-parallel-search = true
+
+# Additional settings
+min-bitrate = 320 

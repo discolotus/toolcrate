@@ -1,6 +1,6 @@
 [submodule "src/slsk-batchdl"]
 	path = src/slsk-batchdl
-	url = https://github.com/gfrancesco-ul/slsk-batchdl.git 
+	url = https://github.com/discolotus/slsk-batchdl.git
 [submodule "src/Shazam-Tool"]
 	path = src/Shazam-Tool
-	url = https://github.com/in0vik/Shazam-Tool.git 
+	url = https://github.com/discolotus/Shazam-Tool.git 

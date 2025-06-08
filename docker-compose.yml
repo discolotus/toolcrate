@@ -1,0 +1,13 @@
+services:
+  sldl:
+    build:
+      context: .
+    container_name: sldl
+    volumes:
+      - ./config:/config
+      - ./data:/data
+    environment:
+      - SLDL_CONFIG=/config/sldl.conf
+      - TZ=Etc/UTC
+      - PUID=1000
+      - PGID=1000 

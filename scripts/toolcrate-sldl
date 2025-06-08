@@ -1,0 +1,34 @@
+#!/bin/bash
+
+# ToolCrate SLDL Wrapper Script
+# This script provides a convenient way to run sldl with proper config discovery
+
+# Get the absolute path to the repository root
+REPO_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+
+# Check for config file in standard locations
+CONFIG_LOCATIONS=(
+    "$HOME/.config/toolcrate/sldl.conf"
+    "$REPO_ROOT/sldl.conf"
+    "$REPO_ROOT/config/sldl.conf"
+)
+
+CONFIG_FILE=""
+for location in "${CONFIG_LOCATIONS[@]}"; do
+    if [ -f "$location" ]; then
+        CONFIG_FILE="$location"
+        break
+    fi
+done
+
+if [ -z "$CONFIG_FILE" ]; then
+    echo "Error: No sldl.conf file found in any of these locations:"
+    printf '  %s\n' "${CONFIG_LOCATIONS[@]}"
+    echo ""
+    echo "Please copy examples/sldl.conf.example to one of these locations and configure it."
+    exit 1
+fi
+
+# Run the toolcrate sldl command
+echo "Using config file: $CONFIG_FILE"
+toolcrate sldl --config "$CONFIG_FILE" "$@" 

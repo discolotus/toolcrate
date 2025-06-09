@@ -5,6 +5,7 @@ from unittest.mock import MagicMock, patch
 
 import pytest
 from click.testing import CliRunner
+
 from toolcrate.cli.main import main
 from toolcrate.cli.wrappers import run_sldl_docker_command
 

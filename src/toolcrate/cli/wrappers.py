@@ -338,19 +338,16 @@ def run_slsk(download_path=None, links_file=None, open_shell=False):
         if path.exists() and os.access(path, os.X_OK):
             logger.info(f"Using local sldl binary from {path}")
             os.execv(str(path), ["sldl"] + args)
-            return
 
     # Check for native binary in PATH
     if check_dependency("sldl"):
         logger.info("Using sldl binary from PATH")
         os.execvp("sldl", ["sldl"] + args)
-        return
 
     # Check for slsk-batchdl binary in PATH
     if check_dependency("slsk-batchdl"):
         logger.info("Using slsk-batchdl binary from PATH")
         os.execvp("slsk-batchdl", ["slsk-batchdl"] + args)
-        return
 
     # Check for Docker image
     if check_docker_image("slsk-batchdl"):
@@ -369,7 +366,6 @@ def run_slsk(download_path=None, links_file=None, open_shell=False):
         ] + args
 
         os.execvp("docker", cmd)
-        return
 
     # Try to build from source as a last resort
     src_dir = root_dir / "src" / "slsk-batchdl"
@@ -411,7 +407,6 @@ def run_slsk(download_path=None, links_file=None, open_shell=False):
                 os.chmod(binary_path, 0o755)
                 logger.info(f"Built sldl at {binary_path}")
                 os.execv(str(binary_path), ["sldl"] + args)
-                return
 
         except (subprocess.CalledProcessError, FileNotFoundError):
             logger.warning("Failed to build sldl from source")
@@ -456,7 +451,6 @@ def run_shazam():
     if check_dependency("shazam-tool"):
         logger.info("Using shazam-tool binary from PATH")
         os.execvp("shazam-tool", ["shazam-tool"] + args)
-        return
 
     # Check for Docker image
     if check_docker_image("shazam-tool"):
@@ -474,7 +468,6 @@ def run_shazam():
         ] + args
 
         os.execvp("docker", cmd)
-        return
 
     # Not found
     click.echo(
@@ -490,7 +483,6 @@ def run_mdl():
         logger.info("Using native mdl-utils binary")
         args = sys.argv[1:]
         os.execvp("mdl-utils", ["mdl-utils"] + args)
-        return
 
     # Check for Python module
     try:
@@ -519,7 +511,6 @@ def run_mdl():
         ] + args
 
         os.execvp("docker", cmd)
-        return
 
     # Not found
     click.echo("Error: mdl-utils not found. Please install it or its Docker image.")

@@ -27,7 +27,7 @@ skip_venv_check = (
 
 if not skip_venv_check:
     # Poetry runs in its own environment, so we check for both
-    in_venv = os.environ.get("VIRTUAL_ENV") or os.environ.get("POETRY_ACTIVE")
+    in_venv = bool(os.environ.get("VIRTUAL_ENV") or os.environ.get("POETRY_ACTIVE"))
     if not in_venv:
         # Try to detect if we're running under Poetry
         import subprocess
@@ -78,7 +78,7 @@ class ConfigManager:
             self.config_path = self.project_root / config_path
 
         self.config_dir = self.config_path.parent
-        self.config = {}
+        self.config: dict[str, Any] = {}
 
         # Ensure config directory exists (but don't fail if we can't create it)
         try:

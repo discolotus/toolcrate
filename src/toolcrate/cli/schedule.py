@@ -220,13 +220,13 @@ def add(ctx, schedule: str, name: str, description: str, type: str):
             if type == "wishlist":
                 name = "wishlist_download"
             else:
-                name = "download_queue"
+                name = "download_queue"  # type: ignore[unreachable]
 
         if description is None:
             if type == "wishlist":
                 description = "Automated wishlist download"
             else:
-                description = "Automated download queue processing"
+                description = "Automated download queue processing"  # type: ignore[unreachable]
 
         # Load current config
         config_manager.load_config()
@@ -753,9 +753,9 @@ def enable(ctx):
         raise click.Abort() from None
 
 
-@schedule.command()
+@schedule.command("list")
 @click.pass_context
-def list(ctx):
+def list_jobs(ctx):
     """List all scheduled jobs."""
     config_manager = ctx.obj["config_manager"]
 

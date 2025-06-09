@@ -31,7 +31,7 @@ class WishlistProcessor:
         if not os.path.isabs(wishlist_path):
             # Make relative to project root
             project_root = self.config_manager.config_dir.parent
-            return project_root / wishlist_path
+            return Path(project_root) / wishlist_path
         return Path(wishlist_path)
 
     def ensure_wishlist_file_exists(self) -> Path:

@@ -40,13 +40,13 @@ class AudioDownloader:
                 "no_warnings": True,
                 "extract_flat": True,
             }
-            with YoutubeDL(ydl_opts) as ydl:
+            with YoutubeDL(ydl_opts) as ydl:  # type: ignore[arg-type]
                 info = ydl.extract_info(url, download=False)
-                if "entries" in info:  # It's a playlist
+                if "entries" in info:  # It's a playlist  # type: ignore[typeddict-item]
                     playlist_name = info.get("title", "Unknown Playlist")
-                    return playlist_name, True
+                    return playlist_name or "Unknown Playlist", True
                 else:  # Single track
-                    return info.get("title", "Unknown Track"), False
+                    return info.get("title") or "Unknown Track", False
         except Exception as e:
             logger.error(f"Failed to get playlist info: {e}")
             return "Unknown", False
@@ -119,11 +119,11 @@ class AudioDownloader:
             self._ensure_output_directory(output_path)
 
             ydl_opts = self._get_ydl_opts("youtube", output_path)
-            with YoutubeDL(ydl_opts) as ydl:
+            with YoutubeDL(ydl_opts) as ydl:  # type: ignore[arg-type]
                 info = ydl.extract_info(url, download=True)
-                if "entries" in info:  # Playlist
+                if "entries" in info:  # Playlist  # type: ignore[typeddict-item]
                     num_tracks = len(
-                        [entry for entry in info["entries"] if entry is not None]
+                        [entry for entry in info["entries"] if entry is not None]  # type: ignore[typeddict-item]
                     )
                     logger.info(
                         f"✅ Successfully downloaded playlist with {num_tracks} tracks"
@@ -153,11 +153,11 @@ class AudioDownloader:
             self._ensure_output_directory(output_path)
 
             ydl_opts = self._get_ydl_opts("soundcloud", output_path)
-            with YoutubeDL(ydl_opts) as ydl:
+            with YoutubeDL(ydl_opts) as ydl:  # type: ignore[arg-type]
                 info = ydl.extract_info(url, download=True)
-                if "entries" in info:  # Playlist
+                if "entries" in info:  # Playlist  # type: ignore[typeddict-item]
                     num_tracks = len(
-                        [entry for entry in info["entries"] if entry is not None]
+                        [entry for entry in info["entries"] if entry is not None]  # type: ignore[typeddict-item]
                     )
                     logger.info(
                         f"✅ Successfully downloaded playlist with {num_tracks} tracks"

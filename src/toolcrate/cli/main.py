@@ -446,7 +446,7 @@ log_level = INFO
                 text=True,
             )
 
-            container_running = container_name in docker_ps.stdout
+            container_running = container_name is not None and container_name in docker_ps.stdout
 
             if not container_running:
                 click.echo("Starting container using docker compose...")
@@ -530,6 +530,8 @@ log_level = INFO
 
             # Start the container using docker run
             container_name = "sldl"
+            # At this point, image_name should be set (either found or built)
+            assert image_name is not None, "image_name should be set by now"
             click.echo(
                 f"Starting container {container_name} with image {image_name}..."
             )

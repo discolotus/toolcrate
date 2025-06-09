@@ -202,20 +202,23 @@ def _follow_log_file(log_path: Path):
         )
 
         try:
-            for line in iter(process.stdout.readline, ""):
-                line = line.rstrip()
-                if line:
-                    # Add color formatting
-                    if "ERROR" in line or "Failed:" in line:
-                        click.echo(click.style(line, fg="red"))
-                    elif (
-                        "SUCCESS" in line or "Succeeded:" in line or "Succeded:" in line
-                    ):
-                        click.echo(click.style(line, fg="green"))
-                    elif "WARNING" in line or "WARN" in line:
-                        click.echo(click.style(line, fg="yellow"))
-                    else:
-                        click.echo(line)
+            if process.stdout:
+                for line in iter(process.stdout.readline, ""):
+                    line = line.rstrip()
+                    if line:
+                        # Add color formatting
+                        if "ERROR" in line or "Failed:" in line:
+                            click.echo(click.style(line, fg="red"))
+                        elif (
+                            "SUCCESS" in line or "Succeeded:" in line or "Succeded:" in line
+                        ):
+                            click.echo(click.style(line, fg="green"))
+                        elif "WARNING" in line or "WARN" in line:
+                            click.echo(click.style(line, fg="yellow"))
+                        else:
+                            click.echo(line)
+            else:
+                click.echo("Error: Could not read process output")
         except KeyboardInterrupt:
             process.terminate()
             click.echo("\n👋 Stopped following logs")

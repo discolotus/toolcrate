@@ -70,10 +70,10 @@ tmp/
 temp/
 .tmp/
 
-# Docker files (don't include in build context)
-Dockerfile*
+# Docker compose files (don't include in build context)
 docker-compose*.yml
 .dockerignore
+# Note: Dockerfile and Dockerfile.test are needed for builds
 
 # Data directories (can be large)
 data/downloads/
@@ -89,8 +89,8 @@ config/wishlist.txt
 config/download-queue.txt
 config/data/
 
-# Documentation (not needed for testing)
-docs/
+# Documentation (needed for test builds)
+# docs/ - commented out to allow test builds
 *.md
 !README.md
 

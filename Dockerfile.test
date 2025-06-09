@@ -84,7 +84,7 @@ RUN chmod +x ./scripts/*.sh ./bin/* ./install.sh ./install_global.sh ./configure
 RUN poetry install --with dev
 
 # Install the package globally so 'toolcrate' command is available
-RUN pip install --break-system-packages -e .
+RUN pip install -e .
 
 # Create necessary directories
 RUN mkdir -p /app/data/downloads /app/data/library /app/logs

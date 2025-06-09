@@ -75,38 +75,38 @@ jobs:
       run: |
         echo "Testing the built Docker image..."
         docker run --rm ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:${{ github.sha }} \
-          bash -c "toolcrate --version && crontab -l || echo 'No crontab entries'"
+          bash -c "toolcrate --version && python -c 'import toolcrate; print(\"ToolCrate imported successfully\")'"
 
   update-docker-compose:
     needs: build-and-push
     runs-on: ubuntu-latest
     if: github.ref == 'refs/heads/main' || github.ref == 'refs/heads/augment-feature-dev'
-    
+
     steps:
     - name: Checkout repository
       uses: actions/checkout@v4
       with:
         token: ${{ secrets.GITHUB_TOKEN }}
 
-    - name: Update docker-compose.test.yml to use registry image
+    - name: Update docker-compose.yml to use registry image
       run: |
-        # Update docker-compose.test.yml to use the registry image instead of building locally
-        sed -i 's|build:|# build:|g' docker-compose.test.yml
-        sed -i 's|context: \.|# context: \.|g' docker-compose.test.yml
-        sed -i 's|dockerfile: Dockerfile\.test|# dockerfile: Dockerfile\.test|g' docker-compose.test.yml
-        sed -i "s|image: toolcrate:test|image: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:${{ github.ref_name }}|g" docker-compose.test.yml
-        
-        echo "Updated docker-compose.test.yml:"
-        cat docker-compose.test.yml
+        # Update docker-compose.yml to use the registry image instead of building locally
+        sed -i 's|build:|# build:|g' docker-compose.yml
+        sed -i 's|context: \.|# context: \.|g' docker-compose.yml
+        sed -i 's|dockerfile: Dockerfile|# dockerfile: Dockerfile|g' docker-compose.yml
+        sed -i "s|image: toolcrate:latest|image: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:${{ github.ref_name }}|g" docker-compose.yml
 
-    - name: Commit updated docker-compose.test.yml
+        echo "Updated docker-compose.yml:"
+        cat docker-compose.yml
+
+    - name: Commit updated docker-compose.yml
       run: |
         git config --local user.email "action@github.com"
         git config --local user.name "GitHub Action"
-        git add docker-compose.test.yml
+        git add docker-compose.yml
         if git diff --staged --quiet; then
           echo "No changes to commit"
         else
-          git commit -m "Update docker-compose.test.yml to use registry image [skip ci]"
+          git commit -m "Update docker-compose.yml to use registry image [skip ci]"
           git push
         fi

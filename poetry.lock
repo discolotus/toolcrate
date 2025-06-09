@@ -1023,7 +1023,22 @@ secretstorage = ["cffi", "secretstorage"]
 static-analysis = ["autopep8 (>=2.0,<3.0)", "ruff (>=0.11.0,<0.12.0)"]
 test = ["pytest (>=8.1,<9.0)", "pytest-rerunfailures (>=14.0,<15.0)"]
 
+[[package]]
+name = "yt-dlp-types"
+version = "0.0.17"
+description = "PEP 561 type stubs for yt-dlp."
+optional = false
+python-versions = "<3.14,>=3.10"
+groups = ["dev"]
+files = [
+    {file = "yt_dlp_types-0.0.17-py3-none-any.whl", hash = "sha256:f58253b95f304a477370b22cc76973ccc5fabdf4aba8e76c1029d916f8a9bd1f"},
+    {file = "yt_dlp_types-0.0.17.tar.gz", hash = "sha256:f70773cca5ecb291b91a22fc3b0a9765946b869ad0bfbc222b68ecc3d095bb0a"},
+]
+
+[package.dependencies]
+typing-extensions = ">=4.13.2,<5.0.0"
+
 [metadata]
 lock-version = "2.1"
 python-versions = ">=3.11,<3.13"
-content-hash = "14f4eddcd745b6886c08c1cb3216994db0c9b1f9a843ac09d5f46a199282dd4e"
+content-hash = "46609e03cd5949ab110d19a740e0f7092396b516d72aa6825a144f6c0df8376f"

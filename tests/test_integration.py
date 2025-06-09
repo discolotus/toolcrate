@@ -92,7 +92,6 @@ class TestEndToEndWorkflows:
         """Test complete workflow of toolcrate info command."""
         with patch("click.echo") as mock_echo:
             from click.testing import CliRunner
-
             from toolcrate.cli.main import main
 
             runner = CliRunner()
@@ -223,7 +222,6 @@ class TestPackageIntegration:
     def test_cli_integration(self):
         """Test CLI integration between main and wrappers."""
         from click.testing import CliRunner
-
         from toolcrate.cli.main import main
 
         runner = CliRunner()

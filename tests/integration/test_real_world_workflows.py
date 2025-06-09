@@ -212,7 +212,6 @@ class TestSchedulingWorkflow(unittest.TestCase):
 
         try:
             from click.testing import CliRunner
-
             from toolcrate.cli.schedule import hourly
 
             runner = CliRunner()

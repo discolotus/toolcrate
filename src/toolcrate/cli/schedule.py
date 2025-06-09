@@ -5,7 +5,7 @@ import logging
 import os
 import subprocess
 import tempfile
-from typing import Any, List
+from typing import Any
 
 import click
 

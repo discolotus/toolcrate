@@ -2,7 +2,7 @@
 # Multi-stage build for testing and development
 # Supports both self-contained testing and development with volume mounts
 
-FROM python:3.11-slim as base
+FROM python:3.11-slim AS base
 
 # Set environment variables
 ENV PYTHONUNBUFFERED=1
@@ -61,7 +61,8 @@ COPY src/ ./src/
 COPY tests/ ./tests/
 COPY scripts/ ./scripts/
 COPY docs/ ./docs/
-COPY config/ ./config/
+# Create empty config directory (actual config is excluded by .dockerignore)
+RUN mkdir -p ./config
 COPY Makefile ./
 COPY configure_toolcrate.sh ./
 
@@ -84,13 +85,13 @@ RUN mkdir -p /workspace/data/downloads /workspace/data/library /workspace/logs
 RUN service cron start
 
 # Testing stage - runs all tests
-FROM base as testing
+FROM base AS testing
 
 # Set the default command to run tests
 CMD ["python", "-m", "pytest", "tests/", "-v"]
 
 # Development stage - for interactive development
-FROM base as development
+FROM base AS development
 
 # Install additional development tools
 RUN pip install debugpy ipython

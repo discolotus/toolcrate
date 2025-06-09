@@ -3,7 +3,6 @@
 from unittest.mock import patch
 
 from click.testing import CliRunner
-
 from toolcrate.cli.main import info, main
 
 

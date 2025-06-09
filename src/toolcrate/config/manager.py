@@ -1,4 +1,5 @@
 #!/usr/bin/env python3
+# -*- coding: utf-8 -*-
 """
 ToolCrate Configuration Manager
 
@@ -41,12 +42,13 @@ if not skip_venv_check:
             pass
 
     if not in_venv:
-        print("❌ Virtual environment not active!")
-        print("Please use one of these methods:")
-        print("  poetry run python config_manager.py <command>")
-        print("  source .venv/bin/activate && python config_manager.py <command>")
-        print("  make config-<command>")
-        sys.exit(1)
+        print("⚠️  Warning: Virtual environment not detected!")
+        print("   For best experience, activate a virtual environment:")
+        print("   - Poetry: poetry shell")
+        print("   - Manual: source .venv/bin/activate")
+        print("   - Or set TOOLCRATE_SKIP_VENV_CHECK=1 to disable this warning permanently")
+        print("   - Add 'export TOOLCRATE_SKIP_VENV_CHECK=1' to your shell profile to disable globally")
+        print()
 
 try:
     import yaml
@@ -186,9 +188,15 @@ class ConfigManager:
                     path_value = slsk_config[yaml_key]
                     if isinstance(path_value, str):
                         # Convert toolcrate paths to container paths
-                        if 'toolcrate/data' in path_value:
-                            # Replace toolcrate/data with /data
-                            container_path = '/data' + path_value.split('toolcrate/data')[1]
+                        if 'toolcrate-data' in path_value:
+                            # Replace toolcrate-data with /data
+                            container_path = '/data' + path_value.split('toolcrate-data')[1]
+                        elif 'toolcrate-downloads' in path_value:
+                            # Replace toolcrate-downloads with /downloads
+                            container_path = '/downloads' + path_value.split('toolcrate-downloads')[1]
+                        elif 'toolcrate-library' in path_value:
+                            # Replace toolcrate-library with /library
+                            container_path = '/library' + path_value.split('toolcrate-library')[1]
                         elif 'toolcrate/logs' in path_value:
                             # Replace toolcrate/logs with /data (logs go in data directory)
                             container_path = '/data' + path_value.split('toolcrate/logs')[1]
@@ -348,19 +356,34 @@ class ConfigManager:
             f.write("\n")
 
             # Directories - use wishlist-specific paths with container path conversion
-            download_dir = wishlist_config.get('download_dir', merged_config.get('parent_dir', '/data/library'))
+            download_dir = wishlist_config.get('download_dir', merged_config.get('parent_dir', '/library'))
             # Convert host paths to container paths for Docker execution
             if isinstance(download_dir, str):
-                if download_dir.startswith('/data'):
+                if download_dir.startswith('/data') or download_dir.startswith('/downloads') or download_dir.startswith('/library'):
                     # Already a container path
                     pass
-                elif 'toolcrate/data' in download_dir:
-                    download_dir = '/data' + download_dir.split('toolcrate/data')[1]
+                elif 'toolcrate-data' in download_dir:
+                    download_dir = '/data' + download_dir.split('toolcrate-data')[1]
+                elif 'toolcrate-downloads' in download_dir:
+                    download_dir = '/downloads' + download_dir.split('toolcrate-downloads')[1]
+                elif 'toolcrate-library' in download_dir:
+                    download_dir = '/library' + download_dir.split('toolcrate-library')[1]
                 elif 'toolcrate/logs' in download_dir:
                     download_dir = '/data' + download_dir.split('toolcrate/logs')[1]
                 else:
-                    # Default: use library subdirectory
-                    download_dir = '/data/library'
+                    # Check if this matches any of our mount host paths
+                    mounts = self.config.get('mounts', {})
+                    for mount_name, mount_config in mounts.items():
+                        host_path = mount_config.get('host_path', '')
+                        container_path = mount_config.get('container_path', f'/{mount_name}')
+                        if download_dir.startswith(host_path):
+                            # Replace host path with container path
+                            download_dir = container_path + download_dir[len(host_path):]
+                            break
+                    else:
+                        # Default: use library mount
+                        download_dir = '/library'
+
             f.write(f"path = {download_dir}\n")
 
             # Handle other directory paths with conversion
@@ -376,11 +399,15 @@ class ConfigManager:
                     path_value = merged_config[yaml_key]
                     if isinstance(path_value, str):
                         # Convert toolcrate paths to container paths
-                        if path_value.startswith('/data'):
+                        if path_value.startswith('/data') or path_value.startswith('/downloads') or path_value.startswith('/library'):
                             # Already a container path
                             container_path = path_value
-                        elif 'toolcrate/data' in path_value:
-                            container_path = '/data' + path_value.split('toolcrate/data')[1]
+                        elif 'toolcrate-data' in path_value:
+                            container_path = '/data' + path_value.split('toolcrate-data')[1]
+                        elif 'toolcrate-downloads' in path_value:
+                            container_path = '/downloads' + path_value.split('toolcrate-downloads')[1]
+                        elif 'toolcrate-library' in path_value:
+                            container_path = '/library' + path_value.split('toolcrate-library')[1]
                         elif 'toolcrate/logs' in path_value:
                             container_path = '/data' + path_value.split('toolcrate/logs')[1]
                         else:
@@ -535,9 +562,17 @@ class ConfigManager:
         mounts = self.config.get('mounts', {})
         environment = self.config.get('environment', {})
 
-        # Get mount paths
-        config_mount = mounts.get('config', {}).get('host_path', './config')
-        data_mount = mounts.get('data', {}).get('host_path', './data')
+        # Get all mount paths
+        mount_paths = {}
+        mount_descriptions = []
+        for mount_name, mount_config in mounts.items():
+            host_path = mount_config.get('host_path', f'./{mount_name}')
+            container_path = mount_config.get('container_path', f'/{mount_name}')
+            mount_paths[mount_name] = {
+                'host_path': host_path,
+                'container_path': container_path
+            }
+            mount_descriptions.append(f"{host_path} → {container_path}")
 
         # Get environment variables
         tz = environment.get('TZ', 'UTC')
@@ -551,7 +586,7 @@ class ConfigManager:
             import datetime
             f.write(f"# Generated from toolcrate.yaml on {datetime.datetime.now().strftime('%a %b %d %H:%M:%S %Z %Y')}\n")
             f.write("#\n")
-            f.write(f"# Mount paths: {config_mount} → /config, {data_mount} → /data\n")
+            f.write(f"# Mount paths: {', '.join(mount_descriptions)}\n")
             f.write("# Run from project root directory when using relative paths\n\n")
 
             f.write("services:\n")
@@ -570,8 +605,8 @@ class ConfigManager:
             f.write("      - PYTHONPATH=/app/src\n")
             f.write("      - PYTHONUNBUFFERED=1\n")
             f.write("    volumes:\n")
-            f.write(f"      - {config_mount}:/config\n")
-            f.write(f"      - {data_mount}:/data\n")
+            for mount_name, mount_info in mount_paths.items():
+                f.write(f"      - {mount_info['host_path']}:{mount_info['container_path']}\n")
             f.write("    restart: unless-stopped\n")
             f.write("    networks:\n")
             f.write("      - toolcrate-network\n")
@@ -590,8 +625,11 @@ class ConfigManager:
             f.write(f"      - PUID={puid}\n")
             f.write(f"      - PGID={pgid}\n")
             f.write("    volumes:\n")
-            f.write(f"      - {config_mount}:/config\n")
-            f.write(f"      - {data_mount}:/data\n")
+            for mount_name, mount_info in mount_paths.items():
+                f.write(f"      - {mount_info['host_path']}:{mount_info['container_path']}\n")
+            f.write("    ports:\n")
+            f.write("      - \"49998:49998\"\n")
+            f.write("      - \"49999:49999\"\n")
             f.write("    restart: unless-stopped\n")
             f.write("    networks:\n")
             f.write("      - toolcrate-network\n\n")
@@ -601,18 +639,13 @@ class ConfigManager:
             f.write("    driver: bridge\n\n")
 
             f.write("volumes:\n")
-            f.write("  config:\n")
-            f.write("    driver: local\n")
-            f.write("    driver_opts:\n")
-            f.write("      type: none\n")
-            f.write("      o: bind\n")
-            f.write(f"      device: {config_mount}\n")
-            f.write("  data:\n")
-            f.write("    driver: local\n")
-            f.write("    driver_opts:\n")
-            f.write("      type: none\n")
-            f.write("      o: bind\n")
-            f.write(f"      device: {data_mount}\n")
+            for mount_name, mount_info in mount_paths.items():
+                f.write(f"  {mount_name}:\n")
+                f.write("    driver: local\n")
+                f.write("    driver_opts:\n")
+                f.write("      type: none\n")
+                f.write("      o: bind\n")
+                f.write(f"      device: {mount_info['host_path']}\n")
 
         print(f"✅ Generated docker-compose.yml at {docker_compose_path}")
 

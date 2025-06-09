@@ -254,6 +254,23 @@ config-generate-wishlist-sldl:
 	poetry run python -m toolcrate.config.manager generate-wishlist-sldl
 
 # Wishlist commands
+wishlist-init:
+	@echo "Creating blank wishlist.txt file..."
+	@if [ ! -f "config/wishlist.txt" ]; then \
+		mkdir -p config; \
+		echo "# ToolCrate Wishlist File" > config/wishlist.txt; \
+		echo "# Add playlist URLs or search terms, one per line" >> config/wishlist.txt; \
+		echo "# Examples:" >> config/wishlist.txt; \
+		echo "# https://open.spotify.com/playlist/your-playlist-id" >> config/wishlist.txt; \
+		echo "# https://youtube.com/playlist?list=your-playlist-id" >> config/wishlist.txt; \
+		echo '# "Artist Name - Song Title"' >> config/wishlist.txt; \
+		echo '# artist:"Artist Name" album:"Album Name"' >> config/wishlist.txt; \
+		echo "" >> config/wishlist.txt; \
+		echo "✅ Created blank wishlist.txt file at config/wishlist.txt"; \
+	else \
+		echo "⚠️  wishlist.txt already exists at config/wishlist.txt"; \
+	fi
+
 wishlist-test:
 	@echo "Testing wishlist processing..."
 	poetry run toolcrate schedule test

@@ -374,7 +374,7 @@ slsk_batchdl:
   remove_ft: false
   remove_brackets: false
   reverse: false
-  use_ytdlp: false
+  use_ytdlp: true
   get_deleted: false
   deleted_only: false
   remove_single_character_search_terms: false
@@ -411,6 +411,22 @@ spotify:
 youtube:
   api_key: "${youtube_api_key}"            # YouTube Data API v3 key
 
+# Wishlist Configuration (for automated wishlist downloads)
+wishlist:
+  enabled: true
+  file_path: "config/wishlist.txt"
+  download_dir: "${data_dir}/library"          # Downloads go to library, not downloads
+  index_in_playlist_folder: true               # Index files stored in each playlist folder
+  check_existing_for_better_quality: true     # Re-check existing files for upgrades
+  slower_search: true                          # Allow thorough searches
+  settings:
+    # Override base settings for wishlist downloads
+    preferred_conditions:
+      formats: ["flac", "wav", "mp3"]          # Prefer lossless for wishlist
+      min_bitrate: 320                         # Higher quality for wishlist
+    desperate_search: true                     # Use relaxed matching for wishlist
+    skip_check_pref_cond: false               # Always check preferred conditions
+
 # Cron Job Configuration
 cron:
   enabled: ${setup_cron}
@@ -436,11 +452,11 @@ cat >> "${CONFIG_DIR}/toolcrate.yaml" << EOF
 # Mount Configuration (for Docker/containerized environments)
 mounts:
   data:
-    host_path: "${host_data_mount}"
+    host_path: "${data_dir}"
     container_path: "/data"
     description: "Data directory mount"
   config:
-    host_path: "${host_config_mount}"
+    host_path: "${CONFIG_DIR}"
     container_path: "/config"
     description: "Configuration directory mount"
 
@@ -625,6 +641,8 @@ services:
     volumes:
       - ${host_config_mount}:/config
       - ${host_data_mount}:/data
+    ports:
+      - "49998:49998"
     restart: unless-stopped
     networks:
       - toolcrate-network
@@ -708,7 +726,7 @@ def validate_config(config_path):
         warnings = []
 
         # Check required sections
-        required_sections = ['general', 'slsk_batchdl', 'spotify', 'youtube', 'cron', 'mounts']
+        required_sections = ['general', 'slsk_batchdl', 'spotify', 'youtube', 'wishlist', 'cron', 'mounts']
         for section in required_sections:
             if section not in config:
                 errors.append(f"Missing required section: {section}")

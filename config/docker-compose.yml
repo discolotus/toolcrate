@@ -1,10 +1,33 @@
 # Docker Compose configuration for ToolCrate
-# Generated from toolcrate.yaml on Fri Jun 06 20:17:01  2025
+# Generated from toolcrate.yaml on Mon Jun 09 04:16:25  2025
 #
-# Mount paths: ./config → /config, ./data → /data
+# Mount paths: /Volumes/External4TB/Music/toolcrate-data → /data, /Volumes/External4TB/Music/Music Library/toolcrate-downloads → /downloads, /Volumes/External4TB/Music/Music Library/toolcrate-library → /library, /Users/tleo/code/PRODUCTION-CLONES/toolcrate/config → /config
 # Run from project root directory when using relative paths
 
 services:
+  toolcrate:
+    build:
+      context: ..
+      dockerfile: Dockerfile
+    image: toolcrate:latest
+    container_name: toolcrate
+    environment:
+      - TZ=UTC
+      - PUID=1000
+      - PGID=1000
+      - PYTHONPATH=/app/src
+      - PYTHONUNBUFFERED=1
+    volumes:
+      - /Volumes/External4TB/Music/toolcrate-data:/data
+      - /Volumes/External4TB/Music/Music Library/toolcrate-downloads:/downloads
+      - /Volumes/External4TB/Music/Music Library/toolcrate-library:/library
+      - /Users/tleo/code/PRODUCTION-CLONES/toolcrate/config:/config
+    restart: unless-stopped
+    networks:
+      - toolcrate-network
+    working_dir: /app
+    command: ["tail", "-f", "/dev/null"]
+
   sldl:
     build:
       context: ../src/slsk-batchdl
@@ -16,8 +39,13 @@ services:
       - PUID=1000
       - PGID=1000
     volumes:
-      - .:/config
-      - ../data:/data
+      - /Volumes/External4TB/Music/toolcrate-data:/data
+      - /Volumes/External4TB/Music/Music Library/toolcrate-downloads:/downloads
+      - /Volumes/External4TB/Music/Music Library/toolcrate-library:/library
+      - /Users/tleo/code/PRODUCTION-CLONES/toolcrate/config:/config
+    ports:
+      - "49998:49998"
+      - "49999:49999"
     restart: unless-stopped
     networks:
       - toolcrate-network
@@ -27,15 +55,27 @@ networks:
     driver: bridge
 
 volumes:
-  config:
-    driver: local
-    driver_opts:
-      type: none
-      o: bind
-      device: .
   data:
     driver: local
     driver_opts:
       type: none
       o: bind
-      device: ../data
+      device: /Volumes/External4TB/Music/toolcrate-data
+  downloads:
+    driver: local
+    driver_opts:
+      type: none
+      o: bind
+      device: /Volumes/External4TB/Music/Music Library/toolcrate-downloads
+  library:
+    driver: local
+    driver_opts:
+      type: none
+      o: bind
+      device: /Volumes/External4TB/Music/Music Library/toolcrate-library
+  config:
+    driver: local
+    driver_opts:
+      type: none
+      o: bind
+      device: /Users/tleo/code/PRODUCTION-CLONES/toolcrate/config

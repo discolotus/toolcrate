@@ -90,7 +90,7 @@ class WishlistProcessor:
         cmd.append(entry)
         
         # Override download directory to library
-        download_dir = self.wishlist_config.get('download_dir', '/data/library')
+        download_dir = self.wishlist_config.get('download_dir', '/library')
         cmd.extend(["-p", download_dir])
         
         # Set index file location

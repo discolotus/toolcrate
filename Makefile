@@ -1,6 +1,6 @@
 # ToolCrate Makefile for unified testing with Poetry
 
-.PHONY: help test test-all test-python test-shell test-unit test-integration test-coverage test-quick clean install setup dev-install format lint check init-config config config-validate config-generate-sldl config-generate-wishlist-sldl config-generate-docker config-check-mounts config-show wishlist-test wishlist-run wishlist-run-verbose wishlist-logs wishlist-status
+.PHONY: help test test-all test-python test-shell test-unit test-integration test-coverage test-quick clean install setup dev-install install-global install-pipx install-docker format lint check init-config config config-validate config-generate-sldl config-generate-wishlist-sldl config-generate-docker config-check-mounts config-show wishlist-test wishlist-run wishlist-run-verbose wishlist-logs wishlist-status test-docker test-docker-build test-docker-run test-docker-shell test-docker-clean test-docker-pull test-docker-registry test-docker-smart
 
 # Default target
 help:
@@ -11,6 +11,9 @@ help:
 	@echo "  make setup          - Install Poetry and setup project"
 	@echo "  make install        - Install dependencies with Poetry"
 	@echo "  make dev-install    - Install with dev dependencies"
+	@echo "  make install-global - Install globally (makes 'toolcrate' command available anywhere)"
+	@echo "  make install-pipx   - Install with pipx (recommended for CLI tools)"
+	@echo "  make install-docker - Install in Docker/container environment"
 	@echo ""
 	@echo "Configuration:"
 	@echo "  make init-config    - Run interactive configuration setup (first time)"
@@ -37,6 +40,16 @@ help:
 	@echo "  make test-integration - Run integration tests only"
 	@echo "  make test-coverage  - Run Python tests with coverage"
 	@echo "  make test-quick     - Run quick subset of tests"
+	@echo ""
+	@echo "Docker Testing:"
+	@echo "  make test-docker    - Run all tests in Docker container"
+	@echo "  make test-docker-build - Build Docker testing image"
+	@echo "  make test-docker-run - Run specific test type in Docker (TEST=all|python|shell|unit|integration|coverage|docker|quick)"
+	@echo "  make test-docker-shell - Open shell in Docker testing container"
+	@echo "  make test-docker-pull - Pull pre-built image from registry"
+	@echo "  make test-docker-registry - Use registry image for testing (faster)"
+	@echo "  make test-docker-smart - Smart testing (auto-chooses best image)"
+	@echo "  make test-docker-clean - Clean Docker testing artifacts"
 	@echo ""
 	@echo "Code Quality:"
 	@echo "  make format         - Format code with black and isort"
@@ -75,6 +88,33 @@ install:
 # Install with dev dependencies
 dev-install:
 	poetry install --with dev
+
+# Install globally (makes 'toolcrate' command available system-wide)
+install-global:
+	@echo "Installing ToolCrate globally..."
+	pip install --user -e .
+	@echo "✅ ToolCrate installed globally!"
+	@echo "💡 The 'toolcrate' command should now be available from anywhere."
+	@echo "💡 If not found, ensure ~/.local/bin is in your PATH."
+
+# Install globally with pipx (recommended for CLI tools)
+install-pipx:
+	@echo "Installing ToolCrate with pipx..."
+	@if ! command -v pipx >/dev/null 2>&1; then \
+		echo "❌ pipx not found. Install with: pip install --user pipx"; \
+		echo "   Then run: pipx ensurepath"; \
+		exit 1; \
+	fi
+	pipx install -e .
+	@echo "✅ ToolCrate installed with pipx!"
+	@echo "💡 The 'toolcrate' command is now available from anywhere."
+
+# Install in Docker/container environment (handles system packages)
+install-docker:
+	@echo "Installing ToolCrate in Docker/container environment..."
+	pip install --break-system-packages -e .
+	@echo "✅ ToolCrate installed in container!"
+	@echo "💡 The 'toolcrate' command is now available globally in the container."
 
 # Testing commands (using Poetry)
 test:
@@ -241,5 +281,94 @@ init-config-poetry:
 init-config-venv:
 	@echo "Running ToolCrate configuration setup with virtual environment..."
 	./configure_toolcrate.sh --no-poetry
+
+# Docker Testing Commands
+
+# Build Docker testing image
+test-docker-build:
+	@echo "Building Docker testing image..."
+	docker build -f Dockerfile.test -t toolcrate:test .
+
+# Run all tests in Docker container
+test-docker:
+	@echo "Running all tests in Docker container..."
+	docker-compose -f docker-compose.test.yml up --build --abort-on-container-exit toolcrate-test
+
+# Run specific test type in Docker (usage: make test-docker-run TEST=python)
+test-docker-run:
+	@if [ -z "$(TEST)" ]; then \
+		echo "Usage: make test-docker-run TEST=<test_type>"; \
+		echo "Available test types: all, python, shell, unit, integration, coverage, docker, quick"; \
+		exit 1; \
+	fi
+	@echo "Running $(TEST) tests in Docker container..."
+	docker-compose -f docker-compose.test.yml run --rm toolcrate-test /workspace/scripts/test-in-docker.sh $(TEST)
+
+# Open interactive shell in Docker testing container
+test-docker-shell:
+	@echo "Opening shell in Docker testing container..."
+	docker-compose -f docker-compose.test.yml run --rm toolcrate-test bash
+
+# Clean Docker testing artifacts
+test-docker-clean:
+	@echo "Cleaning Docker testing artifacts..."
+	docker-compose -f docker-compose.test.yml down -v --remove-orphans
+	docker rmi toolcrate:test 2>/dev/null || true
+	docker rmi ghcr.io/discolotus/toolcrate/toolcrate-test:latest 2>/dev/null || true
+	docker volume prune -f
+
+# Pull pre-built Docker test image from registry
+test-docker-pull:
+	@echo "Pulling Docker test image from registry..."
+	docker pull ghcr.io/discolotus/toolcrate/toolcrate-test:latest || \
+	docker pull ghcr.io/discolotus/toolcrate/toolcrate-test:main || \
+	echo "No pre-built image available, use 'make test-docker-build' to build locally"
+
+# Use registry image for testing (faster than building)
+test-docker-registry:
+	@echo "Running tests with registry image..."
+	@if docker image inspect ghcr.io/discolotus/toolcrate/toolcrate-test:latest >/dev/null 2>&1; then \
+		echo "Using registry image..."; \
+		sed -i.bak 's|image: toolcrate:test|image: ghcr.io/discolotus/toolcrate/toolcrate-test:latest|g' docker-compose.test.yml; \
+		sed -i.bak 's|build:|# build:|g' docker-compose.test.yml; \
+		docker-compose -f docker-compose.test.yml up --abort-on-container-exit toolcrate-test; \
+		mv docker-compose.test.yml.bak docker-compose.test.yml; \
+	else \
+		echo "Registry image not found, falling back to local build..."; \
+		make test-docker; \
+	fi
+
+# Smart Docker testing (automatically chooses best image)
+test-docker-smart:
+	@echo "Running smart Docker tests..."
+	./scripts/docker-test-helper.sh $(TEST)
+
+# Run tests with Docker-in-Docker (more isolated)
+test-docker-dind:
+	@echo "Running tests with Docker-in-Docker..."
+	docker-compose -f docker-compose.test.yml up --build --abort-on-container-exit
+
+# Examples for Docker testing
+test-docker-examples:
+	@echo "Docker Testing Examples:"
+	@echo "========================"
+	@echo ""
+	@echo "# Build and run all tests:"
+	@echo "make test-docker"
+	@echo ""
+	@echo "# Run only Python tests:"
+	@echo "make test-docker-run TEST=python"
+	@echo ""
+	@echo "# Run integration tests:"
+	@echo "make test-docker-run TEST=integration"
+	@echo ""
+	@echo "# Run tests with coverage:"
+	@echo "make test-docker-run TEST=coverage"
+	@echo ""
+	@echo "# Open shell for debugging:"
+	@echo "make test-docker-shell"
+	@echo ""
+	@echo "# Clean up:"
+	@echo "make test-docker-clean"
 
 

@@ -1,0 +1,85 @@
+# ToolCrate Testing Container with Docker-in-Docker Support
+# This container can install toolcrate and run tests, including tests that use Docker containers
+
+FROM cruizba/ubuntu-dind:latest
+
+# Set environment variables
+ENV PYTHONUNBUFFERED=1
+ENV PYTHONDONTWRITEBYTECODE=1
+ENV POETRY_HOME="/opt/poetry"
+ENV POETRY_CACHE_DIR=/tmp/poetry_cache
+ENV POETRY_VENV_IN_PROJECT=1
+ENV PATH="$POETRY_HOME/bin:$PATH"
+
+# Install system dependencies including Docker, Python, and cron
+RUN apt-get update && apt-get install -y \
+    # Python and related tools
+    python3 \
+    python3-pip \
+    python3-venv \
+    python3-dev \
+    # Basic build tools
+    build-essential \
+    curl \
+    git \
+    wget \
+    # Docker dependencies
+    ca-certificates \
+    gnupg \
+    lsb-release \
+    # Cron and scheduling tools
+    cron \
+    # Additional tools for testing
+    make \
+    bash \
+    procps \
+    vim \
+    nano \
+    && rm -rf /var/lib/apt/lists/*
+
+# Create python symlink for compatibility
+RUN ln -s /usr/bin/python3 /usr/bin/python
+
+# Install Docker CE
+RUN mkdir -p /etc/apt/keyrings \
+    && curl -fsSL https://download.docker.com/linux/ubuntu/gpg | gpg --dearmor -o /etc/apt/keyrings/docker.gpg \
+    && echo "deb [arch=$(dpkg --print-architecture) signed-by=/etc/apt/keyrings/docker.gpg] https://download.docker.com/linux/ubuntu $(lsb_release -cs) stable" | tee /etc/apt/sources.list.d/docker.list > /dev/null \
+    && apt-get update \
+    && apt-get install -y docker-ce docker-ce-cli containerd.io docker-buildx-plugin docker-compose-plugin \
+    && rm -rf /var/lib/apt/lists/*
+
+# Install Poetry
+RUN curl -sSL https://install.python-poetry.org | python3 - \
+    && chmod +x $POETRY_HOME/bin/poetry
+
+# Create working directory
+WORKDIR /workspace
+
+# Copy dependency files first for better caching
+COPY pyproject.toml poetry.lock* ./
+
+# Install dependencies
+RUN poetry install --with dev && rm -rf $POETRY_CACHE_DIR
+
+# Copy the entire project
+COPY . .
+
+# Install the project in development mode
+RUN poetry install --with dev
+
+# Install the package globally so 'toolcrate' command is available outside Poetry
+RUN pip install --break-system-packages -e .
+
+# Copy test scripts
+COPY scripts/ /workspace/scripts/
+RUN chmod +x /workspace/scripts/*.sh
+
+# Set the default command
+CMD ["/workspace/scripts/test-in-docker.sh", "all"]
+
+# Expose Docker daemon port (for Docker-in-Docker)
+EXPOSE 2376
+
+# Health check
+HEALTHCHECK --interval=30s --timeout=10s --start-period=5s --retries=3 \
+    CMD python3 -c "import toolcrate; print('ToolCrate is healthy')" || exit 1

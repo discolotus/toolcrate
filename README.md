@@ -148,7 +148,37 @@ make config
 
 # Run tests
 make test
+
+# Run tests in Docker (isolated environment)
+make test-docker
 ```
+
+### Docker Testing Environment
+
+ToolCrate includes a comprehensive Docker testing environment that provides:
+
+- **Isolated testing** - Clean, reproducible test environment
+- **Docker-in-Docker support** - Test Docker functionality within containers
+- **All test types** - Python, shell, unit, integration, coverage tests
+- **CI/CD ready** - Perfect for automated testing pipelines
+
+```bash
+# Quick start - run all tests in Docker
+make test-docker
+
+# Run specific test types
+make test-docker-run TEST=python      # Python tests only
+make test-docker-run TEST=integration # Integration tests
+make test-docker-run TEST=coverage    # Tests with coverage
+
+# Interactive development
+make test-docker-shell                # Open shell in container
+
+# Cleanup
+make test-docker-clean               # Remove Docker artifacts
+```
+
+For detailed information, see [docs/DOCKER_TESTING.md](docs/DOCKER_TESTING.md).
 
 ## Requirements
 

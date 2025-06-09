@@ -102,9 +102,9 @@ fi
 
 # Test configuration validation
 echo -e "\n${GREEN}Testing configuration validation...${NC}"
-if [ -n "$VIRTUAL_ENV" ] && command -v python &> /dev/null; then
+if [ -n "$VIRTUAL_ENV" ] && command -v python3 &> /dev/null; then
     cd config
-    if python validate-config.py toolcrate.yaml; then
+    if python3 validate-config.py toolcrate.yaml; then
         echo -e "${GREEN}✅ Configuration validation passed!${NC}"
     else
         echo -e "${RED}❌ Configuration validation failed!${NC}"
@@ -118,10 +118,10 @@ fi
 
 # Test config manager (should be using virtual environment)
 echo -e "\n${GREEN}Testing config manager...${NC}"
-if [ -n "$VIRTUAL_ENV" ] && command -v python &> /dev/null; then
+if [ -n "$VIRTUAL_ENV" ] && command -v python3 &> /dev/null; then
     echo -e "${GREEN}Using virtual environment: $VIRTUAL_ENV${NC}"
 
-    if python config_manager.py --config config/toolcrate.yaml validate; then
+    if python3 config_manager.py --config config/toolcrate.yaml validate; then
         echo -e "${GREEN}✅ Config manager validation passed!${NC}"
     else
         echo -e "${RED}❌ Config manager validation failed!${NC}"
@@ -129,7 +129,7 @@ if [ -n "$VIRTUAL_ENV" ] && command -v python &> /dev/null; then
     fi
 
     # Test sldl.conf generation
-    if python config_manager.py --config config/toolcrate.yaml generate-sldl; then
+    if python3 config_manager.py --config config/toolcrate.yaml generate-sldl; then
         echo -e "${GREEN}✅ sldl.conf generation passed!${NC}"
     else
         echo -e "${RED}❌ sldl.conf generation failed!${NC}"

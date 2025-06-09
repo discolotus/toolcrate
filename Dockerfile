@@ -41,16 +41,16 @@ COPY pyproject.toml poetry.lock* README.md ./
 # Install only production dependencies
 RUN poetry install --only=main --no-root && rm -rf $POETRY_CACHE_DIR
 
-# Copy the entire project source code (submodules should be included by checkout)
+# Copy the entire project source code
 COPY src/ ./src/
-COPY bin/ ./bin/
 COPY Makefile ./
-COPY install.sh ./
 COPY configure_toolcrate.sh ./
-COPY setup.py ./
 
-# Make scripts executable
-RUN chmod +x ./bin/* ./install.sh ./configure_toolcrate.sh
+# Copy optional files if they exist
+COPY install*.sh ./
+
+# Make scripts executable (only if they exist)
+RUN find . -name "*.sh" -type f -exec chmod +x {} \;
 
 # Install the project
 RUN poetry install --only=main

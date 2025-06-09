@@ -1,8 +1,8 @@
 # ToolCrate Test Container
-# Self-contained image with all project files copied into the container
-# No external volume mounts required
+# Multi-stage build for testing and development
+# Supports both self-contained testing and development with volume mounts
 
-FROM python:3.11-slim
+FROM python:3.11-slim as base
 
 # Set environment variables
 ENV PYTHONUNBUFFERED=1
@@ -61,16 +61,15 @@ COPY src/ ./src/
 COPY tests/ ./tests/
 COPY scripts/ ./scripts/
 COPY docs/ ./docs/
-COPY bin/ ./bin/
 COPY config/ ./config/
 COPY Makefile ./
-COPY install.sh ./
-COPY install_global.sh ./
 COPY configure_toolcrate.sh ./
-COPY setup.py ./
 
-# Make scripts executable
-RUN chmod +x ./scripts/*.sh ./bin/* ./install.sh ./install_global.sh ./configure_toolcrate.sh
+# Copy optional files if they exist
+COPY install*.sh ./
+
+# Make scripts executable (only if they exist)
+RUN find . -name "*.sh" -type f -exec chmod +x {} \;
 
 # Install the project in development mode
 RUN poetry install --with dev
@@ -84,9 +83,24 @@ RUN mkdir -p /workspace/data/downloads /workspace/data/library /workspace/logs
 # Set up cron service
 RUN service cron start
 
+# Testing stage - runs all tests
+FROM base as testing
+
 # Set the default command to run tests
 CMD ["python", "-m", "pytest", "tests/", "-v"]
 
-# Health check
+# Development stage - for interactive development
+FROM base as development
+
+# Install additional development tools
+RUN pip install debugpy ipython
+
+# Expose debugger port
+EXPOSE 5678
+
+# Set development-friendly command
+CMD ["tail", "-f", "/dev/null"]
+
+# Health check for all stages
 HEALTHCHECK --interval=30s --timeout=10s --start-period=5s --retries=3 \
     CMD python3 -c "import toolcrate; print('ToolCrate is healthy')" || exit 1

@@ -43,6 +43,7 @@ click = "^8.1.3"  # For CLI interface
 pydantic = "^2.0.0"  # For data validation
 loguru = "^0.7.0"  # For logging
 pyyaml = "^6.0"  # For YAML configuration files
+requests = "^2.31.0"  # For HTTP requests
 
 [tool.poetry.group.dev.dependencies]
 pytest = "^8.0.0"

@@ -290,6 +290,44 @@ test-docker-build:
 	@echo "Building Docker testing image..."
 	docker build -f Dockerfile.test -t toolcrate:test .
 
+# Build optimized production image
+build-docker-optimized:
+	@echo "Building optimized Docker production image..."
+	docker build -f Dockerfile.optimized -t toolcrate:optimized .
+
+# Build development environment
+build-docker-dev:
+	@echo "Building Docker development environment..."
+	docker-compose -f docker-compose.dev.yml build
+
+# Start development environment
+dev-up:
+	@echo "Starting development environment..."
+	docker-compose -f docker-compose.dev.yml up -d
+	@echo "✅ Development environment started!"
+	@echo "💡 Access the container: make dev-shell"
+	@echo "💡 View logs: make dev-logs"
+
+# Stop development environment
+dev-down:
+	@echo "Stopping development environment..."
+	docker-compose -f docker-compose.dev.yml down
+
+# Access development container shell
+dev-shell:
+	@echo "Accessing development container shell..."
+	docker-compose -f docker-compose.dev.yml exec toolcrate-dev bash
+
+# View development logs
+dev-logs:
+	@echo "Viewing development logs..."
+	docker-compose -f docker-compose.dev.yml logs -f
+
+# Run health check on running container
+docker-health-check:
+	@echo "Running health check on Docker container..."
+	docker run --rm toolcrate:test /workspace/scripts/docker-health-check.sh
+
 # Run all tests in Docker container
 test-docker:
 	@echo "Running all tests in Docker container..."

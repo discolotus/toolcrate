@@ -1,0 +1,56 @@
+# ToolCrate Production Container - Optimized Build
+# This creates a smaller, more secure production image
+
+FROM python:3.11-slim as production
+
+# Set environment variables
+ENV PYTHONUNBUFFERED=1
+ENV PYTHONDONTWRITEBYTECODE=1
+ENV PYTHONPATH=/app/src
+
+# Install runtime dependencies and Python packages
+RUN apt-get update && apt-get install -y \
+    cron \
+    bash \
+    && rm -rf /var/lib/apt/lists/* \
+    && apt-get clean \
+    && pip install --no-cache-dir click pydantic loguru pyyaml requests
+
+# Create working directory
+WORKDIR /app
+
+# Copy source code and configuration
+COPY src/ ./src/
+COPY scripts/ ./scripts/
+COPY pyproject.toml README.md ./
+COPY Makefile configure_toolcrate.sh install*.sh ./
+
+# Install the package
+RUN pip install --no-cache-dir -e .
+
+# Make scripts executable
+RUN find . -name "*.sh" -type f -exec chmod +x {} \;
+
+# Create necessary directories
+RUN mkdir -p /app/data/downloads /app/data/library /app/logs /app/config
+
+# Create non-root user
+RUN useradd -m -u 1000 toolcrate && \
+    chown -R toolcrate:toolcrate /app
+
+# Environment is ready
+
+# Switch to non-root user
+USER toolcrate
+
+# Set up cron (as root briefly)
+USER root
+RUN touch /var/log/cron.log && chown toolcrate:toolcrate /var/log/cron.log
+USER toolcrate
+
+# Health check
+HEALTHCHECK --interval=30s --timeout=10s --start-period=5s --retries=3 \
+    CMD python3 -c "import toolcrate; print('ToolCrate is healthy')" || exit 1
+
+# Default command
+CMD ["toolcrate", "--help"]

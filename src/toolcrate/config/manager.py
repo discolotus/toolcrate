@@ -27,12 +27,21 @@ if not in_venv:
     except (subprocess.CalledProcessError, FileNotFoundError):
         pass
 
-if not in_venv:
+# Check if we're running in a testing environment
+is_testing = (
+    os.environ.get('PYTEST_CURRENT_TEST') or
+    os.environ.get('TOOLCRATE_TESTING') or
+    'pytest' in sys.modules or
+    'test' in sys.argv[0].lower()
+)
+
+if not in_venv and not is_testing:
     print("❌ Virtual environment not active!")
     print("Please use one of these methods:")
     print("  poetry run python config_manager.py <command>")
     print("  source .venv/bin/activate && python config_manager.py <command>")
     print("  make config-<command>")
+    print("Note: Set TOOLCRATE_TESTING=1 to bypass this check for testing")
     sys.exit(1)
 
 try:

@@ -286,7 +286,7 @@ def add(ctx, schedule: str, name: str, description: str, type: str):
     except Exception as e:
         logger.error(f"Error adding scheduled job: {e}")
         click.echo(f"❌ Error adding scheduled job: {e}")
-        raise click.Abort()
+        raise click.Abort() from None
 
 
 @schedule.command()
@@ -585,7 +585,7 @@ def remove(ctx, name: str):
     except Exception as e:
         logger.error(f"Error removing scheduled job: {e}")
         click.echo(f"❌ Error removing scheduled job: {e}")
-        raise click.Abort()
+        raise click.Abort() from None
 
 
 @schedule.command()
@@ -665,7 +665,7 @@ def edit(ctx, name: str, schedule: str):
     except Exception as e:
         logger.error(f"Error editing scheduled job: {e}")
         click.echo(f"❌ Error editing scheduled job: {e}")
-        raise click.Abort()
+        raise click.Abort() from None
 
 
 @schedule.command()
@@ -706,7 +706,7 @@ def disable(ctx):
     except Exception as e:
         logger.error(f"Error disabling scheduled jobs: {e}")
         click.echo(f"❌ Error disabling scheduled jobs: {e}")
-        raise click.Abort()
+        raise click.Abort() from None
 
 
 @schedule.command()
@@ -749,7 +749,7 @@ def enable(ctx):
     except Exception as e:
         logger.error(f"Error enabling scheduled jobs: {e}")
         click.echo(f"❌ Error enabling scheduled jobs: {e}")
-        raise click.Abort()
+        raise click.Abort() from None
 
 
 @schedule.command()
@@ -790,7 +790,7 @@ def list(ctx):
     except Exception as e:
         logger.error(f"Error listing scheduled jobs: {e}")
         click.echo(f"❌ Error listing scheduled jobs: {e}")
-        raise click.Abort()
+        raise click.Abort() from None
 
 
 @schedule.command()
@@ -853,7 +853,7 @@ def status(ctx):
     except Exception as e:
         logger.error(f"Error checking cron status: {e}")
         click.echo(f"❌ Error checking cron status: {e}")
-        raise click.Abort()
+        raise click.Abort() from None
 
 
 @schedule.command()
@@ -916,7 +916,7 @@ def install(ctx):
     except Exception as e:
         logger.error(f"Error installing cron jobs: {e}")
         click.echo(f"❌ Error installing cron jobs: {e}")
-        raise click.Abort()
+        raise click.Abort() from None
 
 
 def generate_cron_file(
@@ -1001,7 +1001,7 @@ def test(ctx):
     except Exception as e:
         logger.error(f"Error testing wishlist processing: {e}")
         click.echo(f"❌ Error testing wishlist processing: {e}")
-        raise click.Abort()
+        raise click.Abort() from None
 
 
 @schedule.command()
@@ -1047,4 +1047,4 @@ def test_queue(ctx):
     except Exception as e:
         logger.error(f"Error testing queue processing: {e}")
         click.echo(f"❌ Error testing queue processing: {e}")
-        raise click.Abort()
+        raise click.Abort() from None

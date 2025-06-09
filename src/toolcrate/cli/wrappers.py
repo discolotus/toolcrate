@@ -16,8 +16,8 @@ import click
 from loguru import logger
 
 # Check Python version
-if sys.version_info < (3, 11) or sys.version_info >= (3, 13):
-    print("Error: ToolCrate requires Python 3.11 or 3.12")
+if sys.version_info < (3, 9) or sys.version_info >= (4, 0):
+    print("Error: ToolCrate requires Python 3.9 or higher (but less than 4.0)")
     print(f"Current Python version: {sys.version_info.major}.{sys.version_info.minor}")
     sys.exit(1)
 

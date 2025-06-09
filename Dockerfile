@@ -44,7 +44,6 @@ RUN poetry install --only=main --no-root && rm -rf $POETRY_CACHE_DIR
 # Copy the entire project source code
 COPY src/ ./src/
 COPY bin/ ./bin/
-COPY config/ ./config/
 COPY Makefile ./
 COPY install.sh ./
 COPY configure_toolcrate.sh ./
@@ -59,8 +58,8 @@ RUN poetry install --only=main
 # Install the package globally so 'toolcrate' command is available
 RUN pip install -e .
 
-# Create necessary directories
-RUN mkdir -p /app/data/downloads /app/data/library /app/logs
+# Create necessary directories (including empty config directory)
+RUN mkdir -p /app/data/downloads /app/data/library /app/logs /app/config
 
 # Create a non-root user for security
 RUN useradd -m -u 1000 toolcrate && \

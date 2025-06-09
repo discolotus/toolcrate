@@ -80,14 +80,8 @@ data/downloads/
 data/library/
 downloads/
 
-# Config files with sensitive data
-config/*.conf
-config/.env
-config/crontabs/
-config/toolcrate.yaml
-config/wishlist.txt
-config/download-queue.txt
-config/data/
+# Config files with sensitive data - exclude entire config directory
+config/
 
 # Documentation (needed for test builds)
 # docs/ - commented out to allow test builds

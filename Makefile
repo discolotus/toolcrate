@@ -93,6 +93,7 @@ dev-install:
 install-global:
 	@echo "Installing ToolCrate globally..."
 	pip install --user -e .
+	./install_global.sh
 	@echo "✅ ToolCrate installed globally!"
 	@echo "💡 The 'toolcrate' command should now be available from anywhere."
 	@echo "💡 If not found, ensure ~/.local/bin is in your PATH."

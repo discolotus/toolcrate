@@ -187,3 +187,28 @@ dist/
 downloads/
 data/
 recognised-lists/
+# External tools and binaries
+src/bin/
+src/slsk-batchdl/
+src/Shazam-Tool/
+
+# Virtual environment
+.venv/
+**/toolcrate.yaml
+
+config/sldl-wishlist.conf
+config/wishlist.txt
+config/crontabs/
+**index.sldl
+**.mp3
+**.flac
+**.wav
+**.alac
+**.m4a
+**.opus
+**.ogg
+**.aac
+**.incomplete
+
+
+config/download-queue.txt

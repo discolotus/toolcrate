@@ -1,13 +1,44 @@
+# Docker Compose configuration for ToolCrate production deployment
+# Self-contained deployment without local filesystem dependencies
+
+version: '3.8'
+
 services:
-  sldl:
+  toolcrate:
     build:
       context: .
-    container_name: sldl
-    volumes:
-      - ./config:/config
-      - ./data:/data
+      dockerfile: Dockerfile
+    image: toolcrate:latest
+    container_name: toolcrate-app
+    restart: unless-stopped
     environment:
-      - SLDL_CONFIG=/config/sldl.conf
-      - TZ=Etc/UTC
-      - PUID=1000
-      - PGID=1000 
+      - PYTHONPATH=/app/src
+      - PYTHONUNBUFFERED=1
+    working_dir: /app
+    networks:
+      - toolcrate-network
+    # Persistent volumes for data that should survive container restarts
+    volumes:
+      - toolcrate-data:/app/data
+      - toolcrate-logs:/app/logs
+      - toolcrate-config:/app/config
+    # Keep container running with a long-running command
+    command: ["tail", "-f", "/dev/null"]
+    
+    # Optional: if you need Docker access for slsk-batchdl containers
+    # Uncomment the following lines:
+    # volumes:
+    #   - /var/run/docker.sock:/var/run/docker.sock
+    # user: "1000:$(stat -c %g /var/run/docker.sock)"
+
+networks:
+  toolcrate-network:
+    driver: bridge
+
+volumes:
+  toolcrate-data:
+    driver: local
+  toolcrate-logs:
+    driver: local
+  toolcrate-config:
+    driver: local

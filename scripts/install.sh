@@ -46,21 +46,22 @@ mkdir -p src/bin
 if [ -d ".git" ]; then
     echo -e "${GREEN}Attempting to set up git submodules...${NC}"
     git submodule update --init --recursive
-fi
+else
+    echo -e "${GREEN}Not a git repository, cloning tools directly...${NC}"
+    
+    # Handle slsk-batchdl
+    if [ ! -d "src/slsk-batchdl" ]; then
+        echo -e "${GREEN}Cloning slsk-batchdl...${NC}"
+        git clone https://github.com/discolotus/slsk-batchdl.git src/slsk-batchdl
+        cd src/slsk-batchdl && git checkout v2.4.6 && cd ../../
+    fi
 
-# Always check if the repositories exist, and clone them if they don't
-# Handle slsk-batchdl
-if [ ! -d "src/slsk-batchdl" ]; then
-    echo -e "${GREEN}Cloning slsk-batchdl...${NC}"
-    git clone https://github.com/fiso64/slsk-batchdl.git src/slsk-batchdl
-    cd src/slsk-batchdl && git checkout v2.4.6 && cd ../../
-fi
-
-# Handle Shazam-Tool
-if [ ! -d "src/Shazam-Tool" ]; then
-    echo -e "${GREEN}Cloning Shazam-Tool...${NC}"
-    git clone https://github.com/in0vik/Shazam-Tool.git src/Shazam-Tool
-    cd src/Shazam-Tool && git checkout main && cd ../../
+    # Handle Shazam-Tool
+    if [ ! -d "src/Shazam-Tool" ]; then
+        echo -e "${GREEN}Cloning Shazam-Tool...${NC}"
+        git clone https://github.com/discolotus/Shazam-Tool.git src/Shazam-Tool
+        cd src/Shazam-Tool && git checkout main && cd ../../
+    fi
 fi
 
 # Check if we're on macOS ARM64
@@ -74,7 +75,7 @@ if [[ "$(uname)" == "Darwin" && "$(uname -m)" == "arm64" ]]; then
         chmod +x src/bin/sldl
     else
         echo -e "${GREEN}dotnet not found, downloading pre-built binary...${NC}"
-        curl -L -o src/sldl_osx-arm64.zip https://github.com/fiso64/slsk-batchdl/releases/download/v2.4.6/sldl_osx-arm64.zip
+        curl -L -o src/sldl_osx-arm64.zip https://github.com/discolotus/slsk-batchdl/releases/download/v2.4.6/sldl_osx-arm64.zip
         unzip src/sldl_osx-arm64.zip -d src/bin/
         chmod +x src/bin/sldl
         rm src/sldl_osx-arm64.zip
@@ -105,6 +106,9 @@ fi
 cat > "$HOME/.local/bin/toolcrate" << EOF
 #!/bin/bash
 # Global entrypoint for toolcrate
+
+# Set the TOOLCRATE_ROOT environment variable to point to the project directory
+export TOOLCRATE_ROOT="${TOOLCRATE_DIR}"
 
 # Activate virtual environment and run the command
 source "${TOOLCRATE_DIR}/.venv/bin/activate"
@@ -181,6 +185,9 @@ if [ "$WRAPPER_WORKS" = false ]; then
         cat > "${TOOLCRATE_DIR}/bin/toolcrate_wrapper" << EOF
 #!/bin/bash
 # Wrapper script for toolcrate
+
+# Set the TOOLCRATE_ROOT environment variable to point to the project directory
+export TOOLCRATE_ROOT="${TOOLCRATE_DIR}"
 
 # Activate virtual environment and run the command
 source "${TOOLCRATE_DIR}/.venv/bin/activate"

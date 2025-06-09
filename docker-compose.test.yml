@@ -1,0 +1,60 @@
+# Docker Compose configuration for ToolCrate testing environment
+# This provides Docker-in-Docker capability for testing
+
+version: '3.8'
+
+services:
+  toolcrate-test:
+    build:
+      context: .
+      dockerfile: Dockerfile.test
+    image: toolcrate:test
+    container_name: toolcrate-test
+    privileged: true  # Required for Docker-in-Docker
+    environment:
+      - DOCKER_TLS_CERTDIR=/certs
+      - DOCKER_CERT_PATH=/certs/client
+      - DOCKER_TLS_VERIFY=1
+      - PYTHONPATH=/workspace/src
+    volumes:
+      # Mount the project directory
+      - .:/workspace
+      # Mount for test artifacts
+      - test-artifacts:/workspace/htmlcov
+      # Mount for Poetry cache
+      - poetry-cache:/root/.cache/pypoetry
+    working_dir: /workspace
+    networks:
+      - toolcrate-test-network
+    command: ["/workspace/scripts/test-in-docker.sh", "all"]
+
+  # Optional: DinD (Docker-in-Docker) service for more isolated testing
+  docker-dind:
+    image: docker:24-dind
+    container_name: toolcrate-docker-dind
+    privileged: true
+    environment:
+      - DOCKER_TLS_CERTDIR=/certs
+    volumes:
+      - docker-certs-ca:/certs/ca
+      - docker-certs-client:/certs/client
+      - dind-storage:/var/lib/docker
+    networks:
+      - toolcrate-test-network
+    command: ["dockerd", "--host=0.0.0.0:2376", "--host=unix:///var/run/docker.sock", "--tls=true", "--tlscert=/certs/server/cert.pem", "--tlskey=/certs/server/key.pem", "--tlsverify", "--tlscacert=/certs/ca/cert.pem"]
+
+networks:
+  toolcrate-test-network:
+    driver: bridge
+
+volumes:
+  test-artifacts:
+    driver: local
+  poetry-cache:
+    driver: local
+  docker-certs-ca:
+    driver: local
+  docker-certs-client:
+    driver: local
+  dind-storage:
+    driver: local

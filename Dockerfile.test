@@ -1,0 +1,92 @@
+# ToolCrate Test Container
+# Self-contained image with all project files copied into the container
+# No external volume mounts required
+
+FROM python:3.11-slim
+
+# Set environment variables
+ENV PYTHONUNBUFFERED=1
+ENV PYTHONDONTWRITEBYTECODE=1
+ENV POETRY_HOME="/opt/poetry"
+ENV POETRY_CACHE_DIR=/tmp/poetry_cache
+ENV POETRY_VENV_IN_PROJECT=1
+ENV PATH="$POETRY_HOME/bin:$PATH"
+ENV DEBIAN_FRONTEND=noninteractive
+
+# Install system dependencies
+RUN apt-get update && apt-get install -y \
+    # Basic build tools
+    build-essential \
+    curl \
+    git \
+    wget \
+    # Docker dependencies
+    ca-certificates \
+    gnupg \
+    lsb-release \
+    # Cron and scheduling tools
+    cron \
+    # Additional tools
+    make \
+    bash \
+    procps \
+    vim \
+    nano \
+    sudo \
+    && rm -rf /var/lib/apt/lists/*
+
+# Install Docker CE
+RUN mkdir -p /etc/apt/keyrings \
+    && curl -fsSL https://download.docker.com/linux/ubuntu/gpg | gpg --dearmor -o /etc/apt/keyrings/docker.gpg \
+    && echo "deb [arch=$(dpkg --print-architecture) signed-by=/etc/apt/keyrings/docker.gpg] https://download.docker.com/linux/ubuntu $(. /etc/os-release && echo "$VERSION_CODENAME") stable" | tee /etc/apt/sources.list.d/docker.list > /dev/null \
+    && apt-get update \
+    && apt-get install -y docker-ce docker-ce-cli containerd.io docker-buildx-plugin docker-compose-plugin \
+    && rm -rf /var/lib/apt/lists/*
+
+# Install Poetry
+RUN curl -sSL https://install.python-poetry.org | python3 - \
+    && chmod +x $POETRY_HOME/bin/poetry
+
+# Create working directory
+WORKDIR /workspace
+
+# Copy dependency files first for better Docker layer caching
+COPY pyproject.toml poetry.lock* README.md ./
+
+# Install Python dependencies
+RUN poetry install --with dev --no-root && rm -rf $POETRY_CACHE_DIR
+
+# Copy the entire project source code
+COPY src/ ./src/
+COPY tests/ ./tests/
+COPY scripts/ ./scripts/
+COPY docs/ ./docs/
+COPY bin/ ./bin/
+COPY config/ ./config/
+COPY Makefile ./
+COPY install.sh ./
+COPY install_global.sh ./
+COPY configure_toolcrate.sh ./
+COPY setup.py ./
+
+# Make scripts executable
+RUN chmod +x ./scripts/*.sh ./bin/* ./install.sh ./install_global.sh ./configure_toolcrate.sh
+
+# Install the project in development mode
+RUN poetry install --with dev
+
+# Install the package globally so 'toolcrate' command is available
+RUN pip install -e .
+
+# Create necessary directories
+RUN mkdir -p /workspace/data/downloads /workspace/data/library /workspace/logs
+
+# Set up cron service
+RUN service cron start
+
+# Set the default command to run tests
+CMD ["python", "-m", "pytest", "tests/", "-v"]
+
+# Health check
+HEALTHCHECK --interval=30s --timeout=10s --start-period=5s --retries=3 \
+    CMD python3 -c "import toolcrate; print('ToolCrate is healthy')" || exit 1

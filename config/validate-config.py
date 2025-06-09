@@ -4,11 +4,19 @@
 import os
 import sys
 
-# Check if we're in a virtual environment
-if not os.environ.get('VIRTUAL_ENV'):
+# Check if we're in a virtual environment (allow testing bypass)
+is_testing = (
+    os.environ.get('PYTEST_CURRENT_TEST') or
+    os.environ.get('TOOLCRATE_TESTING') or
+    'pytest' in sys.modules or
+    'test' in sys.argv[0].lower()
+)
+
+if not os.environ.get('VIRTUAL_ENV') and not is_testing:
     print("❌ Virtual environment not active!")
     print("Please activate the virtual environment first:")
     print("  source .venv/bin/activate")
+    print("Note: Set TOOLCRATE_TESTING=1 to bypass this check for testing")
     sys.exit(1)
 
 try:

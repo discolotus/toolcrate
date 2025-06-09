@@ -16,6 +16,10 @@ from typing import Dict, Any
 # Skip this check in Docker containers or when TOOLCRATE_SKIP_VENV_CHECK is set
 skip_venv_check = (
     os.environ.get('TOOLCRATE_SKIP_VENV_CHECK') or
+    os.environ.get('TOOLCRATE_TESTING') or
+    os.environ.get('PYTEST_CURRENT_TEST') or
+    'pytest' in sys.modules or
+    'test' in sys.argv[0].lower() or
     os.path.exists('/.dockerenv') or  # Docker container indicator
     os.environ.get('CONTAINER') or   # Generic container indicator
     os.environ.get('DOCKER_CONTAINER')  # Another container indicator

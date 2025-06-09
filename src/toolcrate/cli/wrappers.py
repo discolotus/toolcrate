@@ -15,10 +15,11 @@ import unicodedata
 import click
 from loguru import logger
 
-# Check Python version
-if sys.version_info < (3, 11) or sys.version_info >= (3, 13):
-    print("Error: ToolCrate requires Python 3.11 or 3.12")
+# Check Python version - align with pyproject.toml requirements
+if sys.version_info < (3, 9):
+    print("Error: ToolCrate requires Python 3.9 or higher")
     print(f"Current Python version: {sys.version_info.major}.{sys.version_info.minor}")
+    print("Please upgrade your Python version.")
     sys.exit(1)
 
 

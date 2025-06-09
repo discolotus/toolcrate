@@ -143,6 +143,7 @@ def run_integration_tests():
 
     pytest_args = [
         str(test_dir / "test_integration.py"),
+        str(test_dir / "integration"),  # Include integration directory
         "-v",
         "--tb=short",
     ]

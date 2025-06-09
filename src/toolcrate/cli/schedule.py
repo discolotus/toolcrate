@@ -920,7 +920,7 @@ def install(ctx):
 
 
 def generate_cron_file(
-    config_manager: ConfigManager, jobs: List[dict[str, Any]]
+    config_manager: ConfigManager, jobs: list[dict[str, Any]]
 ) -> str:
     """Generate cron file content from job definitions."""
     lines = [

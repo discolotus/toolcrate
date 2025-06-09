@@ -5,7 +5,7 @@ import logging
 import subprocess
 from datetime import datetime, timedelta
 from pathlib import Path
-from typing import Any, Optional
+from typing import Any
 
 import click
 
@@ -41,7 +41,7 @@ def wishlist_run(ctx):
 @click.option(
     "--since", type=str, help='Show logs since time (e.g., "1h", "30m", "2d")'
 )
-def logs(lines: int, follow: bool, app_logs: bool, since: Optional[str]):
+def logs(lines: int, follow: bool, app_logs: bool, since: str | None):
     """Show recent logs from wishlist runs.
 
     By default, shows the sldl download logs. Use --app-logs to see
@@ -159,7 +159,7 @@ def tail(lines: int):
         raise click.Abort()
 
 
-def _show_recent_logs(log_path: Path, lines: int, since: Optional[str]):
+def _show_recent_logs(log_path: Path, lines: int, since: str | None):
     """Show recent lines from a log file."""
     try:
         with open(log_path) as f:

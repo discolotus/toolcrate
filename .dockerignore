@@ -89,6 +89,7 @@ config/*.conf
 # docs/ - commented out to allow test builds
 *.md
 !README.md
+!docs/README.md
 
 # Poetry cache
 .poetry/

@@ -13,27 +13,36 @@ from pathlib import Path
 from typing import Dict, Any
 
 # Check if we're in a virtual environment (Poetry or manual)
-# Poetry runs in its own environment, so we check for both
-in_venv = os.environ.get('VIRTUAL_ENV') or os.environ.get('POETRY_ACTIVE')
-if not in_venv:
-    # Try to detect if we're running under Poetry
-    import subprocess
-    try:
-        result = subprocess.run(['poetry', 'env', 'info', '--path'],
-                              capture_output=True, text=True, check=True)
-        if result.stdout.strip():
-            # We're likely running under Poetry
-            in_venv = True
-    except (subprocess.CalledProcessError, FileNotFoundError):
-        pass
+# Skip this check in Docker containers or when TOOLCRATE_SKIP_VENV_CHECK is set
+skip_venv_check = (
+    os.environ.get('TOOLCRATE_SKIP_VENV_CHECK') or
+    os.path.exists('/.dockerenv') or  # Docker container indicator
+    os.environ.get('CONTAINER') or   # Generic container indicator
+    os.environ.get('DOCKER_CONTAINER')  # Another container indicator
+)
 
-if not in_venv:
-    print("❌ Virtual environment not active!")
-    print("Please use one of these methods:")
-    print("  poetry run python config_manager.py <command>")
-    print("  source .venv/bin/activate && python config_manager.py <command>")
-    print("  make config-<command>")
-    sys.exit(1)
+if not skip_venv_check:
+    # Poetry runs in its own environment, so we check for both
+    in_venv = os.environ.get('VIRTUAL_ENV') or os.environ.get('POETRY_ACTIVE')
+    if not in_venv:
+        # Try to detect if we're running under Poetry
+        import subprocess
+        try:
+            result = subprocess.run(['poetry', 'env', 'info', '--path'],
+                                  capture_output=True, text=True, check=True)
+            if result.stdout.strip():
+                # We're likely running under Poetry
+                in_venv = True
+        except (subprocess.CalledProcessError, FileNotFoundError):
+            pass
+
+    if not in_venv:
+        print("❌ Virtual environment not active!")
+        print("Please use one of these methods:")
+        print("  poetry run python config_manager.py <command>")
+        print("  source .venv/bin/activate && python config_manager.py <command>")
+        print("  make config-<command>")
+        sys.exit(1)
 
 try:
     import yaml

@@ -26,7 +26,7 @@ class TestShazamTool:
     def test_segment_length_constant(self):
         """Test that segment length constant is defined."""
         assert hasattr(shazam, "SEGMENT_LENGTH")
-        assert shazam.SEGMENT_LENGTH == 60 * 1000  # 1 minute in milliseconds
+        assert shazam.SEGMENT_LENGTH == 13 * 1000  # 13 seconds in milliseconds
 
     def test_downloads_dir_constant(self):
         """Test that downloads directory constant is defined."""

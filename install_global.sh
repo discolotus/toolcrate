@@ -13,13 +13,34 @@ echo -e "${BLUE}Installing toolcrate globally with proper path mapping...${NC}"
 # Get the absolute path of the current directory
 TOOLCRATE_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 
+# Set up submodules first
+echo -e "${GREEN}Setting up submodules and tools...${NC}"
+if command -v make &> /dev/null; then
+    make setup-submodules
+else
+    # Fallback manual setup
+    if [ -d ".git" ]; then
+        git submodule update --init --recursive
+    else
+        mkdir -p src
+        if [ ! -d "src/slsk-batchdl" ]; then
+            git clone https://github.com/discolotus/slsk-batchdl.git src/slsk-batchdl
+            cd src/slsk-batchdl && git checkout v2.4.6 && cd ../..
+        fi
+        if [ ! -d "src/Shazam-Tool" ]; then
+            git clone https://github.com/discolotus/Shazam-Tool.git src/Shazam-Tool
+            cd src/Shazam-Tool && git checkout main && cd ../..
+        fi
+    fi
+fi
+
 # Check if Poetry is available
 if command -v poetry &> /dev/null; then
     echo -e "${GREEN}Using Poetry for installation...${NC}"
-    
-    # Install with Poetry
-    poetry install
-    
+
+    # Install with Poetry (including all tool extras)
+    poetry install --extras all
+
     # Get the virtual environment path
     VENV_PATH=$(poetry env info --path)
     
@@ -34,14 +55,20 @@ elif [ -d ".venv" ]; then
     echo -e "${GREEN}Using existing virtual environment...${NC}"
     source .venv/bin/activate
     pip install -e .
+    # Install tool dependencies
+    pip install shazamio pydub yt-dlp
+    pip install docker docker-compose || echo "Note: Docker Python packages are optional"
     TOOLCRATE_BINARY="${TOOLCRATE_DIR}/.venv/bin/toolcrate"
-    
+
 else
     echo -e "${GREEN}Creating new virtual environment...${NC}"
     python3 -m venv .venv
     source .venv/bin/activate
     pip install --upgrade pip
     pip install -e .
+    # Install tool dependencies
+    pip install shazamio pydub yt-dlp
+    pip install docker docker-compose || echo "Note: Docker Python packages are optional"
     TOOLCRATE_BINARY="${TOOLCRATE_DIR}/.venv/bin/toolcrate"
 fi
 

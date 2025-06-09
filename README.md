@@ -100,6 +100,39 @@ toolcrate schedule install
 
 # Test wishlist processing
 make wishlist-test
+
+# View wishlist run logs and status
+toolcrate wishlist-run logs                    # Show recent logs
+toolcrate wishlist-run status                  # Show run summary
+toolcrate wishlist-run tail                    # Follow logs in real-time
+
+# Or use convenient make commands
+make wishlist-logs                              # Show recent logs
+make wishlist-status                            # Show run summary
+```
+
+### Download Queue
+
+ToolCrate also supports a download queue for individual links that are processed and removed:
+
+```bash
+# Add individual links to the queue
+toolcrate queue add "https://open.spotify.com/playlist/..."
+toolcrate queue add "Artist - Song Title"
+
+# View current queue
+toolcrate queue list
+
+# Process queue immediately
+toolcrate queue run
+
+# Set up automatic hourly processing (offset from wishlist)
+toolcrate schedule add-queue
+toolcrate schedule enable
+toolcrate schedule install
+
+# Test queue processing
+toolcrate schedule test-queue
 ```
 
 See [docs/WISHLIST_SCHEDULING.md](docs/WISHLIST_SCHEDULING.md) for detailed documentation.

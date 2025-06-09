@@ -6,7 +6,6 @@ import logging
 import subprocess
 import tempfile
 import os
-from pathlib import Path
 from typing import List, Dict, Any
 
 from ..config.manager import ConfigManager
@@ -159,20 +158,23 @@ def schedule(ctx):
 @schedule.command()
 @click.option('--schedule', '-s', required=True,
               help='Cron schedule expression (e.g., "0 2 * * *" for daily at 2 AM)')
-@click.option('--name', '-n', default='wishlist_download',
-              help='Name for the scheduled job')
-@click.option('--description', '-d', default='Automated wishlist download',
-              help='Description for the scheduled job')
+@click.option('--name', '-n', default=None,
+              help='Name for the scheduled job (auto-generated if not provided)')
+@click.option('--description', '-d', default=None,
+              help='Description for the scheduled job (auto-generated if not provided)')
+@click.option('--type', '-t', type=click.Choice(['wishlist', 'download']), default='wishlist',
+              help='Type of scheduled job: wishlist (default) or download queue')
 @click.pass_context
-def add(ctx, schedule: str, name: str, description: str):
-    """Add a new scheduled wishlist download.
-    
+def add(ctx, schedule: str, name: str, description: str, type: str):
+    """Add a new scheduled download job.
+
     Examples:
-        toolcrate schedule add -s "0 2 * * *"           # Daily at 2 AM
-        toolcrate schedule add -s "0 2 * * 0"           # Weekly on Sunday at 2 AM
-        toolcrate schedule add -s "0 2 1 * *"           # Monthly on 1st at 2 AM
-        toolcrate schedule add -s "*/30 * * * *"        # Every 30 minutes
-    
+        toolcrate schedule add -s "0 2 * * *"                    # Daily wishlist at 2 AM
+        toolcrate schedule add -s "0 2 * * *" --type download     # Daily download queue at 2 AM
+        toolcrate schedule add -s "0 2 * * 0"                    # Weekly wishlist on Sunday at 2 AM
+        toolcrate schedule add -s "0 2 1 * *"                    # Monthly wishlist on 1st at 2 AM
+        toolcrate schedule add -s "*/30 * * * *" --type download  # Download queue every 30 minutes
+
     Use https://crontab.guru/ to help create cron expressions.
     """
     config_manager = ctx.obj['config_manager']
@@ -183,14 +185,27 @@ def add(ctx, schedule: str, name: str, description: str):
         if len(parts) != 5:
             raise click.BadParameter("Cron schedule must have 5 parts: minute hour day month weekday")
         
+        # Auto-generate name and description if not provided
+        if name is None:
+            if type == 'wishlist':
+                name = 'wishlist_download'
+            else:
+                name = 'download_queue'
+
+        if description is None:
+            if type == 'wishlist':
+                description = 'Automated wishlist download'
+            else:
+                description = 'Automated download queue processing'
+
         # Load current config
         config_manager.load_config()
         config = config_manager.config
-        
+
         # Ensure cron section exists
         if 'cron' not in config:
-            config['cron'] = {'enabled': False, 'jobs': []}
-        
+            config['cron'] = {'enabled': True, 'jobs': []}  # Default to enabled for new cron section
+
         # Check if job with same name already exists
         existing_jobs = config['cron'].get('jobs', [])
         for job in existing_jobs:
@@ -201,12 +216,13 @@ def add(ctx, schedule: str, name: str, description: str):
                 # Remove existing job
                 existing_jobs.remove(job)
                 break
-        
+
         # Create new job entry
+        command = 'wishlist' if type == 'wishlist' else 'queue'
         new_job = {
             'name': name,
             'schedule': schedule,
-            'command': 'wishlist',
+            'command': command,
             'description': description,
             'enabled': True
         }
@@ -240,22 +256,26 @@ def add(ctx, schedule: str, name: str, description: str):
 
 
 @schedule.command()
-@click.option('--name', '-n', default='hourly_wishlist',
-              help='Name for the scheduled job')
-@click.option('--description', '-d', default='Hourly wishlist download',
-              help='Description for the scheduled job')
+@click.option('--name', '-n', default=None,
+              help='Name for the scheduled job (auto-generated if not provided)')
+@click.option('--description', '-d', default=None,
+              help='Description for the scheduled job (auto-generated if not provided)')
 @click.option('--minute', '-m', default=0, type=int,
               help='Minute to run (0-59, default: 0 for top of hour)')
+@click.option('--type', '-t', type=click.Choice(['wishlist', 'download']), default='wishlist',
+              help='Type of scheduled job: wishlist (default) or download queue')
 @click.pass_context
-def hourly(ctx, name: str, description: str, minute: int):
-    """Add an hourly scheduled wishlist download.
+def hourly(ctx, name: str, description: str, minute: int, type: str):
+    """Add an hourly scheduled download job.
 
     This is a convenience command that sets up hourly execution.
 
     Examples:
-        toolcrate schedule hourly                    # Every hour at minute 0
-        toolcrate schedule hourly -m 30              # Every hour at minute 30
-        toolcrate schedule hourly -n "frequent"      # Custom name
+        toolcrate schedule hourly                         # Hourly wishlist at minute 0
+        toolcrate schedule hourly -m 30                   # Hourly wishlist at minute 30
+        toolcrate schedule hourly --type download         # Hourly download queue at minute 0
+        toolcrate schedule hourly -m 15 --type download   # Hourly download queue at minute 15
+        toolcrate schedule hourly -n "frequent"           # Custom name
     """
     if not (0 <= minute <= 59):
         raise click.BadParameter("Minute must be between 0 and 59")
@@ -263,29 +283,33 @@ def hourly(ctx, name: str, description: str, minute: int):
     schedule_expr = f"{minute} * * * *"
 
     # Call the main add function
-    ctx.invoke(add, schedule=schedule_expr, name=name, description=description)
+    ctx.invoke(add, schedule=schedule_expr, name=name, description=description, type=type)
 
 
 @schedule.command()
-@click.option('--name', '-n', default='daily_wishlist',
-              help='Name for the scheduled job')
-@click.option('--description', '-d', default='Daily wishlist download',
-              help='Description for the scheduled job')
+@click.option('--name', '-n', default=None,
+              help='Name for the scheduled job (auto-generated if not provided)')
+@click.option('--description', '-d', default=None,
+              help='Description for the scheduled job (auto-generated if not provided)')
 @click.option('--hour', '-h', default=2, type=int,
               help='Hour to run (0-23, default: 2 for 2 AM)')
 @click.option('--minute', '-m', default=0, type=int,
               help='Minute to run (0-59, default: 0)')
+@click.option('--type', '-t', type=click.Choice(['wishlist', 'download']), default='wishlist',
+              help='Type of scheduled job: wishlist (default) or download queue')
 @click.pass_context
-def daily(ctx, name: str, description: str, hour: int, minute: int):
-    """Add a daily scheduled wishlist download.
+def daily(ctx, name: str, description: str, hour: int, minute: int, type: str):
+    """Add a daily scheduled download job.
 
     This is a convenience command that sets up daily execution.
 
     Examples:
-        toolcrate schedule daily                     # Daily at 2:00 AM
-        toolcrate schedule daily -h 14               # Daily at 2:00 PM
-        toolcrate schedule daily -h 9 -m 30          # Daily at 9:30 AM
-        toolcrate schedule daily -n "morning"        # Custom name
+        toolcrate schedule daily                          # Daily wishlist at 2:00 AM
+        toolcrate schedule daily -h 14                    # Daily wishlist at 2:00 PM
+        toolcrate schedule daily -h 9 -m 30               # Daily wishlist at 9:30 AM
+        toolcrate schedule daily --type download          # Daily download queue at 2:00 AM
+        toolcrate schedule daily -h 14 --type download    # Daily download queue at 2:00 PM
+        toolcrate schedule daily -n "morning"             # Custom name
     """
     if not (0 <= hour <= 23):
         raise click.BadParameter("Hour must be between 0 and 23")
@@ -295,31 +319,35 @@ def daily(ctx, name: str, description: str, hour: int, minute: int):
     schedule_expr = f"{minute} {hour} * * *"
 
     # Call the main add function
-    ctx.invoke(add, schedule=schedule_expr, name=name, description=description)
+    ctx.invoke(add, schedule=schedule_expr, name=name, description=description, type=type)
 
 
 @schedule.command()
-@click.option('--name', '-n', default='weekly_wishlist',
-              help='Name for the scheduled job')
-@click.option('--description', '-d', default='Weekly wishlist download',
-              help='Description for the scheduled job')
-@click.option('--day', '-d', 'weekday', default=0, type=int,
+@click.option('--name', '-n', default=None,
+              help='Name for the scheduled job (auto-generated if not provided)')
+@click.option('--description', '-d', default=None,
+              help='Description for the scheduled job (auto-generated if not provided)')
+@click.option('--day', '-w', 'weekday', default=0, type=int,
               help='Day of week (0=Sunday, 1=Monday, ..., 6=Saturday, default: 0)')
 @click.option('--hour', '-h', default=2, type=int,
               help='Hour to run (0-23, default: 2 for 2 AM)')
 @click.option('--minute', '-m', default=0, type=int,
               help='Minute to run (0-59, default: 0)')
+@click.option('--type', '-t', type=click.Choice(['wishlist', 'download']), default='wishlist',
+              help='Type of scheduled job: wishlist (default) or download queue')
 @click.pass_context
-def weekly(ctx, name: str, description: str, weekday: int, hour: int, minute: int):
-    """Add a weekly scheduled wishlist download.
+def weekly(ctx, name: str, description: str, weekday: int, hour: int, minute: int, type: str):
+    """Add a weekly scheduled download job.
 
     This is a convenience command that sets up weekly execution.
 
     Examples:
-        toolcrate schedule weekly                    # Weekly on Sunday at 2:00 AM
-        toolcrate schedule weekly -d 1               # Weekly on Monday at 2:00 AM
-        toolcrate schedule weekly -d 6 -h 14         # Weekly on Saturday at 2:00 PM
-        toolcrate schedule weekly -n "weekend"       # Custom name
+        toolcrate schedule weekly                         # Weekly wishlist on Sunday at 2:00 AM
+        toolcrate schedule weekly -d 1                    # Weekly wishlist on Monday at 2:00 AM
+        toolcrate schedule weekly -d 6 -h 14              # Weekly wishlist on Saturday at 2:00 PM
+        toolcrate schedule weekly --type download         # Weekly download queue on Sunday at 2:00 AM
+        toolcrate schedule weekly -d 1 --type download    # Weekly download queue on Monday at 2:00 AM
+        toolcrate schedule weekly -n "weekend"            # Custom name
 
     Day codes: 0=Sunday, 1=Monday, 2=Tuesday, 3=Wednesday, 4=Thursday, 5=Friday, 6=Saturday
     """
@@ -333,31 +361,35 @@ def weekly(ctx, name: str, description: str, weekday: int, hour: int, minute: in
     schedule_expr = f"{minute} {hour} * * {weekday}"
 
     # Call the main add function
-    ctx.invoke(add, schedule=schedule_expr, name=name, description=description)
+    ctx.invoke(add, schedule=schedule_expr, name=name, description=description, type=type)
 
 
 @schedule.command()
-@click.option('--name', '-n', default='monthly_wishlist',
-              help='Name for the scheduled job')
-@click.option('--description', '-d', default='Monthly wishlist download',
-              help='Description for the scheduled job')
-@click.option('--day', '-d', 'monthday', default=1, type=int,
+@click.option('--name', '-n', default=None,
+              help='Name for the scheduled job (auto-generated if not provided)')
+@click.option('--description', '-d', default=None,
+              help='Description for the scheduled job (auto-generated if not provided)')
+@click.option('--day', '--monthday', 'monthday', default=1, type=int,
               help='Day of month (1-31, default: 1 for first day)')
 @click.option('--hour', '-h', default=2, type=int,
               help='Hour to run (0-23, default: 2 for 2 AM)')
 @click.option('--minute', '-m', default=0, type=int,
               help='Minute to run (0-59, default: 0)')
+@click.option('--type', '-t', type=click.Choice(['wishlist', 'download']), default='wishlist',
+              help='Type of scheduled job: wishlist (default) or download queue')
 @click.pass_context
-def monthly(ctx, name: str, description: str, monthday: int, hour: int, minute: int):
-    """Add a monthly scheduled wishlist download.
+def monthly(ctx, name: str, description: str, monthday: int, hour: int, minute: int, type: str):
+    """Add a monthly scheduled download job.
 
     This is a convenience command that sets up monthly execution.
 
     Examples:
-        toolcrate schedule monthly                   # Monthly on 1st at 2:00 AM
-        toolcrate schedule monthly -d 15             # Monthly on 15th at 2:00 AM
-        toolcrate schedule monthly -d 1 -h 0         # Monthly on 1st at midnight
-        toolcrate schedule monthly -n "month_end"    # Custom name
+        toolcrate schedule monthly                        # Monthly wishlist on 1st at 2:00 AM
+        toolcrate schedule monthly -d 15                  # Monthly wishlist on 15th at 2:00 AM
+        toolcrate schedule monthly -d 1 -h 0              # Monthly wishlist on 1st at midnight
+        toolcrate schedule monthly --type download        # Monthly download queue on 1st at 2:00 AM
+        toolcrate schedule monthly -d 15 --type download  # Monthly download queue on 15th at 2:00 AM
+        toolcrate schedule monthly -n "month_end"         # Custom name
     """
     if not (1 <= monthday <= 31):
         raise click.BadParameter("Day must be between 1 and 31")
@@ -369,17 +401,19 @@ def monthly(ctx, name: str, description: str, monthday: int, hour: int, minute: 
     schedule_expr = f"{minute} {hour} {monthday} * *"
 
     # Call the main add function
-    ctx.invoke(add, schedule=schedule_expr, name=name, description=description)
+    ctx.invoke(add, schedule=schedule_expr, name=name, description=description, type=type)
 
 
 @schedule.command()
-@click.argument('job_name')
+@click.option('--name', '-n', required=True,
+              help='Name of the scheduled job to remove')
 @click.pass_context
-def remove(ctx, job_name: str):
+def remove(ctx, name: str):
     """Remove a scheduled job by name.
-    
-    Example:
-        toolcrate schedule remove wishlist_download
+
+    Examples:
+        toolcrate schedule remove -n wishlist_download
+        toolcrate schedule remove --name hourly_queue
     """
     config_manager = ctx.obj['config_manager']
     
@@ -395,17 +429,17 @@ def remove(ctx, job_name: str):
         job_found = False
         
         for i, job in enumerate(jobs):
-            if job.get('name') == job_name:
-                if click.confirm(f"Remove scheduled job '{job_name}'?"):
+            if job.get('name') == name:
+                if click.confirm(f"Remove scheduled job '{name}'?"):
                     jobs.pop(i)
                     config_manager.update_cron_section(config['cron'])
 
                     # Update crontab
                     cron_enabled = config['cron'].get('enabled', False)
                     if add_toolcrate_jobs_to_crontab(config_manager, jobs, cron_enabled):
-                        click.echo(f"✅ Removed scheduled job '{job_name}' from config and crontab")
+                        click.echo(f"✅ Removed scheduled job '{name}' from config and crontab")
                     else:
-                        click.echo(f"✅ Removed scheduled job '{job_name}' from config")
+                        click.echo(f"✅ Removed scheduled job '{name}' from config")
                         click.echo("⚠️  Could not update crontab automatically")
 
                     # If no jobs left, suggest disabling cron
@@ -415,9 +449,9 @@ def remove(ctx, job_name: str):
                     click.echo("Operation cancelled.")
                 job_found = True
                 break
-        
+
         if not job_found:
-            click.echo(f"❌ Job '{job_name}' not found.")
+            click.echo(f"❌ Job '{name}' not found.")
             click.echo("Available jobs:")
             for job in jobs:
                 click.echo(f"  - {job.get('name', 'unnamed')}")
@@ -425,6 +459,79 @@ def remove(ctx, job_name: str):
     except Exception as e:
         logger.error(f"Error removing scheduled job: {e}")
         click.echo(f"❌ Error removing scheduled job: {e}")
+        raise click.Abort()
+
+
+@schedule.command()
+@click.option('--name', '-n', required=True,
+              help='Name of the scheduled job to edit')
+@click.option('--schedule', '-s', required=True,
+              help='New cron schedule expression (e.g., "0 2 * * *" for daily at 2 AM)')
+@click.pass_context
+def edit(ctx, name: str, schedule: str):
+    """Edit the schedule of an existing job.
+
+    Examples:
+        toolcrate schedule edit -n wishlist_download -s "0 3 * * *"    # Change to 3 AM daily
+        toolcrate schedule edit -n hourly_queue -s "*/15 * * * *"      # Change to every 15 minutes
+        toolcrate schedule edit --name daily_backup --schedule "0 1 * * 0"  # Change to weekly Sunday 1 AM
+
+    Use https://crontab.guru/ to help create cron expressions.
+    """
+    config_manager = ctx.obj['config_manager']
+
+    try:
+        # Validate cron expression (basic validation)
+        parts = schedule.split()
+        if len(parts) != 5:
+            raise click.BadParameter("Cron schedule must have 5 parts: minute hour day month weekday")
+
+        config_manager.load_config()
+        config = config_manager.config
+
+        if 'cron' not in config or 'jobs' not in config['cron']:
+            click.echo("No scheduled jobs found.")
+            return
+
+        jobs = config['cron']['jobs']
+        job_found = False
+
+        for job in jobs:
+            if job.get('name') == name:
+                old_schedule = job.get('schedule', 'unknown')
+                job['schedule'] = schedule
+                config_manager.update_cron_section(config['cron'])
+
+                # Update crontab
+                cron_enabled = config['cron'].get('enabled', False)
+                if add_toolcrate_jobs_to_crontab(config_manager, jobs, cron_enabled):
+                    click.echo(f"✅ Updated scheduled job '{name}'")
+                    click.echo(f"📅 Old schedule: {old_schedule}")
+                    click.echo(f"📅 New schedule: {schedule}")
+                    if cron_enabled:
+                        click.echo("🕒 Changes automatically applied to crontab")
+                    else:
+                        click.echo("🕒 Changes saved but cron is disabled")
+                        click.echo("💡 Run 'toolcrate schedule enable' to activate")
+                else:
+                    click.echo(f"✅ Updated scheduled job '{name}' in config")
+                    click.echo(f"📅 Old schedule: {old_schedule}")
+                    click.echo(f"📅 New schedule: {schedule}")
+                    click.echo("⚠️  Could not update crontab automatically")
+                    click.echo("💡 Run 'toolcrate schedule install' to install manually")
+
+                job_found = True
+                break
+
+        if not job_found:
+            click.echo(f"❌ Job '{name}' not found.")
+            click.echo("Available jobs:")
+            for job in jobs:
+                click.echo(f"  - {job.get('name', 'unnamed')}")
+
+    except Exception as e:
+        logger.error(f"Error editing scheduled job: {e}")
+        click.echo(f"❌ Error editing scheduled job: {e}")
         raise click.Abort()
 
 
@@ -446,9 +553,18 @@ def disable(ctx):
         
         config['cron']['enabled'] = False
         config_manager.update_cron_section(config['cron'])
-        
-        click.echo("✅ Disabled all scheduled downloads")
-        click.echo("💡 Job definitions are preserved. Use 'toolcrate schedule enable' to re-enable.")
+
+        # Update crontab to comment out jobs
+        jobs = config['cron'].get('jobs', [])
+        if jobs and add_toolcrate_jobs_to_crontab(config_manager, jobs, False):
+            click.echo("✅ Disabled all scheduled downloads")
+            click.echo(f"📋 {len(jobs)} job(s) are now commented out in crontab")
+            click.echo("💡 Job definitions are preserved. Use 'toolcrate schedule enable' to re-enable.")
+        else:
+            click.echo("✅ Disabled all scheduled downloads in config")
+            click.echo("💡 Job definitions are preserved. Use 'toolcrate schedule enable' to re-enable.")
+            if jobs:
+                click.echo("⚠️  Could not update crontab automatically")
         
     except Exception as e:
         logger.error(f"Error disabling scheduled jobs: {e}")
@@ -475,12 +591,18 @@ def enable(ctx):
             config['cron']['enabled'] = True
 
         config_manager.update_cron_section(config['cron'])
-        
+
         jobs = config['cron'].get('jobs', [])
         if jobs:
-            click.echo("✅ Enabled scheduled downloads")
-            click.echo(f"📋 {len(jobs)} job(s) will be active")
-            click.echo("💡 Run 'toolcrate schedule install' to install the cron jobs")
+            # Update crontab to enable jobs
+            if add_toolcrate_jobs_to_crontab(config_manager, jobs, True):
+                click.echo("✅ Enabled scheduled downloads")
+                click.echo(f"📋 {len(jobs)} job(s) are now active in crontab")
+            else:
+                click.echo("✅ Enabled scheduled downloads in config")
+                click.echo(f"📋 {len(jobs)} job(s) will be active")
+                click.echo("⚠️  Could not update crontab automatically")
+                click.echo("💡 Run 'toolcrate schedule install' to install manually")
         else:
             click.echo("✅ Enabled scheduled downloads")
             click.echo("💡 No jobs defined yet. Use 'toolcrate schedule add' to create jobs")
@@ -534,52 +656,124 @@ def list(ctx):
 
 @schedule.command()
 @click.pass_context
-def install(ctx):
-    """Install cron jobs to the system.
-    
-    This generates and installs the actual cron jobs based on your configuration.
-    """
+def status(ctx):
+    """Show crontab installation status."""
     config_manager = ctx.obj['config_manager']
-    
+
     try:
         config_manager.load_config()
         config = config_manager.config
-        
+
         cron_config = config.get('cron', {})
-        if not cron_config.get('enabled', False):
-            click.echo("❌ Scheduled downloads are disabled.")
-            click.echo("Run 'toolcrate schedule enable' first.")
-            return
-        
+        enabled = cron_config.get('enabled', False)
         jobs = cron_config.get('jobs', [])
+
+        click.echo("📋 ToolCrate Cron Status")
+        click.echo("=" * 25)
+        click.echo(f"Config Status: {'✅ Enabled' if enabled else '❌ Disabled'}")
+        click.echo(f"Defined Jobs: {len(jobs)}")
+
+        # Check crontab status
+        current_crontab = get_current_crontab()
+        has_toolcrate_section = "# ToolCrate Scheduled Downloads" in current_crontab
+
+        if has_toolcrate_section:
+            # Count active vs commented jobs in crontab
+            lines = current_crontab.split('\n')
+            active_jobs = 0
+            commented_jobs = 0
+
+            for line in lines:
+                line = line.strip()
+                if 'toolcrate' in line.lower() and not line.startswith('# '):
+                    if line.startswith('#'):
+                        commented_jobs += 1
+                    elif line and not line.startswith('# '):
+                        active_jobs += 1
+
+            click.echo(f"Crontab Status: ✅ Installed")
+            click.echo(f"Active Jobs: {active_jobs}")
+            click.echo(f"Disabled Jobs: {commented_jobs}")
+        else:
+            click.echo(f"Crontab Status: ❌ Not installed")
+
+        click.echo()
+        if jobs:
+            click.echo("Jobs in config:")
+            for job in jobs:
+                name = job.get('name', 'unnamed')
+                schedule = job.get('schedule', 'unknown')
+                job_enabled = job.get('enabled', True)
+                status_icon = "✅" if job_enabled else "❌"
+                click.echo(f"  {status_icon} {name} ({schedule})")
+
+        if not has_toolcrate_section and jobs:
+            click.echo()
+            click.echo("💡 Run 'toolcrate schedule install' to install jobs to crontab")
+
+    except Exception as e:
+        logger.error(f"Error checking cron status: {e}")
+        click.echo(f"❌ Error checking cron status: {e}")
+        raise click.Abort()
+
+
+@schedule.command()
+@click.pass_context
+def install(ctx):
+    """Install cron jobs to the system crontab.
+
+    This command is usually not needed as jobs are automatically installed
+    when added/enabled. Use this for manual installation or troubleshooting.
+    """
+    config_manager = ctx.obj['config_manager']
+
+    try:
+        config_manager.load_config()
+        config = config_manager.config
+
+        cron_config = config.get('cron', {})
+        jobs = cron_config.get('jobs', [])
+
         if not jobs:
             click.echo("❌ No scheduled jobs defined.")
             click.echo("Use 'toolcrate schedule add' to create jobs.")
             return
-        
-        # Generate cron file
-        cron_content = generate_cron_file(config_manager, jobs)
-        
-        # Write to crontabs directory
-        cron_dir = config_manager.config_dir / "crontabs"
-        cron_dir.mkdir(exist_ok=True)
-        cron_file = cron_dir / "toolcrate"
-        
-        with open(cron_file, 'w') as f:
-            f.write(cron_content)
-        
-        click.echo(f"✅ Generated cron file: {cron_file}")
-        click.echo()
-        click.echo("To install the cron jobs, choose one option:")
-        click.echo()
-        click.echo("Option 1 - System-wide (requires sudo):")
-        click.echo(f"  sudo cp {cron_file} /etc/cron.d/toolcrate")
-        click.echo()
-        click.echo("Option 2 - User-specific:")
-        click.echo(f"  crontab {cron_file}")
-        click.echo()
-        click.echo("💡 Use 'crontab -l' to verify installation")
-        
+
+        cron_enabled = cron_config.get('enabled', False)
+
+        # Try automatic installation first
+        if add_toolcrate_jobs_to_crontab(config_manager, jobs, cron_enabled):
+            status = "active" if cron_enabled else "disabled (commented out)"
+            click.echo(f"✅ Successfully installed {len(jobs)} job(s) to crontab")
+            click.echo(f"📋 Jobs are {status}")
+            click.echo("💡 Use 'crontab -l' to verify installation")
+        else:
+            # Fall back to manual installation instructions
+            click.echo("⚠️  Automatic installation failed. Using manual method...")
+
+            # Generate cron file for manual installation
+            cron_content = generate_cron_file(config_manager, jobs)
+
+            # Write to crontabs directory
+            cron_dir = config_manager.config_dir / "crontabs"
+            cron_dir.mkdir(exist_ok=True)
+            cron_file = cron_dir / "toolcrate"
+
+            with open(cron_file, 'w') as f:
+                f.write(cron_content)
+
+            click.echo(f"✅ Generated cron file: {cron_file}")
+            click.echo()
+            click.echo("To install the cron jobs manually, choose one option:")
+            click.echo()
+            click.echo("Option 1 - User-specific (recommended):")
+            click.echo(f"  crontab {cron_file}")
+            click.echo()
+            click.echo("Option 2 - System-wide (requires sudo):")
+            click.echo(f"  sudo cp {cron_file} /etc/cron.d/toolcrate")
+            click.echo()
+            click.echo("💡 Use 'crontab -l' to verify installation")
+
     except Exception as e:
         logger.error(f"Error installing cron jobs: {e}")
         click.echo(f"❌ Error installing cron jobs: {e}")
@@ -668,64 +862,6 @@ def test(ctx):
         click.echo(f"❌ Error testing wishlist processing: {e}")
         raise click.Abort()
 
-
-@schedule.command()
-@click.pass_context
-def add_queue(ctx):
-    """Add hourly queue processing (every hour at 30 minutes past).
-
-    This adds queue processing that runs every hour at 30 minutes past the hour,
-    offset from wishlist processing to avoid conflicts.
-
-    This is equivalent to:
-    toolcrate schedule add -s "30 * * * *" -n "hourly_queue" -d "Hourly download queue processing"
-    """
-    config_manager = ctx.obj['config_manager']
-
-    try:
-        config_manager.load_config()
-        config = config_manager.config
-
-        # Check if job already exists
-        existing_jobs = config.get('cron', {}).get('jobs', [])
-        for job in existing_jobs:
-            if job.get('name') == 'hourly_queue':
-                click.echo("❌ Hourly queue job already exists")
-                click.echo("Use 'toolcrate schedule remove hourly_queue' to remove it first")
-                return
-
-        # Create new job entry
-        new_job = {
-            'name': 'hourly_queue',
-            'schedule': '30 * * * *',  # 30 minutes past every hour
-            'command': 'queue',
-            'description': 'Hourly download queue processing',
-            'enabled': True
-        }
-
-        # Add to jobs list
-        if 'cron' not in config:
-            config['cron'] = {'enabled': True, 'jobs': []}
-        if 'jobs' not in config['cron']:
-            config['cron']['jobs'] = []
-
-        config['cron']['jobs'].append(new_job)
-
-        # Save configuration using safer method
-        config_manager.update_cron_section(config['cron'])
-
-        click.echo("✅ Added hourly queue processing job (every hour at :30)")
-        click.echo("📝 Description: Hourly download queue processing")
-        click.echo("⏰ Schedule: 30 minutes past every hour (offset from wishlist)")
-        click.echo()
-        click.echo("To activate the schedule:")
-        click.echo("1. Enable cron jobs: toolcrate schedule enable")
-        click.echo("2. Install the cron job: toolcrate schedule install")
-
-    except Exception as e:
-        logger.error(f"Error adding queue job: {e}")
-        click.echo(f"❌ Error adding queue job: {e}")
-        raise click.Abort()
 
 
 @schedule.command()

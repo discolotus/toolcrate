@@ -1,22 +1,23 @@
 #!/usr/bin/env python3
 """Main CLI entry point for ToolCrate."""
 
-import sys
 import os
-import subprocess
 import shutil
+import subprocess
+import sys
 from pathlib import Path
+
 import click
 
-from .wrappers import (
-    run_sldl_docker_command,
-    run_slsk,
-    get_project_root,
-    recreate_slsk_container,
-)
+from .queue import queue
 from .schedule import schedule
 from .wishlist_run import wishlist_run
-from .queue import queue
+from .wrappers import (
+    get_project_root,
+    recreate_slsk_container,
+    run_sldl_docker_command,
+    run_slsk,
+)
 
 
 @click.group()
@@ -211,13 +212,14 @@ def slsk_tool_run(args):
 )
 def batch_download(playlist_file, config_file, log_file):
     """Process a list of Spotify playlists from a text file and download them using sldl."""
-    import time
     import logging
-    from pathlib import Path
     import os
-    import subprocess
     import re  # For extracting playlist IDs
+    import subprocess
+    import time
     from datetime import datetime
+    from pathlib import Path
+
     import requests
 
     # Configure logging
@@ -1575,8 +1577,8 @@ def schedule_add(file_type, frequency, custom_schedule):
     - dj-sets: Process dj-sets.txt file
     """
     from toolcrate.scripts.cron_manager import (
-        add_identify_tracks_cron,
         add_download_wishlist_cron,
+        add_identify_tracks_cron,
     )
 
     # Use custom schedule if provided

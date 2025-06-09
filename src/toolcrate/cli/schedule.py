@@ -1,12 +1,13 @@
 #!/usr/bin/env python3
 """Schedule management CLI for ToolCrate."""
 
-import click
 import logging
+import os
 import subprocess
 import tempfile
-import os
-from typing import List, Dict, Any
+from typing import Any, Dict, List
+
+import click
 
 from ..config.manager import ConfigManager
 from ..wishlist.processor import WishlistProcessor

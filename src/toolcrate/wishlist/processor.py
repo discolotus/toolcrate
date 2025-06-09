@@ -1,11 +1,11 @@
 #!/usr/bin/env python3
 """Wishlist processor for ToolCrate scheduled downloads."""
 
+import logging
 import os
 import subprocess
-import logging
 from pathlib import Path
-from typing import List, Dict, Any, Optional
+from typing import Any, Dict, List, Optional
 
 from ..config.manager import ConfigManager
 

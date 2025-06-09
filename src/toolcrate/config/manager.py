@@ -10,7 +10,7 @@ import argparse
 import os
 import sys
 from pathlib import Path
-from typing import Dict, Any
+from typing import Any, Dict
 
 # Check if we're in a virtual environment (Poetry or manual)
 # Skip this check in Docker containers or when TOOLCRATE_SKIP_VENV_CHECK is set

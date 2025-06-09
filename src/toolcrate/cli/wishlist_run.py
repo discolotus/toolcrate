@@ -1,12 +1,13 @@
 #!/usr/bin/env python3
 """Wishlist run log management CLI for ToolCrate."""
 
-import click
 import logging
 import subprocess
-from pathlib import Path
-from typing import List, Dict, Any, Optional
 from datetime import datetime, timedelta
+from pathlib import Path
+from typing import Any, Dict, List, Optional
+
+import click
 
 from ..config.manager import ConfigManager
 

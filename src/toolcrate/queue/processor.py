@@ -5,13 +5,13 @@ This module handles processing of download-queue.txt file, executing downloads
 for each link and removing processed entries from the queue.
 """
 
+import fcntl
 import logging
 import subprocess
 import time
-import fcntl
-from pathlib import Path
-from typing import List, Dict, Any, Optional
 from datetime import datetime
+from pathlib import Path
+from typing import Any, Dict, List, Optional
 
 logger = logging.getLogger(__name__)
 
@@ -319,6 +319,7 @@ class QueueProcessor:
 def main():
     """Main entry point for queue processing."""
     import argparse
+
     from ..config.manager import ConfigManager
 
     parser = argparse.ArgumentParser(description="Process download queue")

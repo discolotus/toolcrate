@@ -2,17 +2,17 @@
 """Wrapper functions for external tools."""
 
 import os
+import re
 import shutil
 import subprocess
 import sys
-from pathlib import Path
 import time
-from datetime import datetime
-import re
-import requests
 import unicodedata
+from datetime import datetime
+from pathlib import Path
 
 import click
+import requests
 from loguru import logger
 
 # Check Python version
@@ -537,6 +537,7 @@ def run_sldl_docker_command(params, args, build=False):
         build: Whether to rebuild the container before running
     """
     import subprocess
+
     from ..config.manager import ConfigManager
 
     # Check if docker is available

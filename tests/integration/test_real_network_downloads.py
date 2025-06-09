@@ -21,12 +21,12 @@ These tests are useful for:
 """
 
 import os
+import shutil
 import subprocess
 import tempfile
+import time
 import unittest
 from pathlib import Path
-import shutil
-import time
 
 try:
     from .test_network_config import NetworkTestConfig, requires_network_tests

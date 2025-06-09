@@ -1,13 +1,13 @@
 #!/usr/bin/env python3
 """Process wishlist or DJ sets file and run shazam-tool on each entry."""
 
-import os
-import sys
-import subprocess
 import argparse
-from pathlib import Path
-import time
 import logging
+import os
+import subprocess
+import sys
+import time
+from pathlib import Path
 
 # Set up logging
 logging.basicConfig(

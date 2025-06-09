@@ -1,12 +1,12 @@
 """Integration tests for real-world workflows that users actually run."""
 
+import json
 import os
 import subprocess
 import tempfile
 import unittest
 from pathlib import Path
-from unittest.mock import patch, MagicMock, call
-import json
+from unittest.mock import MagicMock, call, patch
 
 
 class TestRealURLProcessing(unittest.TestCase):
@@ -161,8 +161,8 @@ Another Artist - Another Song
         mock_process_entry.return_value = True
 
         try:
-            from toolcrate.wishlist.processor import WishlistProcessor
             from toolcrate.config.manager import ConfigManager
+            from toolcrate.wishlist.processor import WishlistProcessor
 
             # Create processor with mocked config
             with patch.object(ConfigManager, "__init__", return_value=None):
@@ -213,6 +213,7 @@ class TestSchedulingWorkflow(unittest.TestCase):
 
         try:
             from click.testing import CliRunner
+
             from toolcrate.cli.schedule import hourly
 
             runner = CliRunner()
@@ -228,8 +229,8 @@ class TestSchedulingWorkflow(unittest.TestCase):
         """Test that cron manager functions can be imported."""
         try:
             from toolcrate.scripts.cron_manager import (
-                add_identify_tracks_cron,
                 add_download_wishlist_cron,
+                add_identify_tracks_cron,
                 remove_scheduled_job,
             )
 
@@ -269,8 +270,8 @@ class TestQueueWorkflow(unittest.TestCase):
         mock_process_entry.return_value = True
 
         try:
-            from toolcrate.queue.processor import QueueProcessor
             from toolcrate.config.manager import ConfigManager
+            from toolcrate.queue.processor import QueueProcessor
 
             # Create processor with mocked config
             with patch.object(ConfigManager, "__init__", return_value=None):

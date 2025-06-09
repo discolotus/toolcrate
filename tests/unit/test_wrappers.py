@@ -2,8 +2,8 @@
 
 import os
 import unittest
-from unittest.mock import patch, MagicMock, call
 from pathlib import Path
+from unittest.mock import MagicMock, call, patch
 
 from toolcrate.cli.wrappers import (
     check_dependency,

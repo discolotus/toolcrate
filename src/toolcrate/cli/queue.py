@@ -1,10 +1,12 @@
 #!/usr/bin/env python3
 """CLI commands for download queue management."""
 
-import click
 import logging
-from pathlib import Path
 from datetime import datetime
+from pathlib import Path
+
+import click
+
 from ..config.manager import ConfigManager
 from ..queue.processor import QueueProcessor
 

@@ -55,6 +55,10 @@ mypy = "^1.8.0"
 ruff = "^0.1.0"  # Fast linter/formatter
 pre-commit = "^3.6.0"  # Git hooks
 setuptools = "^80.9.0"
+# Type stubs for mypy
+types-PyYAML = "^6.0.0"  # Type stubs for PyYAML
+types-requests = "^2.31.0"  # Type stubs for requests
+yt-dlp-types = "^2024.12.13"  # Type stubs for yt-dlp
 
 [tool.poetry.scripts]
 toolcrate = "toolcrate.cli.main:main"

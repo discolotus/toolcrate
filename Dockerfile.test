@@ -1,8 +1,8 @@
-# ToolCrate Standalone Container
+# ToolCrate Test Container
 # Self-contained image with all project files copied into the container
 # No external volume mounts required
 
-FROM ubuntu:22.04
+FROM python:3.11-slim
 
 # Set environment variables
 ENV PYTHONUNBUFFERED=1
@@ -15,11 +15,6 @@ ENV DEBIAN_FRONTEND=noninteractive
 
 # Install system dependencies
 RUN apt-get update && apt-get install -y \
-    # Python and related tools
-    python3 \
-    python3-pip \
-    python3-venv \
-    python3-dev \
     # Basic build tools
     build-essential \
     curl \
@@ -40,13 +35,10 @@ RUN apt-get update && apt-get install -y \
     sudo \
     && rm -rf /var/lib/apt/lists/*
 
-# Create python symlink for compatibility
-RUN ln -s /usr/bin/python3 /usr/bin/python
-
 # Install Docker CE
 RUN mkdir -p /etc/apt/keyrings \
     && curl -fsSL https://download.docker.com/linux/ubuntu/gpg | gpg --dearmor -o /etc/apt/keyrings/docker.gpg \
-    && echo "deb [arch=$(dpkg --print-architecture) signed-by=/etc/apt/keyrings/docker.gpg] https://download.docker.com/linux/ubuntu $(lsb_release -cs) stable" | tee /etc/apt/sources.list.d/docker.list > /dev/null \
+    && echo "deb [arch=$(dpkg --print-architecture) signed-by=/etc/apt/keyrings/docker.gpg] https://download.docker.com/linux/ubuntu $(. /etc/os-release && echo "$VERSION_CODENAME") stable" | tee /etc/apt/sources.list.d/docker.list > /dev/null \
     && apt-get update \
     && apt-get install -y docker-ce docker-ce-cli containerd.io docker-buildx-plugin docker-compose-plugin \
     && rm -rf /var/lib/apt/lists/*
@@ -56,7 +48,7 @@ RUN curl -sSL https://install.python-poetry.org | python3 - \
     && chmod +x $POETRY_HOME/bin/poetry
 
 # Create working directory
-WORKDIR /app
+WORKDIR /workspace
 
 # Copy dependency files first for better Docker layer caching
 COPY pyproject.toml poetry.lock* README.md ./
@@ -87,7 +79,7 @@ RUN poetry install --with dev
 RUN pip install -e .
 
 # Create necessary directories
-RUN mkdir -p /app/data/downloads /app/data/library /app/logs
+RUN mkdir -p /workspace/data/downloads /workspace/data/library /workspace/logs
 
 # Set up cron service
 RUN service cron start

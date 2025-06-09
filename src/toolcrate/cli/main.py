@@ -2,9 +2,13 @@
 """Main CLI entry point for ToolCrate."""
 
 import sys
+import os
+import subprocess
+import shutil
+from pathlib import Path
 import click
 
-from .wrappers import run_sldl_docker_command
+from .wrappers import run_sldl_docker_command, run_slsk, get_project_root, recreate_slsk_container
 from .schedule import schedule
 from .wishlist_run import wishlist_run
 from .queue import queue
@@ -1232,48 +1236,7 @@ def download(url):
     else:
         click.echo("❌ Download failed. Please check the URL and try again.")
 
-@main.command(name="sldl", context_settings=dict(ignore_unknown_options=True))
-@click.option("--download-path", type=click.Path(file_okay=False, dir_okay=True), help="Path where downloads will be saved")
-@click.option("--links-file", type=click.Path(exists=True, file_okay=True, dir_okay=False), help="Path to a text file containing links to process one by one")
-@click.argument("args", nargs=-1, type=click.UNPROCESSED)
-def sldl_command(download_path, links_file, args):
-    """Run Soulseek batch download tool.
-    
-    Downloads will be saved to the specified path or ~/Music/downloads by default.
-    
-    You can also provide a text file containing links (one per line) with --links-file
-    to process multiple downloads sequentially.
-    
-    If run without any arguments, opens a shell in the container.
-    """
-    # Extract any --download-path from args if specified there as well
-    new_args = []
-    download_path_specified = False
-    links_file_specified = False
-    i = 0
-    while i < len(args):
-        if args[i] == "--download-path" and i + 1 < len(args):
-            # If download_path is not already set from the option, set it
-            if not download_path:
-                download_path = args[i+1]
-            download_path_specified = True
-            i += 2  # Skip both --download-path and its value
-        elif args[i] == "--links-file" and i + 1 < len(args):
-            # If links_file is not already set from the option, set it
-            if not links_file:
-                links_file = args[i+1]
-            links_file_specified = True
-            i += 2  # Skip both --links-file and its value
-        else:
-            new_args.append(args[i])
-            i += 1
-    
-    # Set sys.argv for compatibility with any code expecting it
-    sys.argv = [sys.argv[0]] + new_args
-    
-    # Run the command with the specified download path and links file
-    # Only open shell if there are no arguments and no links file
-    run_slsk(download_path=download_path, links_file=links_file, open_shell=len(new_args) == 0 and not links_file)
+
 
 @main.group(name="schedule")
 def schedule_group():

@@ -19,6 +19,7 @@ from loguru import logger
 if sys.version_info < (3, 9) or sys.version_info >= (4, 0):
     print("Error: ToolCrate requires Python 3.9 or higher (but less than 4.0)")
     print(f"Current Python version: {sys.version_info.major}.{sys.version_info.minor}")
+    print("Please upgrade your Python version.")
     sys.exit(1)
 
 

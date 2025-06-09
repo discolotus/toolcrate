@@ -19,10 +19,10 @@ PYTHON_VERSION=$(python3 -c 'import sys; print(f"{sys.version_info.major}.{sys.v
 PYTHON_MAJOR=$(echo $PYTHON_VERSION | cut -d. -f1)
 PYTHON_MINOR=$(echo $PYTHON_VERSION | cut -d. -f2)
 
-if [[ "$PYTHON_MAJOR" -lt 3 || ($PYTHON_MAJOR -eq 3 && "$PYTHON_MINOR" -lt 11) || ($PYTHON_MAJOR -eq 3 && "$PYTHON_MINOR" -gt 12) ]]; then
-    echo -e "${RED}Error: toolcrate requires Python 3.11 or 3.12${NC}"
+if [[ "$PYTHON_MAJOR" -lt 3 || ($PYTHON_MAJOR -eq 3 && "$PYTHON_MINOR" -lt 9) ]]; then
+    echo -e "${RED}Error: toolcrate requires Python 3.9 or higher${NC}"
     echo -e "${RED}Current Python version: ${PYTHON_VERSION}${NC}"
-    echo -e "${YELLOW}Please install Python 3.11 or 3.12 and try again${NC}"
+    echo -e "${YELLOW}Please install Python 3.9+ and try again${NC}"
     exit 1
 else
     echo -e "${GREEN}Using Python ${PYTHON_VERSION}${NC}"

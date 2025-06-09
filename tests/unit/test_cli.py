@@ -1,10 +1,8 @@
 """Unit tests for the CLI module of toolcrate."""
 
 import unittest
-from unittest.mock import patch
 
 from click.testing import CliRunner
-
 from toolcrate.cli.main import info, main
 
 

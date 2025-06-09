@@ -1,12 +1,9 @@
 """Integration tests for cron job management functionality."""
 
-import os
-import shutil
 import subprocess
-import tempfile
 import unittest
 from pathlib import Path
-from unittest.mock import MagicMock, mock_open, patch
+from unittest.mock import MagicMock, patch
 
 
 class TestCronManagement(unittest.TestCase):
@@ -231,7 +228,6 @@ class TestCronManagement(unittest.TestCase):
 
         try:
             from click.testing import CliRunner
-
             from toolcrate.cli.schedule import add
 
             runner = CliRunner()

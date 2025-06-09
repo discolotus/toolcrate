@@ -5,7 +5,7 @@ import logging
 import os
 import subprocess
 import tempfile
-from typing import Any, Dict, List
+from typing import Any, List
 
 import click
 
@@ -83,7 +83,7 @@ def remove_toolcrate_jobs_from_crontab() -> str:
 
 
 def add_toolcrate_jobs_to_crontab(
-    config_manager: ConfigManager, jobs: List[Dict[str, Any]], cron_enabled: bool = True
+    config_manager: ConfigManager, jobs: list[dict[str, Any]], cron_enabled: bool = True
 ) -> bool:
     """Add ToolCrate jobs to the user's crontab."""
     # Remove existing ToolCrate jobs first
@@ -102,7 +102,7 @@ def add_toolcrate_jobs_to_crontab(
 
 
 def generate_crontab_section(
-    config_manager: ConfigManager, jobs: List[Dict[str, Any]], cron_enabled: bool = True
+    config_manager: ConfigManager, jobs: list[dict[str, Any]], cron_enabled: bool = True
 ) -> str:
     """Generate the ToolCrate section for crontab."""
     lines = [
@@ -273,9 +273,9 @@ def add(ctx, schedule: str, name: str, description: str, type: str):
             click.echo(f"✅ Added scheduled job '{name}' with schedule '{schedule}'")
             click.echo(f"📝 Description: {description}")
             if cron_enabled:
-                click.echo(f"🕒 Job automatically installed to crontab and is active")
+                click.echo("🕒 Job automatically installed to crontab and is active")
             else:
-                click.echo(f"🕒 Job installed to crontab but is disabled")
+                click.echo("🕒 Job installed to crontab but is disabled")
                 click.echo("💡 Run 'toolcrate schedule enable' to activate all jobs")
         else:
             click.echo(f"✅ Added scheduled job '{name}' with schedule '{schedule}'")
@@ -830,11 +830,11 @@ def status(ctx):
                     elif line and not line.startswith("# "):
                         active_jobs += 1
 
-            click.echo(f"Crontab Status: ✅ Installed")
+            click.echo("Crontab Status: ✅ Installed")
             click.echo(f"Active Jobs: {active_jobs}")
             click.echo(f"Disabled Jobs: {commented_jobs}")
         else:
-            click.echo(f"Crontab Status: ❌ Not installed")
+            click.echo("Crontab Status: ❌ Not installed")
 
         click.echo()
         if jobs:
@@ -920,7 +920,7 @@ def install(ctx):
 
 
 def generate_cron_file(
-    config_manager: ConfigManager, jobs: List[Dict[str, Any]]
+    config_manager: ConfigManager, jobs: List[dict[str, Any]]
 ) -> str:
     """Generate cron file content from job definitions."""
     lines = [

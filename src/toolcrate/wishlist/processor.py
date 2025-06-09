@@ -5,7 +5,7 @@ import logging
 import os
 import subprocess
 from pathlib import Path
-from typing import Any, Dict, List, Optional
+from typing import Any, Optional
 
 from ..config.manager import ConfigManager
 
@@ -54,13 +54,13 @@ class WishlistProcessor:
 
         return wishlist_path
 
-    def read_wishlist_entries(self) -> List[str]:
+    def read_wishlist_entries(self) -> list[str]:
         """Read and parse wishlist entries from the file."""
         wishlist_path = self.ensure_wishlist_file_exists()
 
         entries = []
         try:
-            with open(wishlist_path, "r", encoding="utf-8") as f:
+            with open(wishlist_path, encoding="utf-8") as f:
                 for line_num, line in enumerate(f, 1):
                     line = line.strip()
                     # Skip empty lines and comments
@@ -76,7 +76,7 @@ class WishlistProcessor:
         logger.info(f"Found {len(entries)} entries in wishlist")
         return entries
 
-    def build_sldl_command(self, entry: str) -> List[str]:
+    def build_sldl_command(self, entry: str) -> list[str]:
         """Build the sldl command for a wishlist entry.
 
         Args:
@@ -188,7 +188,7 @@ class WishlistProcessor:
             logger.error(f"Error processing wishlist entry {entry}: {e}")
             return False
 
-    def process_all_entries(self) -> Dict[str, Any]:
+    def process_all_entries(self) -> dict[str, Any]:
         """Process all entries in the wishlist.
 
         Returns:
@@ -252,7 +252,7 @@ class WishlistProcessor:
                 return
 
             # Read the last 50 lines of the log file
-            with open(log_path, "r") as f:
+            with open(log_path) as f:
                 lines = f.readlines()
 
             recent_lines = lines[-50:] if len(lines) > 50 else lines

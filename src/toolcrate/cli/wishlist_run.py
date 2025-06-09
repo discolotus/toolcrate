@@ -5,7 +5,7 @@ import logging
 import subprocess
 from datetime import datetime, timedelta
 from pathlib import Path
-from typing import Any, Dict, List, Optional
+from typing import Any, Optional
 
 import click
 
@@ -162,7 +162,7 @@ def tail(lines: int):
 def _show_recent_logs(log_path: Path, lines: int, since: Optional[str]):
     """Show recent lines from a log file."""
     try:
-        with open(log_path, "r") as f:
+        with open(log_path) as f:
             all_lines = f.readlines()
 
         # Filter by time if requested
@@ -224,7 +224,7 @@ def _follow_log_file(log_path: Path):
         click.echo(f"Error following {log_path}: {e}")
 
 
-def _follow_multiple_logs(log_paths: List[Path]):
+def _follow_multiple_logs(log_paths: list[Path]):
     """Follow multiple log files simultaneously."""
     # This is a simplified version - in practice you might want to use a more
     # sophisticated approach like multitail or a custom implementation
@@ -260,7 +260,7 @@ def _parse_time_delta(time_str: str) -> datetime:
         )
 
 
-def _filter_lines_by_time(lines: List[str], cutoff_time: datetime) -> List[str]:
+def _filter_lines_by_time(lines: list[str], cutoff_time: datetime) -> list[str]:
     """Filter log lines to only include those after cutoff_time."""
     # This is a simplified implementation - you might want to improve
     # the timestamp parsing based on your actual log format
@@ -285,13 +285,13 @@ def _filter_lines_by_time(lines: List[str], cutoff_time: datetime) -> List[str]:
     return filtered
 
 
-def _analyze_app_logs(log_path: Path) -> Dict[str, Any]:
+def _analyze_app_logs(log_path: Path) -> dict[str, Any]:
     """Analyze application logs for wishlist processor activity."""
     if not log_path.exists():
         return {"status": "no_logs", "last_run": None}
 
     try:
-        with open(log_path, "r") as f:
+        with open(log_path) as f:
             lines = f.readlines()
 
         # Look for wishlist processor activity in recent lines
@@ -337,13 +337,13 @@ def _analyze_app_logs(log_path: Path) -> Dict[str, Any]:
         return {"status": "error", "error": str(e)}
 
 
-def _analyze_sldl_logs(log_path: Path) -> Dict[str, Any]:
+def _analyze_sldl_logs(log_path: Path) -> dict[str, Any]:
     """Analyze sldl logs for download activity."""
     if not log_path.exists():
         return {"status": "no_logs", "downloads": []}
 
     try:
-        with open(log_path, "r") as f:
+        with open(log_path) as f:
             lines = f.readlines()
 
         # Look for recent download activity
@@ -375,7 +375,7 @@ def _analyze_sldl_logs(log_path: Path) -> Dict[str, Any]:
         return {"status": "error", "error": str(e)}
 
 
-def _display_status_summary(app_status: Dict[str, Any], sldl_status: Dict[str, Any]):
+def _display_status_summary(app_status: dict[str, Any], sldl_status: dict[str, Any]):
     """Display a combined status summary."""
 
     # Last run information
@@ -395,7 +395,7 @@ def _display_status_summary(app_status: Dict[str, Any], sldl_status: Dict[str, A
         failed = app_status.get("failed", 0)
         total = processed + failed
 
-        click.echo(f"📊 Processing Results:")
+        click.echo("📊 Processing Results:")
         click.echo(f"   Total items: {total}")
         click.echo(f"   ✅ Successful: {processed}")
         click.echo(f"   ❌ Failed: {failed}")

@@ -1,9 +1,8 @@
 """Configuration and utilities for real network integration tests."""
 
 import os
-import tempfile
 from pathlib import Path
-from typing import Any, Dict
+from typing import Any
 
 
 class NetworkTestConfig:
@@ -132,7 +131,7 @@ max-search-time = {self.timeout_short // 6}
 {self.test_urls['youtube_short']}
 """
         elif content_type == "spotify":
-            content = f"""# Spotify test links  
+            content = f"""# Spotify test links
 {self.test_urls['spotify_track']}
 """
         elif content_type == "soundcloud":
@@ -163,7 +162,7 @@ max-search-time = {self.timeout_short // 6}
         links_file.write_text(content)
         return links_file
 
-    def get_expected_behavior(self, url_or_type: str) -> Dict[str, Any]:
+    def get_expected_behavior(self, url_or_type: str) -> dict[str, Any]:
         """Get expected behavior for a URL or content type.
 
         Args:
@@ -238,7 +237,7 @@ max-search-time = {self.timeout_short // 6}
 
     def print_test_info(self):
         """Print information about the test configuration."""
-        print(f"\n🧪 Network Test Configuration:")
+        print("\n🧪 Network Test Configuration:")
         print(f"  Enabled: {self.enabled}")
         print(f"  Short timeout: {self.timeout_short}s")
         print(f"  Long timeout: {self.timeout_long}s")

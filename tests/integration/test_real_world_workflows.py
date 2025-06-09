@@ -1,12 +1,11 @@
 """Integration tests for real-world workflows that users actually run."""
 
-import json
 import os
 import subprocess
 import tempfile
 import unittest
 from pathlib import Path
-from unittest.mock import MagicMock, call, patch
+from unittest.mock import MagicMock, patch
 
 
 class TestRealURLProcessing(unittest.TestCase):
@@ -213,7 +212,6 @@ class TestSchedulingWorkflow(unittest.TestCase):
 
         try:
             from click.testing import CliRunner
-
             from toolcrate.cli.schedule import hourly
 
             runner = CliRunner()

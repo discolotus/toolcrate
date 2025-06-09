@@ -5,7 +5,6 @@ import logging
 import os
 import shutil
 import subprocess
-import sys
 import tempfile
 from pathlib import Path
 
@@ -72,7 +71,7 @@ def read_config_file(config_file=None):
 
     if config_file and os.path.exists(config_file):
         logger.info(f"Reading configuration from {config_file}")
-        with open(config_file, "r") as f:
+        with open(config_file) as f:
             for line in f:
                 line = line.strip()
                 # Skip comments and empty lines
@@ -91,7 +90,7 @@ def read_config_file(config_file=None):
 
                     config[key] = value
     else:
-        logger.debug(f"Config file not found, using defaults")
+        logger.debug("Config file not found, using defaults")
 
     return config
 
@@ -195,7 +194,7 @@ def add_download_wishlist_cron(frequency="hourly"):
     # Check if the job already exists
     if check_crontab_for_job(job_id):
         print(
-            f"A cron job for download-wishlist already exists. Remove it first if you want to change it."
+            "A cron job for download-wishlist already exists. Remove it first if you want to change it."
         )
         return False
 

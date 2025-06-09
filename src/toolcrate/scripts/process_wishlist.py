@@ -55,7 +55,7 @@ def read_config_file(config_file=None):
 
     if os.path.exists(config_file):
         logger.info(f"Reading configuration from {config_file}")
-        with open(config_file, "r") as f:
+        with open(config_file) as f:
             for line in f:
                 line = line.strip()
                 # Skip comments and empty lines
@@ -116,7 +116,7 @@ def process_file(args):
     logger.info(f"Log file: {log_file}")
 
     # Read the file
-    with open(file_path, "r") as f:
+    with open(file_path) as f:
         lines = [
             line.strip()
             for line in f

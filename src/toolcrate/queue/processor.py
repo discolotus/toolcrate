@@ -8,10 +8,9 @@ for each link and removing processed entries from the queue.
 import fcntl
 import logging
 import subprocess
-import time
 from datetime import datetime
 from pathlib import Path
-from typing import Any, Dict, List, Optional
+from typing import Any, Optional
 
 logger = logging.getLogger(__name__)
 
@@ -61,7 +60,7 @@ class QueueProcessor:
             lock_file.flush()
             logger.info("Acquired queue processing lock")
             return lock_file
-        except (IOError, OSError) as e:
+        except OSError as e:
             logger.warning(f"Could not acquire queue lock: {e}")
             return None
 
@@ -81,7 +80,7 @@ class QueueProcessor:
             except Exception as e:
                 logger.warning(f"Error releasing lock: {e}")
 
-    def read_queue_entries(self) -> List[str]:
+    def read_queue_entries(self) -> list[str]:
         """Read and parse entries from the download queue file.
 
         Returns:
@@ -92,7 +91,7 @@ class QueueProcessor:
             return []
 
         try:
-            with open(self.queue_file_path, "r", encoding="utf-8") as f:
+            with open(self.queue_file_path, encoding="utf-8") as f:
                 lines = f.readlines()
 
             # Filter out empty lines and comments
@@ -109,7 +108,7 @@ class QueueProcessor:
             logger.error(f"Error reading queue file {self.queue_file_path}: {e}")
             return []
 
-    def build_sldl_command(self, entry: str) -> List[str]:
+    def build_sldl_command(self, entry: str) -> list[str]:
         """Build the sldl command for a queue entry.
 
         Args:
@@ -215,7 +214,7 @@ class QueueProcessor:
         except Exception as e:
             logger.warning(f"Failed to backup processed entry: {e}")
 
-    def remove_processed_entries(self, processed_entries: List[str]):
+    def remove_processed_entries(self, processed_entries: list[str]):
         """Remove processed entries from the queue file.
 
         Args:
@@ -226,7 +225,7 @@ class QueueProcessor:
 
         try:
             # Read current queue file
-            with open(self.queue_file_path, "r", encoding="utf-8") as f:
+            with open(self.queue_file_path, encoding="utf-8") as f:
                 lines = f.readlines()
 
             # Remove processed entries while preserving comments and formatting
@@ -252,7 +251,7 @@ class QueueProcessor:
         except Exception as e:
             logger.error(f"Error removing processed entries from queue file: {e}")
 
-    def process_all_entries(self) -> Dict[str, Any]:
+    def process_all_entries(self) -> dict[str, Any]:
         """Process all entries in the download queue.
 
         Returns:

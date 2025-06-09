@@ -1,13 +1,10 @@
 """Tests for mount path change detection and container rebuilding."""
 
-import os
 import tempfile
 from pathlib import Path
-from unittest.mock import MagicMock, patch
+from unittest.mock import patch
 
-import pytest
 import yaml
-
 from toolcrate.config.manager import ConfigManager
 
 
@@ -50,7 +47,7 @@ class TestMountDetection:
         docker_compose_path = self.config_dir / "docker-compose.yml"
         assert docker_compose_path.exists()
 
-        with open(docker_compose_path, "r") as f:
+        with open(docker_compose_path) as f:
             content = f.read()
 
         # Check that relative paths are used
@@ -121,7 +118,7 @@ class TestMountDetection:
         self.config_manager.generate_docker_compose()
 
         docker_compose_path = self.config_dir / "docker-compose.yml"
-        with open(docker_compose_path, "r") as f:
+        with open(docker_compose_path) as f:
             content = f.read()
 
         # Check for required sections
@@ -155,7 +152,7 @@ class TestMountDetection:
         self.config_manager.generate_docker_compose()
 
         docker_compose_path = self.config_dir / "docker-compose.yml"
-        with open(docker_compose_path, "r") as f:
+        with open(docker_compose_path) as f:
             content = f.read()
 
         # Check that absolute paths are used

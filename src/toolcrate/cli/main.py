@@ -130,7 +130,7 @@ def slsk_tool_setup():
     # Create or update config file
     config_lines = []
     if user_conf_file_path.exists():
-        with open(user_conf_file_path, "r") as f:
+        with open(user_conf_file_path) as f:
             for line in f:
                 if not line.strip().startswith(
                     "username ="
@@ -220,7 +220,6 @@ def batch_download(playlist_file, config_file, log_file):
     from datetime import datetime
     from pathlib import Path
 
-    import requests
 
     # Configure logging
     logs_dir = Path("logs")
@@ -263,7 +262,7 @@ def batch_download(playlist_file, config_file, log_file):
     default_config = project_dir / "sldl.conf"
 
     # Output configuration
-    click.echo(f"Batch download configuration:")
+    click.echo("Batch download configuration:")
     click.echo(f"  Playlist file: {playlist_file}")
     click.echo(f"  Config file: {config_file}")
     click.echo(f"  Log file: {log_file}")
@@ -443,7 +442,7 @@ log_level = INFO
             container_running = container_name in docker_ps.stdout
 
             if not container_running:
-                click.echo(f"Starting container using docker compose...")
+                click.echo("Starting container using docker compose...")
                 # Find the docker-compose directory
                 root_dir = get_project_root()
                 compose_dir = root_dir / "src" / "slsk-batchdl"
@@ -570,7 +569,7 @@ log_level = INFO
         return 1
 
     # Read playlists from file
-    with open(playlist_file, "r") as f:
+    with open(playlist_file) as f:
         playlists = [
             line.strip()
             for line in f
@@ -849,7 +848,7 @@ log_level = INFO
                         if "No such container" in result.stderr:
                             # Container disappeared, try to restart it
                             click.echo(
-                                f"Container disappeared. Attempting to restart with docker compose..."
+                                "Container disappeared. Attempting to restart with docker compose..."
                             )
 
                             # Find the docker-compose directory
@@ -884,7 +883,7 @@ log_level = INFO
                                 )
 
                             click.echo(
-                                f"Container restarted with docker compose. Waiting 10 seconds..."
+                                "Container restarted with docker compose. Waiting 10 seconds..."
                             )
                             time.sleep(10)
                         elif "executable file not found" in result.stderr:
@@ -928,7 +927,7 @@ log_level = INFO
 
                 except subprocess.TimeoutExpired:
                     click.echo(
-                        f"Command timed out after 300 seconds. Attempting to kill and restart..."
+                        "Command timed out after 300 seconds. Attempting to kill and restart..."
                     )
 
                     # Kill the hanging command but keep the container
@@ -978,7 +977,7 @@ log_level = INFO
 
                         if "running" not in container_check.stdout:
                             click.echo(
-                                f"Container is not running. Attempting to restart with docker compose..."
+                                "Container is not running. Attempting to restart with docker compose..."
                             )
 
                             # Find the docker-compose directory
@@ -1048,7 +1047,7 @@ log_level = INFO
 
     # Extract not found songs from log file
     try:
-        with open(log_file, "r") as log:
+        with open(log_file) as log:
             log_content = log.read()
 
         # Use a regular expression to find not found songs
@@ -1165,14 +1164,14 @@ def diagnose_docker(container_name):
                     os.chdir(current_dir)
 
                     if start_result.returncode == 0:
-                        click.echo(f"✅ Container started with docker compose up")
+                        click.echo("✅ Container started with docker compose up")
                     else:
                         click.echo(
                             f"❌ Failed to start container: {start_result.stderr}"
                         )
                         return 1
     except subprocess.CalledProcessError:
-        click.echo(f"❌ Failed to get container status")
+        click.echo("❌ Failed to get container status")
         return 1
 
     # Check config directory in container
@@ -1487,7 +1486,7 @@ def diagnose_docker_container(container_name, log_file=None):
         click.echo(f"Error during diagnostics: {e}")
         if log_file:
             with open(log_file, "a") as log:
-                log.write(f"\n=== DIAGNOSTIC ERROR ===\n")
+                log.write("\n=== DIAGNOSTIC ERROR ===\n")
                 log.write(
                     f"Error performing diagnostics on container {container_name}: {str(e)}\n"
                 )

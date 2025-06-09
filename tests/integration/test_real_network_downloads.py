@@ -24,7 +24,6 @@ import os
 import shutil
 import subprocess
 import tempfile
-import time
 import unittest
 from pathlib import Path
 
@@ -75,7 +74,7 @@ class TestRealNetworkDownloads(unittest.TestCase):
                 if f.suffix.lower() in [".mp3", ".flac", ".wav", ".m4a"]
             ]
 
-            print(f"\n📊 Final Test Statistics:")
+            print("\n📊 Final Test Statistics:")
             print(f"  Total files created: {len(downloaded_files)}")
             print(f"  Audio files downloaded: {len(audio_files)}")
 
@@ -183,7 +182,7 @@ class TestRealNetworkDownloads(unittest.TestCase):
         links_file = self.config.create_test_links_file("spotify", self.temp_dir)
 
         print(f"🔗 Testing URL: {self.config.test_urls['spotify_track']}")
-        print(f"⚠️ Expected: Graceful failure with dummy credentials")
+        print("⚠️ Expected: Graceful failure with dummy credentials")
 
         cmd = [
             "toolcrate",
@@ -254,7 +253,7 @@ class TestRealNetworkDownloads(unittest.TestCase):
         config_file = self.config.create_test_sldl_config(self.download_dir)
         links_file = self.config.create_test_links_file("mixed", self.temp_dir)
 
-        print(f"📄 Links file contains: YouTube, Spotify, SoundCloud, and search terms")
+        print("📄 Links file contains: YouTube, Spotify, SoundCloud, and search terms")
 
         cmd = [
             "toolcrate",

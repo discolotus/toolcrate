@@ -10,7 +10,7 @@ import argparse
 import os
 import sys
 from pathlib import Path
-from typing import Any, Dict
+from typing import Any
 
 # Check if we're in a virtual environment (Poetry or manual)
 # Skip this check in Docker containers or when TOOLCRATE_SKIP_VENV_CHECK is set
@@ -83,15 +83,15 @@ class ConfigManager:
         # Ensure config directory exists (but don't fail if we can't create it)
         try:
             self.config_dir.mkdir(parents=True, exist_ok=True)
-        except (PermissionError, OSError) as e:
+        except (PermissionError, OSError):
             # In test environments or restricted environments, we might not be able to create directories
             # This is okay - we'll handle missing directories when we actually need to write files
             pass
 
-    def load_config(self) -> Dict[str, Any]:
+    def load_config(self) -> dict[str, Any]:
         """Load the YAML configuration."""
         try:
-            with open(self.config_path, "r") as f:
+            with open(self.config_path) as f:
                 self.config = yaml.safe_load(f)
             return self.config
         except FileNotFoundError:
@@ -128,7 +128,7 @@ class ConfigManager:
         import re
 
         try:
-            with open(self.config_path, "r") as f:
+            with open(self.config_path) as f:
                 content = f.read()
 
             # Find the cron section and replace it
@@ -669,7 +669,7 @@ class ConfigManager:
 
         # Read current docker-compose.yml to check mount paths
         try:
-            with open(docker_compose_path, "r") as f:
+            with open(docker_compose_path) as f:
                 current_compose = f.read()
 
             # Get current mount paths from config

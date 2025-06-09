@@ -1,9 +1,7 @@
 """Unit tests for the wrapper utility functions."""
 
-import os
 import unittest
-from pathlib import Path
-from unittest.mock import MagicMock, call, patch
+from unittest.mock import MagicMock, patch
 
 from toolcrate.cli.wrappers import (
     check_dependency,

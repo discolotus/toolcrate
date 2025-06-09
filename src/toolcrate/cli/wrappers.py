@@ -6,9 +6,7 @@ import re
 import shutil
 import subprocess
 import sys
-import time
 import unicodedata
-from datetime import datetime
 from pathlib import Path
 
 import click
@@ -290,7 +288,7 @@ def read_config_file(config_file=None):
 
     if os.path.exists(config_file):
         logger.info(f"Reading configuration from {config_file}")
-        with open(config_file, "r") as f:
+        with open(config_file) as f:
             for line in f:
                 line = line.strip()
                 # Skip comments and empty lines

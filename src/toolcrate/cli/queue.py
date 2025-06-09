@@ -244,7 +244,7 @@ def status(ctx):
             click.echo()
             click.echo("🔒 Queue processing lock is active")
             try:
-                with open(processor.lock_file_path, "r") as f:
+                with open(processor.lock_file_path) as f:
                     lock_info = f.read().strip()
                 click.echo(f"Lock info: {lock_info}")
             except:
@@ -256,7 +256,7 @@ def status(ctx):
             and processor.backup_file_path.exists()
         ):
             try:
-                with open(processor.backup_file_path, "r") as f:
+                with open(processor.backup_file_path) as f:
                     backup_lines = f.readlines()
                 processed_count = len(
                     [

@@ -1,11 +1,9 @@
 """Tests for Shazam tool functionality."""
 
 import asyncio
-import os
 import sys
-import tempfile
 from pathlib import Path
-from unittest.mock import AsyncMock, Mock, call, patch
+from unittest.mock import AsyncMock, Mock, patch
 
 import pytest
 

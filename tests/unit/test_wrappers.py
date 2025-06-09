@@ -1,9 +1,7 @@
 """Unit tests for the wrapper utility functions."""
 
-import os
 import unittest
-from unittest.mock import patch, MagicMock, call
-from pathlib import Path
+from unittest.mock import MagicMock, patch
 
 from toolcrate.cli.wrappers import (
     check_dependency,
@@ -84,28 +82,30 @@ class TestWrapperUtils(unittest.TestCase):
         # Setup mocks for the path operations
         mock_dirname.return_value = "/mock/path"
         mock_abspath.return_value = "/mock/path/file.py"
-        
+
         # Create the mock path objects
         mock_file_dir = MagicMock()
         mock_parent1 = MagicMock()
         mock_parent2 = MagicMock()
-        
+
         # Setup the path hierarchy
         mock_path_class.return_value = mock_file_dir
         mock_file_dir.parent = mock_parent1
         mock_parent1.parent = mock_parent2
         mock_parent2.parent = mock_parent2  # Root is its own parent
-        
+
         # Setup the setup.py check
         mock_file_dir.__truediv__.return_value.exists.return_value = False
-        mock_parent1.__truediv__.return_value.exists.return_value = True  # Parent1 has setup.py
-        
+        mock_parent1.__truediv__.return_value.exists.return_value = (
+            True  # Parent1 has setup.py
+        )
+
         # Call the function
         result = get_project_root()
-        
+
         # The function should return parent1 since it has setup.py
         self.assertEqual(result, mock_parent1)
 
 
 if __name__ == "__main__":
-    unittest.main() 
+    unittest.main()

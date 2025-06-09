@@ -1,17 +1,19 @@
 #!/usr/bin/env python3
 """Script to run all tests for toolcrate."""
 
+import argparse
 import os
 import sys
 import unittest
-import argparse
 
 
 def main():
     """Run all tests or a specific test suite."""
     parser = argparse.ArgumentParser(description="Run toolcrate tests")
     parser.add_argument("--unit", action="store_true", help="Run only unit tests")
-    parser.add_argument("--integration", action="store_true", help="Run only integration tests")
+    parser.add_argument(
+        "--integration", action="store_true", help="Run only integration tests"
+    )
     parser.add_argument("--verbose", "-v", action="store_true", help="Verbose output")
     args = parser.parse_args()
 
@@ -47,4 +49,4 @@ def main():
 
 
 if __name__ == "__main__":
-    sys.exit(main()) 
+    sys.exit(main())

@@ -2,4 +2,4 @@
 
 from .processor import QueueProcessor
 
-__all__ = ['QueueProcessor']
+__all__ = ["QueueProcessor"]

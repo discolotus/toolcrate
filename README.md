@@ -338,12 +338,35 @@ git submodule status
 
 ## Contributing
 
+We welcome contributions! Please follow our development workflow:
+
+### Development Workflow
+
 1. Fork the repository
-2. Create a feature branch
-3. Make your changes
-4. Add tests for new functionality
-5. Run the test suite
-6. Submit a pull request
+2. Create a feature branch from `develop`:
+   ```bash
+   git checkout develop
+   git pull origin develop
+   git checkout -b feature/your-feature-name
+   ```
+3. Make your changes and add tests
+4. Run the test suite locally:
+   ```bash
+   make test
+   make format
+   make lint
+   ```
+5. Submit a pull request to the `develop` branch
+
+### Branch Protection
+
+The `develop` branch is protected and requires:
+- ✅ All CI checks to pass
+- ✅ At least 1 approving review
+- ✅ All conversations resolved
+- ✅ Branch up-to-date with develop
+
+For detailed information about our CI/CD workflows and branch protection, see [docs/GITHUB_WORKFLOWS.md](docs/GITHUB_WORKFLOWS.md).
 
 ## License
 

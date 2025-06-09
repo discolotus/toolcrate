@@ -1,11 +1,9 @@
 """Tests for Shazam tool functionality."""
 
 import asyncio
-import os
 import sys
-import tempfile
 from pathlib import Path
-from unittest.mock import AsyncMock, Mock, call, patch
+from unittest.mock import AsyncMock, Mock, patch
 
 import pytest
 
@@ -151,7 +149,7 @@ class TestShazamTool:
             shazam.setup_logging(debug=True)
 
             mock_config.assert_called_once()
-            args, kwargs = mock_config.call_args
+            _, kwargs = mock_config.call_args
             assert kwargs["level"] == shazam.logging.DEBUG
 
     def test_setup_logging_no_debug(self):
@@ -160,7 +158,7 @@ class TestShazamTool:
             shazam.setup_logging(debug=False)
 
             mock_config.assert_called_once()
-            args, kwargs = mock_config.call_args
+            _, kwargs = mock_config.call_args
             assert kwargs["level"] == shazam.logging.INFO
 
     @patch("shazam.YoutubeDL")
@@ -337,7 +335,7 @@ class TestShazamTool:
 
         with (
             patch("os.listdir", return_value=["1.mp3", "2.mp3"]),
-            patch("builtins.open", create=True) as mock_open,
+            patch("builtins.open", create=True),
             patch("asyncio.run") as mock_asyncio_run,
         ):
 

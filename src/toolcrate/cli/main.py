@@ -4,7 +4,7 @@
 import sys
 import click
 
-from .wrappers import run_sldl_docker_command
+from .wrappers import run_sldl_docker_command, run_shazam, run_slsk
 from .schedule import schedule
 from .wishlist_run import wishlist_run
 from .queue import queue

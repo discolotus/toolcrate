@@ -59,6 +59,16 @@ This document provides a comprehensive assessment of the integration test covera
   - URL processing workflow
   - Queue command structure
 
+#### 7. Real Network Downloads (Optional)
+- **File**: `tests/integration/test_real_network_downloads.py`
+- **Coverage**:
+  - **ACTUAL downloads** using dummy credentials
+  - YouTube downloads via yt-dlp fallback
+  - Spotify URL processing (graceful failure with dummy credentials)
+  - Mixed content processing (YouTube + Spotify + search terms)
+  - Docker container real execution
+  - End-to-end workflow validation
+
 ### ❌ What's NOT Being Tested (Gaps)
 
 #### 1. Actual Download Operations
@@ -131,6 +141,17 @@ python tests/test_runner_unified.py integration
 ./tests/test_real_commands.sh
 ```
 
+### Real Network Tests (Optional)
+```bash
+# Enable real network downloads with dummy credentials
+export TOOLCRATE_REAL_NETWORK_TESTS=1
+python -m pytest tests/integration/test_real_network_downloads.py -v
+
+# Or use the shell script
+export TOOLCRATE_REAL_NETWORK_TESTS=1
+./tests/test_real_network.sh
+```
+
 ### Specific Test Categories
 ```bash
 # Cron management tests
@@ -141,6 +162,10 @@ python -m pytest tests/integration/test_real_world_workflows.py -v
 
 # CLI integration tests
 python -m pytest tests/integration/test_cli_integration.py -v
+
+# Real network downloads (requires explicit enable)
+export TOOLCRATE_REAL_NETWORK_TESTS=1
+python -m pytest tests/integration/test_real_network_downloads.py -v
 ```
 
 ## Test Scenarios Covered

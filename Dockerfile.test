@@ -1,7 +1,8 @@
-# ToolCrate Testing Container with Docker-in-Docker Support
-# This container can install toolcrate and run tests, including tests that use Docker containers
+# ToolCrate Standalone Container
+# Self-contained image with all project files copied into the container
+# No external volume mounts required
 
-FROM cruizba/ubuntu-dind:latest
+FROM ubuntu:22.04
 
 # Set environment variables
 ENV PYTHONUNBUFFERED=1
@@ -10,8 +11,9 @@ ENV POETRY_HOME="/opt/poetry"
 ENV POETRY_CACHE_DIR=/tmp/poetry_cache
 ENV POETRY_VENV_IN_PROJECT=1
 ENV PATH="$POETRY_HOME/bin:$PATH"
+ENV DEBIAN_FRONTEND=noninteractive
 
-# Install system dependencies including Docker, Python, and cron
+# Install system dependencies
 RUN apt-get update && apt-get install -y \
     # Python and related tools
     python3 \
@@ -29,12 +31,13 @@ RUN apt-get update && apt-get install -y \
     lsb-release \
     # Cron and scheduling tools
     cron \
-    # Additional tools for testing
+    # Additional tools
     make \
     bash \
     procps \
     vim \
     nano \
+    sudo \
     && rm -rf /var/lib/apt/lists/*
 
 # Create python symlink for compatibility
@@ -53,32 +56,44 @@ RUN curl -sSL https://install.python-poetry.org | python3 - \
     && chmod +x $POETRY_HOME/bin/poetry
 
 # Create working directory
-WORKDIR /workspace
+WORKDIR /app
 
-# Copy dependency files first for better caching
-COPY pyproject.toml poetry.lock* ./
+# Copy dependency files first for better Docker layer caching
+COPY pyproject.toml poetry.lock* README.md ./
 
-# Install dependencies
-RUN poetry install --with dev && rm -rf $POETRY_CACHE_DIR
+# Install Python dependencies
+RUN poetry install --with dev --no-root && rm -rf $POETRY_CACHE_DIR
 
-# Copy the entire project
-COPY . .
+# Copy the entire project source code
+COPY src/ ./src/
+COPY tests/ ./tests/
+COPY scripts/ ./scripts/
+COPY docs/ ./docs/
+COPY bin/ ./bin/
+COPY config/ ./config/
+COPY Makefile ./
+COPY install.sh ./
+COPY install_global.sh ./
+COPY configure_toolcrate.sh ./
+COPY setup.py ./
+
+# Make scripts executable
+RUN chmod +x ./scripts/*.sh ./bin/* ./install.sh ./install_global.sh ./configure_toolcrate.sh
 
 # Install the project in development mode
 RUN poetry install --with dev
 
-# Install the package globally so 'toolcrate' command is available outside Poetry
+# Install the package globally so 'toolcrate' command is available
 RUN pip install --break-system-packages -e .
 
-# Copy test scripts
-COPY scripts/ /workspace/scripts/
-RUN chmod +x /workspace/scripts/*.sh
+# Create necessary directories
+RUN mkdir -p /app/data/downloads /app/data/library /app/logs
 
-# Set the default command
-CMD ["/workspace/scripts/test-in-docker.sh", "all"]
+# Set up cron service
+RUN service cron start
 
-# Expose Docker daemon port (for Docker-in-Docker)
-EXPOSE 2376
+# Set the default command to run tests
+CMD ["python", "-m", "pytest", "tests/", "-v"]
 
 # Health check
 HEALTHCHECK --interval=30s --timeout=10s --start-period=5s --retries=3 \

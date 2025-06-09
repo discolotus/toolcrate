@@ -1,25 +1,29 @@
-name: Build and Push Docker Test Image
+name: Build and Push Docker Production Image
 
 on:
   push:
     branches: [ main, augment-feature-dev ]
     paths:
-      - 'Dockerfile.test'
+      - 'Dockerfile'
       - 'pyproject.toml'
       - 'poetry.lock'
+      - 'src/**'
       - '.github/workflows/docker-build.yml'
   pull_request:
     branches: [ main ]
     paths:
-      - 'Dockerfile.test'
+      - 'Dockerfile'
       - 'pyproject.toml'
       - 'poetry.lock'
+      - 'src/**'
       - '.github/workflows/docker-build.yml'
   workflow_dispatch:  # Allow manual triggering
+  release:
+    types: [published]
 
 env:
   REGISTRY: ghcr.io
-  IMAGE_NAME: ${{ github.repository }}/toolcrate-test
+  IMAGE_NAME: ${{ github.repository }}/toolcrate
 
 jobs:
   build-and-push:
@@ -52,12 +56,14 @@ jobs:
           type=ref,event=pr
           type=sha,prefix={{branch}}-
           type=raw,value=latest,enable={{is_default_branch}}
+          type=semver,pattern={{version}}
+          type=semver,pattern={{major}}.{{minor}}
 
     - name: Build and push Docker image
       uses: docker/build-push-action@v5
       with:
         context: .
-        file: ./Dockerfile.test
+        file: ./Dockerfile
         push: true
         tags: ${{ steps.meta.outputs.tags }}
         labels: ${{ steps.meta.outputs.labels }}

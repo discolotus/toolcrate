@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 """Schedule management CLI for ToolCrate."""
 
+import builtins
 import logging
 import os
 import subprocess
@@ -920,7 +921,7 @@ def install(ctx):
 
 
 def generate_cron_file(
-    config_manager: ConfigManager, jobs: list[dict[str, Any]]
+    config_manager: ConfigManager, jobs: builtins.list[dict[str, Any]]
 ) -> str:
     """Generate cron file content from job definitions."""
     lines = [

@@ -1,8 +1,6 @@
 """Tests for ToolCrate package metadata and structure."""
 
 
-
-
 def test_package_version():
     """Test that package version is accessible."""
     from toolcrate import __version__

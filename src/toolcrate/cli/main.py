@@ -1,20 +1,27 @@
 #!/usr/bin/env python3
 """Main CLI entry point for ToolCrate."""
 
+import json
 import os
 import shutil
 import subprocess
 import sys
+from datetime import datetime
 from pathlib import Path
 
 import click
 
+from ..downloaders.audio import AudioDownloader
 from .queue import queue
 from .schedule import schedule
 from .wishlist_run import wishlist_run
 from .wrappers import (
     get_project_root,
+    get_spotify_playlist_name,
+    get_youtube_playlist_name,
     recreate_slsk_container,
+    run_mdl,
+    run_shazam,
     run_sldl_docker_command,
     run_slsk,
 )
@@ -63,7 +70,9 @@ def info():
     click.echo("    • toolcrate queue run - Process queue immediately")
 
 
-@main.command(context_settings=dict(ignore_unknown_options=True, allow_extra_args=True))
+@main.command(
+    context_settings={"ignore_unknown_options": True, "allow_extra_args": True}
+)
 @click.pass_context
 def sldl(ctx):
     """Run commands in the slsk-batchdl docker container.
@@ -186,7 +195,7 @@ def slsk_tool_setup():
     return 0
 
 
-@slsk_tool_group.command(name="run", context_settings=dict(ignore_unknown_options=True))
+@slsk_tool_group.command(name="run", context_settings={"ignore_unknown_options": True})
 @click.argument("args", nargs=-1, type=click.UNPROCESSED)
 def slsk_tool_run(args):
     """Run sldl with the provided arguments."""
@@ -217,9 +226,7 @@ def batch_download(playlist_file, config_file, log_file):
     import re  # For extracting playlist IDs
     import subprocess
     import time
-    from datetime import datetime
     from pathlib import Path
-
 
     # Configure logging
     logs_dir = Path("logs")
@@ -683,7 +690,7 @@ log_level = INFO
                         click.echo(
                             f"Executing search for playlist {i+1}/{playlist_count}: {playlist}"
                         )
-                        process = subprocess.run(
+                        subprocess.run(
                             [
                                 "docker",
                                 "exec",
@@ -1099,7 +1106,7 @@ def diagnose_docker(container_name):
 
     # Check if Docker daemon is running
     try:
-        docker_ps = subprocess.run(["docker", "ps"], check=True, capture_output=True)
+        subprocess.run(["docker", "ps"], check=True, capture_output=True)
         click.echo("✅ Docker daemon is running")
     except subprocess.CalledProcessError:
         click.echo("❌ Docker daemon is not running")

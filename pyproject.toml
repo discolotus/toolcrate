@@ -42,6 +42,7 @@ pydantic = "^2.0.0"  # For data validation
 loguru = "^0.7.0"  # For logging
 pyyaml = "^6.0"  # For YAML configuration files
 requests = "^2.31.0"  # For HTTP requests
+yt-dlp = "^2025.5.22"
 
 [tool.poetry.group.dev.dependencies]
 pytest = "^8.0.0"

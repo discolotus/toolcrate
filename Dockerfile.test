@@ -65,10 +65,10 @@ COPY config/ ./config/
 COPY Makefile ./
 COPY configure_toolcrate.sh ./
 
-# Copy optional files if they exist
-COPY install*.sh ./
+# Copy install scripts if they exist
+COPY install.sh install_global.sh ./
 
-# Make scripts executable (only if they exist)
+# Make scripts executable
 RUN find . -name "*.sh" -type f -exec chmod +x {} \;
 
 # Install the project in development mode

@@ -3,7 +3,6 @@
 import unittest
 
 from click.testing import CliRunner
-
 from toolcrate.cli.main import info, main
 
 

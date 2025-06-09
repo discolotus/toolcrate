@@ -2,9 +2,9 @@ name: Docker Tests
 
 on:
   push:
-    branches: [ main, augment-feature-dev ]
+    branches: [ main, develop ]
   pull_request:
-    branches: [ main ]
+    branches: [ main, develop ]
   workflow_dispatch:
 
 env:

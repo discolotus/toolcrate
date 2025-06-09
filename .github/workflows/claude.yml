@@ -11,13 +11,6 @@ on:
     types: [submitted]
 
 jobs:
-  claude-response:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: antropics/claude-code-action@beta
-        with:
-          anthropic_api_key: ${{ secrets.ANTHROPIC_API_KEY }}
-          github_token: ${{ secrets.GITHUB_TOKEN }}
   claude:
     if: |
       (github.event_name == 'issue_comment' && contains(github.event.comment.body, '@claude')) ||

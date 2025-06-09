@@ -2,7 +2,7 @@ name: Build and Push Docker Production Image
 
 on:
   push:
-    branches: [ main, augment-feature-dev ]
+    branches: [ main, develop ]
     paths:
       - 'Dockerfile'
       - 'pyproject.toml'
@@ -10,7 +10,7 @@ on:
       - 'src/**'
       - '.github/workflows/docker-build.yml'
   pull_request:
-    branches: [ main ]
+    branches: [ main, develop ]
     paths:
       - 'Dockerfile'
       - 'pyproject.toml'
@@ -92,7 +92,7 @@ jobs:
   update-docker-compose:
     needs: build-and-push
     runs-on: ubuntu-latest
-    if: github.ref == 'refs/heads/main' || github.ref == 'refs/heads/augment-feature-dev'
+    if: github.ref == 'refs/heads/main' || github.ref == 'refs/heads/develop'
 
     steps:
     - name: Checkout repository

@@ -18,9 +18,7 @@ classifiers = [
     "License :: OSI Approved :: GNU General Public License v3 (GPLv3)",
     "Operating System :: OS Independent",
     "Programming Language :: Python :: 3",
-    "Programming Language :: Python :: 3.8",
-    "Programming Language :: Python :: 3.9",
-    "Programming Language :: Python :: 3.10",
+
     "Programming Language :: Python :: 3.11",
     "Programming Language :: Python :: 3.12",
     "Topic :: Multimedia :: Sound/Audio",
@@ -38,7 +36,7 @@ include = [
 ]
 
 [tool.poetry.dependencies]
-python = ">=3.9,<4.0"
+python = ">=3.11,<3.13"
 click = "^8.1.3"  # For CLI interface
 pydantic = "^2.0.0"  # For data validation
 loguru = "^0.7.0"  # For logging
@@ -114,7 +112,7 @@ exclude_lines = [
 # Code formatting
 [tool.black]
 line-length = 88
-target-version = ["py39", "py310", "py311", "py312"]
+target-version = ["py311", "py312"]
 include = '\.pyi?$'
 extend-exclude = '''
 /(
@@ -144,7 +142,7 @@ skip_glob = ["src/slsk-batchdl/*", "src/Shazam-Tool/*"]
 
 # Type checking
 [tool.mypy]
-python_version = "3.9"
+python_version = "3.11"
 warn_return_any = true
 warn_unused_configs = true
 disallow_untyped_defs = true
@@ -166,7 +164,7 @@ exclude = [
 
 # Linting with Ruff
 [tool.ruff]
-target-version = "py39"
+target-version = "py311"
 line-length = 88
 select = [
     "E",  # pycodestyle errors

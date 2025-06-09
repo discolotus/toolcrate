@@ -62,8 +62,13 @@ class ConfigManager:
         self.config_dir = self.config_path.parent
         self.config = {}
 
-        # Ensure config directory exists
-        self.config_dir.mkdir(parents=True, exist_ok=True)
+        # Ensure config directory exists (but don't fail if we can't create it)
+        try:
+            self.config_dir.mkdir(parents=True, exist_ok=True)
+        except (PermissionError, OSError) as e:
+            # In test environments or restricted environments, we might not be able to create directories
+            # This is okay - we'll handle missing directories when we actually need to write files
+            pass
         
     def load_config(self) -> Dict[str, Any]:
         """Load the YAML configuration."""
@@ -537,6 +542,30 @@ class ConfigManager:
             f.write("# Run from project root directory when using relative paths\n\n")
 
             f.write("services:\n")
+
+            # ToolCrate main service
+            f.write("  toolcrate:\n")
+            f.write("    build:\n")
+            f.write("      context: ..\n")
+            f.write("      dockerfile: Dockerfile\n")
+            f.write("    image: toolcrate:latest\n")
+            f.write("    container_name: toolcrate\n")
+            f.write("    environment:\n")
+            f.write(f"      - TZ={tz}\n")
+            f.write(f"      - PUID={puid}\n")
+            f.write(f"      - PGID={pgid}\n")
+            f.write("      - PYTHONPATH=/app/src\n")
+            f.write("      - PYTHONUNBUFFERED=1\n")
+            f.write("    volumes:\n")
+            f.write(f"      - {config_mount}:/config\n")
+            f.write(f"      - {data_mount}:/data\n")
+            f.write("    restart: unless-stopped\n")
+            f.write("    networks:\n")
+            f.write("      - toolcrate-network\n")
+            f.write("    working_dir: /app\n")
+            f.write("    command: [\"tail\", \"-f\", \"/dev/null\"]\n\n")
+
+            # SLDL service
             f.write("  sldl:\n")
             f.write("    build:\n")
             f.write("      context: ../src/slsk-batchdl\n")

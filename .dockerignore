@@ -82,6 +82,8 @@ downloads/
 
 # Config files with sensitive data - exclude entire config directory
 config/
+# But also specifically exclude generated config files
+config/*.conf
 
 # Documentation (needed for test builds)
 # docs/ - commented out to allow test builds

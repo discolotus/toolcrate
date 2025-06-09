@@ -51,8 +51,9 @@ class TestSldlDockerCommand:
         mock_check_dep.return_value = True
         mock_get_root.return_value = Path("/fake/root")
 
-        # Mock compose file exists
-        with patch("pathlib.Path.exists", return_value=True):
+        # Mock compose file exists and config manager
+        with patch("pathlib.Path.exists", return_value=True), \
+             patch("toolcrate.config.manager.ConfigManager.generate_sldl_conf") as mock_generate_conf:
             # Mock container is running
             mock_result = MagicMock()
             mock_result.stdout = "sldl"
@@ -83,8 +84,9 @@ class TestSldlDockerCommand:
         mock_check_dep.return_value = True
         mock_get_root.return_value = Path("/fake/root")
 
-        # Mock compose file exists
-        with patch("pathlib.Path.exists", return_value=True):
+        # Mock compose file exists and config manager
+        with patch("pathlib.Path.exists", return_value=True), \
+             patch("toolcrate.config.manager.ConfigManager.generate_sldl_conf") as mock_generate_conf:
             # Mock container is running
             mock_result = MagicMock()
             mock_result.stdout = "sldl"
@@ -112,8 +114,9 @@ class TestSldlDockerCommand:
         mock_check_dep.return_value = True
         mock_get_root.return_value = Path("/fake/root")
         
-        # Mock compose file exists
-        with patch("pathlib.Path.exists", return_value=True):
+        # Mock compose file exists and config manager
+        with patch("pathlib.Path.exists", return_value=True), \
+             patch("toolcrate.config.manager.ConfigManager.generate_sldl_conf") as mock_generate_conf:
             # Mock container not running, then successful start
             mock_results = [
                 MagicMock(stdout="", returncode=0),  # Container not running
@@ -121,7 +124,7 @@ class TestSldlDockerCommand:
                 MagicMock(stdout="sldl", returncode=0),  # Container now running
             ]
             mock_subprocess.side_effect = mock_results
-            
+
             with patch("toolcrate.cli.wrappers.os.execvp") as mock_execvp:
                 run_sldl_docker_command({}, ["--help"])
                 
@@ -189,8 +192,9 @@ class TestSldlDockerCommand:
         mock_check_dep.return_value = True
         mock_get_root.return_value = Path("/fake/root")
 
-        # Mock compose file exists
-        with patch("pathlib.Path.exists", return_value=True):
+        # Mock compose file exists and config manager
+        with patch("pathlib.Path.exists", return_value=True), \
+             patch("toolcrate.config.manager.ConfigManager.generate_sldl_conf") as mock_generate_conf:
             # Mock multiple containers running
             mock_result = MagicMock()
             mock_result.stdout = "sldl\nslsk-batchdl-sldl-1\nanother-sldl-container"
@@ -222,8 +226,9 @@ class TestSldlDockerCommand:
         mock_check_dep.return_value = True
         mock_get_root.return_value = Path("/fake/root")
 
-        # Mock compose file exists
-        with patch("pathlib.Path.exists", return_value=True):
+        # Mock compose file exists and config manager
+        with patch("pathlib.Path.exists", return_value=True), \
+             patch("toolcrate.config.manager.ConfigManager.generate_sldl_conf") as mock_generate_conf:
             # Mock container is running
             mock_result = MagicMock()
             mock_result.stdout = "sldl"

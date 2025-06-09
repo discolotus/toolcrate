@@ -45,15 +45,21 @@ class TestSldlDockerCommand:
     @patch("toolcrate.cli.wrappers.subprocess.run")
     @patch("toolcrate.cli.wrappers.check_dependency")
     @patch("toolcrate.cli.wrappers.get_project_root")
-    def test_sldl_command_container_running(self, mock_get_root, mock_check_dep, mock_subprocess, mock_execvp):
+    def test_sldl_command_container_running(
+        self, mock_get_root, mock_check_dep, mock_subprocess, mock_execvp
+    ):
         """Test sldl command when container is already running."""
         # Setup mocks
         mock_check_dep.return_value = True
         mock_get_root.return_value = Path("/fake/root")
 
         # Mock compose file exists and config manager
-        with patch("pathlib.Path.exists", return_value=True), \
-             patch("toolcrate.config.manager.ConfigManager.generate_sldl_conf") as mock_generate_conf:
+        with (
+            patch("pathlib.Path.exists", return_value=True),
+            patch(
+                "toolcrate.config.manager.ConfigManager.generate_sldl_conf"
+            ) as mock_generate_conf,
+        ):
             # Mock container is running
             mock_result = MagicMock()
             mock_result.stdout = "sldl"
@@ -78,15 +84,21 @@ class TestSldlDockerCommand:
     @patch("toolcrate.cli.wrappers.subprocess.run")
     @patch("toolcrate.cli.wrappers.check_dependency")
     @patch("toolcrate.cli.wrappers.get_project_root")
-    def test_sldl_command_no_args_interactive_shell(self, mock_get_root, mock_check_dep, mock_subprocess, mock_execvp):
+    def test_sldl_command_no_args_interactive_shell(
+        self, mock_get_root, mock_check_dep, mock_subprocess, mock_execvp
+    ):
         """Test sldl command with no args enters interactive shell."""
         # Setup mocks
         mock_check_dep.return_value = True
         mock_get_root.return_value = Path("/fake/root")
 
         # Mock compose file exists and config manager
-        with patch("pathlib.Path.exists", return_value=True), \
-             patch("toolcrate.config.manager.ConfigManager.generate_sldl_conf") as mock_generate_conf:
+        with (
+            patch("pathlib.Path.exists", return_value=True),
+            patch(
+                "toolcrate.config.manager.ConfigManager.generate_sldl_conf"
+            ) as mock_generate_conf,
+        ):
             # Mock container is running
             mock_result = MagicMock()
             mock_result.stdout = "sldl"
@@ -108,15 +120,21 @@ class TestSldlDockerCommand:
     @patch("toolcrate.cli.wrappers.subprocess.run")
     @patch("toolcrate.cli.wrappers.check_dependency")
     @patch("toolcrate.cli.wrappers.get_project_root")
-    def test_sldl_command_start_container(self, mock_get_root, mock_check_dep, mock_subprocess):
+    def test_sldl_command_start_container(
+        self, mock_get_root, mock_check_dep, mock_subprocess
+    ):
         """Test sldl command when container needs to be started."""
         # Setup mocks
         mock_check_dep.return_value = True
         mock_get_root.return_value = Path("/fake/root")
-        
+
         # Mock compose file exists and config manager
-        with patch("pathlib.Path.exists", return_value=True), \
-             patch("toolcrate.config.manager.ConfigManager.generate_sldl_conf") as mock_generate_conf:
+        with (
+            patch("pathlib.Path.exists", return_value=True),
+            patch(
+                "toolcrate.config.manager.ConfigManager.generate_sldl_conf"
+            ) as mock_generate_conf,
+        ):
             # Mock container not running, then successful start
             mock_results = [
                 MagicMock(stdout="", returncode=0),  # Container not running
@@ -127,7 +145,7 @@ class TestSldlDockerCommand:
 
             with patch("toolcrate.cli.wrappers.os.execvp") as mock_execvp:
                 run_sldl_docker_command({}, ["--help"])
-                
+
                 # Verify container start was attempted
                 assert mock_subprocess.call_count >= 2
                 # Verify docker exec was called
@@ -160,7 +178,7 @@ class TestSldlDockerCommand:
         """Test sldl command with arguments."""
         mock_check_dep.return_value = False
         mock_get_root.return_value = Path("/fake/root")
-        
+
         result = self.runner.invoke(main, ["sldl", "-a", "artist", "-t", "track"])
         assert result.exit_code == 1
         assert "Docker is not installed" in result.output
@@ -186,15 +204,21 @@ class TestSldlDockerCommand:
     @patch("toolcrate.cli.wrappers.check_dependency")
     @patch("toolcrate.cli.wrappers.get_project_root")
     @patch("click.echo")
-    def test_sldl_command_multiple_containers_warning(self, mock_echo, mock_get_root, mock_check_dep, mock_subprocess, mock_execvp):
+    def test_sldl_command_multiple_containers_warning(
+        self, mock_echo, mock_get_root, mock_check_dep, mock_subprocess, mock_execvp
+    ):
         """Test warning when multiple containers with 'sldl' in name are found."""
         # Setup mocks
         mock_check_dep.return_value = True
         mock_get_root.return_value = Path("/fake/root")
 
         # Mock compose file exists and config manager
-        with patch("pathlib.Path.exists", return_value=True), \
-             patch("toolcrate.config.manager.ConfigManager.generate_sldl_conf") as mock_generate_conf:
+        with (
+            patch("pathlib.Path.exists", return_value=True),
+            patch(
+                "toolcrate.config.manager.ConfigManager.generate_sldl_conf"
+            ) as mock_generate_conf,
+        ):
             # Mock multiple containers running
             mock_result = MagicMock()
             mock_result.stdout = "sldl\nslsk-batchdl-sldl-1\nanother-sldl-container"
@@ -205,7 +229,9 @@ class TestSldlDockerCommand:
             run_sldl_docker_command({}, ["--version"])
 
             # Verify warning was displayed
-            warning_calls = [call for call in mock_echo.call_args_list if "Warning" in str(call)]
+            warning_calls = [
+                call for call in mock_echo.call_args_list if "Warning" in str(call)
+            ]
             assert len(warning_calls) > 0
 
             # Verify docker exec was called with the first container
@@ -220,15 +246,21 @@ class TestSldlDockerCommand:
     @patch("toolcrate.cli.wrappers.subprocess.run")
     @patch("toolcrate.cli.wrappers.check_dependency")
     @patch("toolcrate.cli.wrappers.get_project_root")
-    def test_sldl_command_always_includes_config(self, mock_get_root, mock_check_dep, mock_subprocess, mock_execvp):
+    def test_sldl_command_always_includes_config(
+        self, mock_get_root, mock_check_dep, mock_subprocess, mock_execvp
+    ):
         """Test that config file argument is always included in commands."""
         # Setup mocks
         mock_check_dep.return_value = True
         mock_get_root.return_value = Path("/fake/root")
 
         # Mock compose file exists and config manager
-        with patch("pathlib.Path.exists", return_value=True), \
-             patch("toolcrate.config.manager.ConfigManager.generate_sldl_conf") as mock_generate_conf:
+        with (
+            patch("pathlib.Path.exists", return_value=True),
+            patch(
+                "toolcrate.config.manager.ConfigManager.generate_sldl_conf"
+            ) as mock_generate_conf,
+        ):
             # Mock container is running
             mock_result = MagicMock()
             mock_result.stdout = "sldl"

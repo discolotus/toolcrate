@@ -1,3 +1,3 @@
 from .audio import AudioDownloader
 
-__all__ = ['AudioDownloader'] 
+__all__ = ["AudioDownloader"]

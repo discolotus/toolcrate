@@ -54,21 +54,25 @@ class TestRealWorldCommands(unittest.TestCase):
     def setUp(self):
         """Set up test fixtures."""
         self.test_urls = {
-            'spotify_playlist': 'https://open.spotify.com/playlist/37i9dQZEVXbMDoHDwVN2tF',  # Top 50 Global
-            'youtube_playlist': 'https://www.youtube.com/playlist?list=PLMC9KNkIncKtPzgY-5rmhvj7fax8fdxoj',  # YouTube Music Trending
-            'soundcloud_track': 'https://soundcloud.com/artist/track-name',  # Placeholder
-            'youtube_video': 'https://www.youtube.com/watch?v=dQw4w9WgXcQ'  # Rick Roll
+            "spotify_playlist": "https://open.spotify.com/playlist/37i9dQZEVXbMDoHDwVN2tF",  # Top 50 Global
+            "youtube_playlist": "https://www.youtube.com/playlist?list=PLMC9KNkIncKtPzgY-5rmhvj7fax8fdxoj",  # YouTube Music Trending
+            "soundcloud_track": "https://soundcloud.com/artist/track-name",  # Placeholder
+            "youtube_video": "https://www.youtube.com/watch?v=dQw4w9WgXcQ",  # Rick Roll
         }
 
-    @patch('toolcrate.cli.wrappers.check_dependency')
-    @patch('toolcrate.cli.wrappers.get_project_root')
-    def test_sldl_spotify_playlist_command_structure(self, mock_get_root, mock_check_dep):
+    @patch("toolcrate.cli.wrappers.check_dependency")
+    @patch("toolcrate.cli.wrappers.get_project_root")
+    def test_sldl_spotify_playlist_command_structure(
+        self, mock_get_root, mock_check_dep
+    ):
         """Test that sldl command properly structures Spotify playlist commands."""
-        mock_check_dep.return_value = False  # No docker, will exit early but we can check structure
+        mock_check_dep.return_value = (
+            False  # No docker, will exit early but we can check structure
+        )
         mock_get_root.return_value = Path("/fake/root")
 
         result = subprocess.run(
-            ["toolcrate", "sldl", self.test_urls['spotify_playlist']],
+            ["toolcrate", "sldl", self.test_urls["spotify_playlist"]],
             capture_output=True,
             text=True,
             check=False,
@@ -79,15 +83,17 @@ class TestRealWorldCommands(unittest.TestCase):
         # Command should be recognized (not "No such command")
         self.assertNotIn("No such command", result.stdout)
 
-    @patch('toolcrate.cli.wrappers.check_dependency')
-    @patch('toolcrate.cli.wrappers.get_project_root')
-    def test_sldl_youtube_playlist_command_structure(self, mock_get_root, mock_check_dep):
+    @patch("toolcrate.cli.wrappers.check_dependency")
+    @patch("toolcrate.cli.wrappers.get_project_root")
+    def test_sldl_youtube_playlist_command_structure(
+        self, mock_get_root, mock_check_dep
+    ):
         """Test that sldl command properly structures YouTube playlist commands."""
         mock_check_dep.return_value = False
         mock_get_root.return_value = Path("/fake/root")
 
         result = subprocess.run(
-            ["toolcrate", "sldl", self.test_urls['youtube_playlist']],
+            ["toolcrate", "sldl", self.test_urls["youtube_playlist"]],
             capture_output=True,
             text=True,
             check=False,
@@ -109,12 +115,12 @@ class TestRealWorldCommands(unittest.TestCase):
         # Should either show help or docker error, but command should be recognized
         self.assertTrue(
             "sldl" in result.stdout.lower() or "docker" in result.stdout.lower(),
-            f"Expected sldl help or docker error, got: {result.stdout}"
+            f"Expected sldl help or docker error, got: {result.stdout}",
         )
 
     def test_links_file_option_recognition(self):
         """Test that --links-file option is recognized."""
-        with tempfile.NamedTemporaryFile(mode='w', suffix='.txt', delete=False) as f:
+        with tempfile.NamedTemporaryFile(mode="w", suffix=".txt", delete=False) as f:
             f.write("# Test URLs file\n")
             f.write(f"{self.test_urls['spotify_playlist']}\n")
             f.write(f"{self.test_urls['youtube_video']}\n")
@@ -205,11 +211,12 @@ class TestWishlistCommands(unittest.TestCase):
         # Should show help or recognize command
         self.assertNotIn("No such command", result.stdout)
 
-    @patch('toolcrate.wishlist.processor.WishlistProcessor')
+    @patch("toolcrate.wishlist.processor.WishlistProcessor")
     def test_wishlist_processor_can_be_imported(self, mock_processor):
         """Test that wishlist processor can be imported and instantiated."""
         try:
             from toolcrate.wishlist.processor import WishlistProcessor
+
             # Should be able to import without errors
             self.assertTrue(True)
         except ImportError as e:
@@ -257,7 +264,9 @@ class TestEnvironmentSetup(unittest.TestCase):
         self.assertTrue(src_dir.exists(), "src directory missing")
 
         # Check that the required tool directories exist
-        self.assertTrue((src_dir / "toolcrate").exists(), "src/toolcrate directory missing")
+        self.assertTrue(
+            (src_dir / "toolcrate").exists(), "src/toolcrate directory missing"
+        )
 
         # Check for tool repositories (these might not exist in CI environment)
         print(f"Checking for slsk-batchdl in {src_dir}")

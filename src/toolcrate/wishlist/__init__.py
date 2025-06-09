@@ -2,4 +2,4 @@
 
 from .processor import WishlistProcessor
 
-__all__ = ['WishlistProcessor']
+__all__ = ["WishlistProcessor"]

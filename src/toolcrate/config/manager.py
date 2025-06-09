@@ -27,15 +27,19 @@ if not in_venv:
     except (subprocess.CalledProcessError, FileNotFoundError):
         pass
 
-# Check if we're running in a testing environment
-is_testing = (
-    os.environ.get('PYTEST_CURRENT_TEST') or
+# Skip this check in Docker containers, testing, or when TOOLCRATE_SKIP_VENV_CHECK is set
+skip_venv_check = (
+    os.environ.get('TOOLCRATE_SKIP_VENV_CHECK') or
     os.environ.get('TOOLCRATE_TESTING') or
+    os.environ.get('PYTEST_CURRENT_TEST') or
     'pytest' in sys.modules or
-    'test' in sys.argv[0].lower()
+    'test' in sys.argv[0].lower() or
+    os.path.exists('/.dockerenv') or  # Docker container indicator
+    os.environ.get('CONTAINER') or   # Generic container indicator
+    os.environ.get('DOCKER_CONTAINER')  # Another container indicator
 )
 
-if not in_venv and not is_testing:
+if not in_venv and not skip_venv_check:
     print("❌ Virtual environment not active!")
     print("Please use one of these methods:")
     print("  poetry run python config_manager.py <command>")

@@ -1,6 +1,6 @@
 # ToolCrate Makefile for unified testing with Poetry
 
-.PHONY: help test test-all test-python test-shell test-unit test-integration test-coverage test-quick clean install setup dev-install install-global install-pipx install-docker format lint check init-config config config-validate config-generate-sldl config-generate-wishlist-sldl config-generate-docker config-check-mounts config-show wishlist-test wishlist-run wishlist-run-verbose wishlist-logs wishlist-status test-docker test-docker-build test-docker-run test-docker-shell test-docker-clean test-docker-pull test-docker-registry test-docker-smart
+.PHONY: help test test-all test-python test-shell test-unit test-integration test-coverage test-quick clean install setup dev-install install-global install-pipx install-docker format lint check init-config config config-validate config-generate-sldl config-generate-wishlist-sldl config-generate-docker config-check-mounts config-show wishlist-test wishlist-run wishlist-run-verbose wishlist-logs wishlist-status test-docker test-docker-build test-docker-run test-docker-shell test-docker-clean test-docker-pull test-docker-registry test-docker-smart setup-submodules setup-shazam install-shazam dev-install-shazam test-shazam setup-slsk install-slsk dev-install-slsk test-slsk build-slsk docker-slsk
 
 # Default target
 help:
@@ -14,6 +14,19 @@ help:
 	@echo "  make install-global - Install globally (makes 'toolcrate' command available anywhere)"
 	@echo "  make install-pipx   - Install with pipx (recommended for CLI tools)"
 	@echo "  make install-docker - Install in Docker/container environment"
+	@echo ""
+	@echo "Submodules & Tools:"
+	@echo "  make setup-submodules - Initialize and update git submodules"
+	@echo "  make setup-shazam   - Setup Shazam tool (submodules + dependencies)"
+	@echo "  make install-shazam - Install Shazam dependencies only"
+	@echo "  make dev-install-shazam - Dev install with Shazam dependencies"
+	@echo "  make test-shazam    - Run Shazam tool tests"
+	@echo "  make setup-slsk     - Setup slsk-batchdl tool (submodules + dependencies)"
+	@echo "  make install-slsk   - Install slsk-batchdl dependencies only"
+	@echo "  make dev-install-slsk - Dev install with slsk-batchdl dependencies"
+	@echo "  make test-slsk      - Run slsk-batchdl tool tests"
+	@echo "  make build-slsk     - Build slsk-batchdl binary from source"
+	@echo "  make docker-slsk    - Build slsk-batchdl Docker image"
 	@echo ""
 	@echo "Configuration:"
 	@echo "  make init-config    - Run interactive configuration setup (first time)"
@@ -76,6 +89,7 @@ setup:
 		echo "Installing Poetry..."; \
 		curl -sSL https://install.python-poetry.org | python3 -; \
 	fi
+	$(MAKE) setup-submodules
 	poetry install --with dev
 	@echo "✅ Setup complete!"
 	@echo "💡 Use 'poetry run <command>' or 'make <target>' for commands."
@@ -87,6 +101,7 @@ install:
 
 # Install with dev dependencies
 dev-install:
+	$(MAKE) setup-submodules
 	poetry install --with dev
 
 # Install globally (makes 'toolcrate' command available system-wide)
@@ -116,6 +131,117 @@ install-docker:
 	pip install --break-system-packages -e .
 	@echo "✅ ToolCrate installed in container!"
 	@echo "💡 The 'toolcrate' command is now available globally in the container."
+
+# Submodule and tool setup commands
+
+# Initialize and update git submodules
+setup-submodules:
+	@echo "Setting up git submodules..."
+	@if [ -d ".git" ]; then \
+		echo "Initializing git submodules..."; \
+		git submodule update --init --recursive; \
+		echo "✅ Git submodules initialized"; \
+	else \
+		echo "Not a git repository, cloning tools directly..."; \
+		mkdir -p src; \
+		if [ ! -d "src/slsk-batchdl" ]; then \
+			echo "Cloning slsk-batchdl..."; \
+			git clone https://github.com/discolotus/slsk-batchdl.git src/slsk-batchdl; \
+			cd src/slsk-batchdl && git checkout v2.4.6 && cd ../..; \
+		fi; \
+		if [ ! -d "src/Shazam-Tool" ]; then \
+			echo "Cloning Shazam-Tool..."; \
+			git clone https://github.com/discolotus/Shazam-Tool.git src/Shazam-Tool; \
+			cd src/Shazam-Tool && git checkout main && cd ../..; \
+		fi; \
+		echo "✅ Tools cloned directly"; \
+	fi
+
+# Setup Shazam tool (submodules + dependencies)
+setup-shazam: setup-submodules
+	@echo "Setting up Shazam tool with dependencies..."
+	poetry install --extras shazam
+	@echo "✅ Shazam tool setup complete!"
+	@echo "💡 You can now use 'toolcrate shazam-tool' commands."
+
+# Install Shazam dependencies only
+install-shazam:
+	@echo "Installing Shazam tool dependencies..."
+	poetry install --extras shazam
+	@echo "✅ Shazam dependencies installed!"
+
+# Dev install with Shazam dependencies
+dev-install-shazam: setup-submodules
+	@echo "Installing with dev dependencies and Shazam support..."
+	poetry install --with dev --extras shazam
+	@echo "✅ Dev installation with Shazam support complete!"
+
+# Test Shazam tool functionality
+test-shazam:
+	@echo "Running Shazam tool tests..."
+	poetry run pytest tests/test_shazam_tool.py -v
+	@echo "✅ Shazam tool tests complete!"
+
+# slsk-batchdl tool setup commands
+
+# Setup slsk-batchdl tool (submodules + dependencies)
+setup-slsk: setup-submodules
+	@echo "Setting up slsk-batchdl tool with dependencies..."
+	poetry install --extras slsk
+	@echo "✅ slsk-batchdl tool setup complete!"
+	@echo "💡 You can now use 'toolcrate sldl' commands."
+
+# Install slsk-batchdl dependencies only
+install-slsk:
+	@echo "Installing slsk-batchdl tool dependencies..."
+	poetry install --extras slsk
+	@echo "✅ slsk-batchdl dependencies installed!"
+
+# Dev install with slsk-batchdl dependencies
+dev-install-slsk: setup-submodules
+	@echo "Installing with dev dependencies and slsk-batchdl support..."
+	poetry install --with dev --extras slsk
+	@echo "✅ Dev installation with slsk-batchdl support complete!"
+
+# Test slsk-batchdl tool functionality
+test-slsk:
+	@echo "Running slsk-batchdl tool tests..."
+	poetry run pytest tests/test_integration.py::TestExternalToolIntegration::test_slsk_tool_integration -v
+	@echo "✅ slsk-batchdl tool tests complete!"
+
+# Build slsk-batchdl binary from source
+build-slsk: setup-submodules
+	@echo "Building slsk-batchdl binary from source..."
+	@if [ ! -d "src/slsk-batchdl" ]; then \
+		echo "❌ slsk-batchdl source not found. Run 'make setup-submodules' first."; \
+		exit 1; \
+	fi
+	@if ! command -v dotnet >/dev/null 2>&1; then \
+		echo "❌ .NET SDK not found. Please install .NET 6.0+ SDK."; \
+		echo "   Visit: https://dotnet.microsoft.com/download"; \
+		exit 1; \
+	fi
+	@echo "Building for current platform..."
+	mkdir -p src/bin
+	cd src/slsk-batchdl && dotnet publish -c Release --self-contained -o ../bin/
+	chmod +x src/bin/sldl
+	@echo "✅ slsk-batchdl binary built successfully!"
+	@echo "💡 Binary available at: src/bin/sldl"
+
+# Build slsk-batchdl Docker image
+docker-slsk: setup-submodules
+	@echo "Building slsk-batchdl Docker image..."
+	@if [ ! -d "src/slsk-batchdl" ]; then \
+		echo "❌ slsk-batchdl source not found. Run 'make setup-submodules' first."; \
+		exit 1; \
+	fi
+	@if ! command -v docker >/dev/null 2>&1; then \
+		echo "❌ Docker not found. Please install Docker."; \
+		exit 1; \
+	fi
+	cd src/slsk-batchdl && docker build -t slsk-batchdl:latest .
+	@echo "✅ slsk-batchdl Docker image built successfully!"
+	@echo "💡 Image tagged as: slsk-batchdl:latest"
 
 # Testing commands (using Poetry)
 test:

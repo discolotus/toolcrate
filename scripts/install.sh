@@ -42,25 +42,33 @@ fi
 # Create src directory if it doesn't exist
 mkdir -p src/bin
 
-# Try to initialize git submodules if in a git repository
-if [ -d ".git" ]; then
-    echo -e "${GREEN}Attempting to set up git submodules...${NC}"
-    git submodule update --init --recursive
+# Set up submodules and tools
+echo -e "${GREEN}Setting up submodules and tools...${NC}"
+if command -v make &> /dev/null; then
+    echo -e "${GREEN}Using Makefile for submodule setup...${NC}"
+    make setup-submodules
 else
-    echo -e "${GREEN}Not a git repository, cloning tools directly...${NC}"
-    
-    # Handle slsk-batchdl
-    if [ ! -d "src/slsk-batchdl" ]; then
-        echo -e "${GREEN}Cloning slsk-batchdl...${NC}"
-        git clone https://github.com/discolotus/slsk-batchdl.git src/slsk-batchdl
-        cd src/slsk-batchdl && git checkout v2.4.6 && cd ../../
-    fi
+    echo -e "${GREEN}Makefile not available, setting up manually...${NC}"
+    # Try to initialize git submodules if in a git repository
+    if [ -d ".git" ]; then
+        echo -e "${GREEN}Attempting to set up git submodules...${NC}"
+        git submodule update --init --recursive
+    else
+        echo -e "${GREEN}Not a git repository, cloning tools directly...${NC}"
 
-    # Handle Shazam-Tool
-    if [ ! -d "src/Shazam-Tool" ]; then
-        echo -e "${GREEN}Cloning Shazam-Tool...${NC}"
-        git clone https://github.com/discolotus/Shazam-Tool.git src/Shazam-Tool
-        cd src/Shazam-Tool && git checkout main && cd ../../
+        # Handle slsk-batchdl
+        if [ ! -d "src/slsk-batchdl" ]; then
+            echo -e "${GREEN}Cloning slsk-batchdl...${NC}"
+            git clone https://github.com/discolotus/slsk-batchdl.git src/slsk-batchdl
+            cd src/slsk-batchdl && git checkout v2.4.6 && cd ../../
+        fi
+
+        # Handle Shazam-Tool
+        if [ ! -d "src/Shazam-Tool" ]; then
+            echo -e "${GREEN}Cloning Shazam-Tool...${NC}"
+            git clone https://github.com/discolotus/Shazam-Tool.git src/Shazam-Tool
+            cd src/Shazam-Tool && git checkout main && cd ../../
+        fi
     fi
 fi
 
@@ -88,9 +96,18 @@ echo -e "${GREEN}Installing toolcrate package and dependencies...${NC}"
 # Use pip to install in development mode
 pip install -e .
 
-# Install Shazam-Tool dependencies
-echo -e "${GREEN}Installing Shazam-Tool dependencies...${NC}"
-pip install shazamio pydub yt-dlp ShazamApi
+# Install tool dependencies
+echo -e "${GREEN}Installing tool dependencies...${NC}"
+if command -v poetry &> /dev/null && [ -f "pyproject.toml" ]; then
+    echo -e "${GREEN}Using Poetry to install all tool dependencies...${NC}"
+    poetry install --extras all
+else
+    echo -e "${GREEN}Using pip to install tool dependencies...${NC}"
+    # Shazam dependencies
+    pip install shazamio pydub yt-dlp
+    # slsk-batchdl dependencies (Docker integration)
+    pip install docker docker-compose || echo -e "${YELLOW}Note: Docker Python packages are optional${NC}"
+fi
 
 echo -e "${GREEN}Setting up global access to toolcrate...${NC}"
 

@@ -21,7 +21,9 @@ class AudioDownloader:
         self.base_output_path = Path(output_path).expanduser()
         self.quality = quality
 
-    def _get_playlist_info(self, url: str, platform: str) -> tuple[str, bool]:  # noqa: ARG002
+    def _get_playlist_info(
+        self, url: str, platform: str
+    ) -> tuple[str, bool]:  # noqa: ARG002
         """
         Extract playlist name and check if URL is a playlist.
 
@@ -74,7 +76,9 @@ class AudioDownloader:
         """Create output directory if it doesn't exist."""
         path.mkdir(parents=True, exist_ok=True)
 
-    def _get_ydl_opts(self, platform: str, output_path: Path) -> dict[str, Any]:  # noqa: ARG002
+    def _get_ydl_opts(
+        self, platform: str, output_path: Path
+    ) -> dict[str, Any]:  # noqa: ARG002
         """
         Get yt-dlp options for downloading.
 

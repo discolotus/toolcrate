@@ -53,9 +53,7 @@ class TestSldlDockerCommand:
         # Mock compose file exists and config manager
         with (
             patch("pathlib.Path.exists", return_value=True),
-            patch(
-                "toolcrate.config.manager.ConfigManager.generate_sldl_conf"
-            ),
+            patch("toolcrate.config.manager.ConfigManager.generate_sldl_conf"),
         ):
             # Mock container is running
             mock_result = MagicMock()
@@ -92,9 +90,7 @@ class TestSldlDockerCommand:
         # Mock compose file exists and config manager
         with (
             patch("pathlib.Path.exists", return_value=True),
-            patch(
-                "toolcrate.config.manager.ConfigManager.generate_sldl_conf"
-            ),
+            patch("toolcrate.config.manager.ConfigManager.generate_sldl_conf"),
         ):
             # Mock container is running
             mock_result = MagicMock()
@@ -128,9 +124,7 @@ class TestSldlDockerCommand:
         # Mock compose file exists and config manager
         with (
             patch("pathlib.Path.exists", return_value=True),
-            patch(
-                "toolcrate.config.manager.ConfigManager.generate_sldl_conf"
-            ),
+            patch("toolcrate.config.manager.ConfigManager.generate_sldl_conf"),
         ):
             # Mock container not running, then successful start
             mock_results = [
@@ -212,9 +206,7 @@ class TestSldlDockerCommand:
         # Mock compose file exists and config manager
         with (
             patch("pathlib.Path.exists", return_value=True),
-            patch(
-                "toolcrate.config.manager.ConfigManager.generate_sldl_conf"
-            ),
+            patch("toolcrate.config.manager.ConfigManager.generate_sldl_conf"),
         ):
             # Mock multiple containers running
             mock_result = MagicMock()
@@ -254,9 +246,7 @@ class TestSldlDockerCommand:
         # Mock compose file exists and config manager
         with (
             patch("pathlib.Path.exists", return_value=True),
-            patch(
-                "toolcrate.config.manager.ConfigManager.generate_sldl_conf"
-            ),
+            patch("toolcrate.config.manager.ConfigManager.generate_sldl_conf"),
         ):
             # Mock container is running
             mock_result = MagicMock()

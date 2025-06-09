@@ -220,13 +220,13 @@ def add(ctx, schedule: str, name: str, description: str, type: str):
             if type == "wishlist":
                 name = "wishlist_download"
             else:
-                name = "download_queue"  # type: ignore[unreachable]
+                name = "download_queue"
 
         if description is None:
             if type == "wishlist":
                 description = "Automated wishlist download"
             else:
-                description = "Automated download queue processing"  # type: ignore[unreachable]
+                description = "Automated download queue processing"
 
         # Load current config
         config_manager.load_config()

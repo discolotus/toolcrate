@@ -172,6 +172,11 @@ exclude = [
     "dist/",
 ]
 
+# Per-file mypy configuration
+[[tool.mypy.overrides]]
+module = "toolcrate.cli.schedule"
+warn_unreachable = false  # Suppress false positive unreachable warnings
+
 # Linting with Ruff
 [tool.ruff]
 target-version = "py310"

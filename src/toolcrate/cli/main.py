@@ -697,7 +697,7 @@ log_level = INFO
                                 "docker",
                                 "exec",
                                 "-it",
-                                container_name,
+                                container_name,  # type: ignore[list-item]
                                 "sh",
                                 "/tmp/run_playlist.sh",
                             ],
@@ -768,7 +768,7 @@ log_level = INFO
                 try:
                     # Add timeout to prevent hanging indefinitely
                     result = subprocess.run(
-                        cmd,
+                        cmd,  # type: ignore[arg-type]
                         check=False,
                         capture_output=True,
                         text=True,
@@ -781,7 +781,7 @@ log_level = INFO
                             "docker",
                             "container",
                             "inspect",
-                            container_name,
+                            container_name,  # type: ignore[list-item]
                             "--format",
                             "{{.State.Status}}",
                         ],
@@ -796,7 +796,7 @@ log_level = INFO
                         log.write(
                             f"--- Processing {playlist} (Attempt {retry_count+1}) ---\n"
                         )
-                        log.write(f"Command: {' '.join(cmd)}\n")
+                        log.write(f"Command: {' '.join(cmd)}\n")  # type: ignore[arg-type]
                         log.write(f"Container status: {container_status}\n")
                         log.write(f"Exit code: {result.returncode}\n")
                         log.write("--- STDOUT ---\n")
@@ -916,7 +916,7 @@ log_level = INFO
                                 click.echo("Collecting diagnostic information...")
                                 diag_cmd = ["docker", "logs", container_name]
                                 diag_result = subprocess.run(
-                                    diag_cmd, capture_output=True, text=True
+                                    diag_cmd, capture_output=True, text=True  # type: ignore[arg-type]
                                 )
 
                                 with open(log_file, "a") as log:
@@ -950,7 +950,7 @@ log_level = INFO
                             "-f",
                             "sldl",
                         ]
-                        subprocess.run(kill_cmd, check=False)
+                        subprocess.run(kill_cmd, check=False)  # type: ignore[arg-type]
 
                         # Wait a moment for cleanup
                         time.sleep(5)
@@ -976,7 +976,7 @@ log_level = INFO
                                 "docker",
                                 "container",
                                 "inspect",
-                                container_name,
+                                container_name,  # type: ignore[list-item]
                                 "--format",
                                 "{{.State.Status}}",
                             ],
@@ -1366,12 +1366,13 @@ def diagnose_docker_container(container_name, log_file=None):
     click.echo(f"Performing diagnostics on container '{container_name}'...")
 
     diagnostics = {
-        "container_status": None,
-        "container_details": None,
-        "logs": None,
-        "filesystem": None,
-        "processes": None,
-        "network": None,
+        "container_status": "",
+        "container_details": "",
+        "logs": "",
+        "filesystem": "",
+        "processes": "",
+        "config_dir": "",
+        "network": "",
     }
 
     try:

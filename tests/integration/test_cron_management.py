@@ -233,7 +233,6 @@ class TestCronManagement(unittest.TestCase):
 
         try:
             from click.testing import CliRunner
-
             from toolcrate.cli.schedule import add
 
             runner = CliRunner()

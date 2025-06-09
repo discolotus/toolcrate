@@ -41,7 +41,7 @@ COPY pyproject.toml poetry.lock* README.md ./
 # Install only production dependencies
 RUN poetry install --only=main --no-root && rm -rf $POETRY_CACHE_DIR
 
-# Copy the entire project source code
+# Copy the entire project source code (submodules should be included by checkout)
 COPY src/ ./src/
 COPY bin/ ./bin/
 COPY Makefile ./
@@ -66,9 +66,9 @@ RUN useradd -m -u 1000 toolcrate && \
     chown -R toolcrate:toolcrate /app
 USER toolcrate
 
-# Set up cron service (run as root for cron setup, then switch back)
+# Set up cron service (cron will be started when container runs)
 USER root
-RUN service cron start
+RUN touch /var/log/cron.log
 USER toolcrate
 
 # Set the default command

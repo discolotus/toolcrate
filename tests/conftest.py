@@ -28,7 +28,7 @@ def mock_subprocess():
     """Mock subprocess module."""
     with (
         patch("subprocess.run") as mock_run,
-        patch("subprocess.CalledProcessError") as mock_error,
+        patch("subprocess.CalledProcessError"),
     ):
         mock_run.return_value.returncode = 0
         mock_run.return_value.stdout = ""

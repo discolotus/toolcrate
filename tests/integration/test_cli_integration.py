@@ -212,13 +212,18 @@ class TestWishlistCommands(unittest.TestCase):
         self.assertNotIn("No such command", result.stdout)
 
     @patch("toolcrate.wishlist.processor.WishlistProcessor")
-    def test_wishlist_processor_can_be_imported(self, mock_processor):
+    def test_wishlist_processor_can_be_imported(self, mock_processor):  # noqa: ARG002
         """Test that wishlist processor can be imported and instantiated."""
-        try:
-            from toolcrate.wishlist.processor import WishlistProcessor
+        import importlib.util
 
+        spec = importlib.util.find_spec("toolcrate.wishlist.processor")
+        self.assertIsNotNone(spec, "WishlistProcessor module not found")
+
+        try:
+            module = importlib.util.module_from_spec(spec)
+            spec.loader.exec_module(module)
             # Should be able to import without errors
-            self.assertTrue(True)
+            self.assertTrue(hasattr(module, "WishlistProcessor"))
         except ImportError as e:
             self.fail(f"Could not import WishlistProcessor: {e}")
 

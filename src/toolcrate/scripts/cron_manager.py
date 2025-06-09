@@ -413,13 +413,25 @@ def list_scheduled_jobs():
 
 
 # For backward compatibility
-remove_identify_tracks_cron = lambda file_type: remove_scheduled_job(
-    f"identify-tracks-{file_type}"
-)
+def remove_identify_tracks_cron(file_type):
+    """Remove identify tracks cron job for given file type."""
+    return remove_scheduled_job(f"identify-tracks-{file_type}")
+
+
 list_identify_tracks_crons = list_scheduled_jobs
+
+
 # Legacy compatibility (will be removed in future version)
-remove_identify_tracks_wishlist = lambda: remove_scheduled_job(
-    "identify-tracks-wishlist"
-)
-remove_identify_tracks_djsets = lambda: remove_scheduled_job("identify-tracks-djsets")
-remove_download_wishlist_cron = lambda: remove_scheduled_job("download-wishlist")
+def remove_identify_tracks_wishlist():
+    """Remove identify tracks wishlist cron job."""
+    return remove_scheduled_job("identify-tracks-wishlist")
+
+
+def remove_identify_tracks_djsets():
+    """Remove identify tracks djsets cron job."""
+    return remove_scheduled_job("identify-tracks-djsets")
+
+
+def remove_download_wishlist_cron():
+    """Remove download wishlist cron job."""
+    return remove_scheduled_job("download-wishlist")

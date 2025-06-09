@@ -246,11 +246,16 @@ class TestQueueWorkflow(unittest.TestCase):
 
     def test_queue_processor_can_be_imported(self):
         """Test that queue processor can be imported."""
-        try:
-            from toolcrate.queue.processor import QueueProcessor
+        import importlib.util
 
+        spec = importlib.util.find_spec("toolcrate.queue.processor")
+        self.assertIsNotNone(spec, "QueueProcessor module not found")
+
+        try:
+            module = importlib.util.module_from_spec(spec)
+            spec.loader.exec_module(module)
             # Should be able to import without errors
-            self.assertTrue(True)
+            self.assertTrue(hasattr(module, "QueueProcessor"))
         except ImportError as e:
             self.fail(f"Could not import QueueProcessor: {e}")
 

@@ -79,7 +79,7 @@ def logs(lines: int, follow: bool, app_logs: bool, since: str | None):
     except Exception as e:
         logger.error(f"Error reading logs: {e}")
         click.echo(f"❌ Error reading logs: {e}")
-        raise click.Abort()
+        raise click.Abort() from e
 
 
 @wishlist_run.command()
@@ -112,7 +112,7 @@ def status():
     except Exception as e:
         logger.error(f"Error getting status: {e}")
         click.echo(f"❌ Error getting status: {e}")
-        raise click.Abort()
+        raise click.Abort() from e
 
 
 @wishlist_run.command()
@@ -156,7 +156,7 @@ def tail(lines: int):
     except Exception as e:
         logger.error(f"Error following logs: {e}")
         click.echo(f"❌ Error following logs: {e}")
-        raise click.Abort()
+        raise click.Abort() from e
 
 
 def _show_recent_logs(log_path: Path, lines: int, since: str | None):
@@ -278,7 +278,7 @@ def _filter_lines_by_time(lines: list[str], cutoff_time: datetime) -> list[str]:
             else:
                 # If we can't parse timestamp, include the line
                 filtered.append(line)
-        except:
+        except Exception:
             # If timestamp parsing fails, include the line
             filtered.append(line)
 
@@ -311,7 +311,7 @@ def _analyze_app_logs(log_path: Path) -> dict[str, Any]:
                         last_run = datetime.fromisoformat(
                             timestamp_str.replace(" ", "T")
                         )
-                    except:
+                    except Exception:
                         pass
 
                 if "complete" in line.lower():

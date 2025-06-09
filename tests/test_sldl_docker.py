@@ -55,7 +55,7 @@ class TestSldlDockerCommand:
             patch("pathlib.Path.exists", return_value=True),
             patch(
                 "toolcrate.config.manager.ConfigManager.generate_sldl_conf"
-            ) as mock_generate_conf,
+            ),
         ):
             # Mock container is running
             mock_result = MagicMock()
@@ -94,7 +94,7 @@ class TestSldlDockerCommand:
             patch("pathlib.Path.exists", return_value=True),
             patch(
                 "toolcrate.config.manager.ConfigManager.generate_sldl_conf"
-            ) as mock_generate_conf,
+            ),
         ):
             # Mock container is running
             mock_result = MagicMock()
@@ -130,7 +130,7 @@ class TestSldlDockerCommand:
             patch("pathlib.Path.exists", return_value=True),
             patch(
                 "toolcrate.config.manager.ConfigManager.generate_sldl_conf"
-            ) as mock_generate_conf,
+            ),
         ):
             # Mock container not running, then successful start
             mock_results = [
@@ -214,7 +214,7 @@ class TestSldlDockerCommand:
             patch("pathlib.Path.exists", return_value=True),
             patch(
                 "toolcrate.config.manager.ConfigManager.generate_sldl_conf"
-            ) as mock_generate_conf,
+            ),
         ):
             # Mock multiple containers running
             mock_result = MagicMock()
@@ -256,7 +256,7 @@ class TestSldlDockerCommand:
             patch("pathlib.Path.exists", return_value=True),
             patch(
                 "toolcrate.config.manager.ConfigManager.generate_sldl_conf"
-            ) as mock_generate_conf,
+            ),
         ):
             # Mock container is running
             mock_result = MagicMock()

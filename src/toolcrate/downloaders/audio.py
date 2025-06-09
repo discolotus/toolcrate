@@ -1,6 +1,6 @@
 import logging
 from pathlib import Path
-from typing import Any, Optional
+from typing import Any
 
 from yt_dlp import YoutubeDL
 
@@ -21,7 +21,7 @@ class AudioDownloader:
         self.base_output_path = Path(output_path).expanduser()
         self.quality = quality
 
-    def _get_playlist_info(self, url: str, platform: str) -> tuple[str, bool]:
+    def _get_playlist_info(self, url: str, platform: str) -> tuple[str, bool]:  # noqa: ARG002
         """
         Extract playlist name and check if URL is a playlist.
 
@@ -74,7 +74,7 @@ class AudioDownloader:
         """Create output directory if it doesn't exist."""
         path.mkdir(parents=True, exist_ok=True)
 
-    def _get_ydl_opts(self, platform: str, output_path: Path) -> dict[str, Any]:
+    def _get_ydl_opts(self, platform: str, output_path: Path) -> dict[str, Any]:  # noqa: ARG002
         """
         Get yt-dlp options for downloading.
 
@@ -99,7 +99,7 @@ class AudioDownloader:
             "no_warnings": False,
         }
 
-    def download_youtube(self, url: str) -> Optional[Path]:
+    def download_youtube(self, url: str) -> Path | None:
         """
         Download audio from YouTube URL.
 
@@ -133,7 +133,7 @@ class AudioDownloader:
             logger.error(f"❌ Failed to download from YouTube {url}: {e}")
             return None
 
-    def download_soundcloud(self, url: str) -> Optional[Path]:
+    def download_soundcloud(self, url: str) -> Path | None:
         """
         Download audio from SoundCloud URL.
 
@@ -167,7 +167,7 @@ class AudioDownloader:
             logger.error(f"❌ Failed to download from SoundCloud {url}: {e}")
             return None
 
-    def download(self, url: str) -> Optional[Path]:
+    def download(self, url: str) -> Path | None:
         """
         Download audio from YouTube or SoundCloud URL.
 

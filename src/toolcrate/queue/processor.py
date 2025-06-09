@@ -10,7 +10,7 @@ import logging
 import subprocess
 from datetime import datetime
 from pathlib import Path
-from typing import Any, Optional
+from typing import Any
 
 logger = logging.getLogger(__name__)
 
@@ -45,7 +45,7 @@ class QueueProcessor:
             self.queue_file_path.touch()
             logger.info(f"Created queue file: {self.queue_file_path}")
 
-    def acquire_lock(self) -> Optional[object]:
+    def acquire_lock(self) -> object | None:
         """Acquire a file lock to prevent concurrent processing.
 
         Returns:

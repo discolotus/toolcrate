@@ -113,6 +113,7 @@ class ConfigManager:
             "save_config() will reformat YAML and remove comments. "
             "Consider manually editing config/toolcrate.yaml to preserve formatting.",
             UserWarning,
+            stacklevel=2,
         )
 
         with open(self.config_path, "w") as f:

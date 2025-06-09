@@ -247,7 +247,7 @@ def status(ctx):
                 with open(processor.lock_file_path) as f:
                     lock_info = f.read().strip()
                 click.echo(f"Lock info: {lock_info}")
-            except:
+            except Exception:
                 pass
 
         # Backup file info
@@ -266,7 +266,7 @@ def status(ctx):
                     ]
                 )
                 click.echo(f"Processed entries (backed up): {processed_count}")
-            except:
+            except Exception:
                 pass
 
     except Exception as e:

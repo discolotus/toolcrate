@@ -99,8 +99,13 @@ class TestCronManagement(unittest.TestCase):
         mock_get_root.return_value = Path("/fake/root")
 
         try:
+            import importlib.util
+
             from toolcrate.cli.schedule import generate_crontab_section
-            from toolcrate.config.manager import ConfigManager
+
+            # Check that ConfigManager is available
+            spec = importlib.util.find_spec("toolcrate.config.manager")
+            self.assertIsNotNone(spec, "ConfigManager module not found")
 
             # Mock config manager
             mock_config_manager = MagicMock()

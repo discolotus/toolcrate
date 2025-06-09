@@ -5,7 +5,7 @@ import logging
 import os
 import subprocess
 from pathlib import Path
-from typing import Any, Optional
+from typing import Any
 
 from ..config.manager import ConfigManager
 
@@ -15,7 +15,7 @@ logger = logging.getLogger(__name__)
 class WishlistProcessor:
     """Processes wishlist.txt file for scheduled downloads."""
 
-    def __init__(self, config_manager: Optional[ConfigManager] = None):
+    def __init__(self, config_manager: ConfigManager | None = None):
         """Initialize the wishlist processor.
 
         Args:

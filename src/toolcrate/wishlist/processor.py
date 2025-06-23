@@ -7,6 +7,7 @@ import logging
 import threading
 import queue
 import time
+import signal
 from pathlib import Path
 from typing import List, Dict, Any, Optional
 
@@ -167,6 +168,21 @@ class WishlistProcessor:
         """
         logger.info(f"Processing wishlist entry: {entry}")
 
+        # Keep track of the current process for cleanup
+        current_process = None
+        
+        def cleanup_process():
+            """Kill any running sldl processes in the container."""
+            try:
+                subprocess.run(
+                    ["docker", "exec", "sldl", "pkill", "-f", "sldl"],
+                    capture_output=True,
+                    timeout=5
+                )
+                logger.info("Cleaned up orphaned sldl processes")
+            except Exception as e:
+                logger.debug(f"Error during cleanup: {e}")
+
         try:
             # Build the command
             cmd = self.build_sldl_command(entry)
@@ -187,6 +203,7 @@ class WishlistProcessor:
                 bufsize=1,
                 universal_newlines=True
             )
+            current_process = process
             
             # Create queues for thread-safe communication
             output_queue = queue.Queue()
@@ -276,11 +293,25 @@ class WishlistProcessor:
                 logger.error(f"Command executed: {' '.join(docker_cmd)}")
                 return False
                 
+        except KeyboardInterrupt:
+            logger.warning("Interrupted by user, cleaning up...")
+            if current_process:
+                try:
+                    current_process.terminate()
+                    current_process.wait(timeout=5)
+                except subprocess.TimeoutExpired:
+                    current_process.kill()
+                except Exception:
+                    pass
+            cleanup_process()
+            raise  # Re-raise to stop processing
         except subprocess.TimeoutExpired:
             logger.error(f"Timeout processing wishlist entry: {entry}")
+            cleanup_process()
             return False
         except Exception as e:
             logger.error(f"Error processing wishlist entry {entry}: {e}")
+            cleanup_process()
             return False
     
     def process_all_entries(self) -> Dict[str, Any]:
@@ -464,6 +495,24 @@ class WishlistProcessor:
 def main():
     """Main entry point for wishlist processing."""
     import argparse
+    
+    def signal_handler(signum, frame):
+        """Handle interrupt signals by cleaning up docker processes."""
+        logger.warning("Received interrupt signal, cleaning up Docker processes...")
+        try:
+            subprocess.run(
+                ["docker", "exec", "sldl", "pkill", "-f", "sldl"],
+                capture_output=True,
+                timeout=5
+            )
+            logger.info("Docker processes cleaned up")
+        except Exception as e:
+            logger.debug(f"Error during signal cleanup: {e}")
+        exit(1)
+    
+    # Register signal handlers
+    signal.signal(signal.SIGINT, signal_handler)
+    signal.signal(signal.SIGTERM, signal_handler)
     
     parser = argparse.ArgumentParser(description="ToolCrate Wishlist Processor")
     parser.add_argument("--config", "-c", default="config/toolcrate.yaml",

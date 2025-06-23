@@ -12,6 +12,7 @@ from pathlib import Path
 from typing import List, Dict, Any, Optional
 
 from ..config.manager import ConfigManager
+from .post_processor import PostProcessor
 
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.INFO)  # Set log level to INFO
@@ -39,6 +40,10 @@ class WishlistProcessor:
         self.config_manager = config_manager or ConfigManager()
         self.config = self.config_manager.config
         self.wishlist_config = self.config.get('wishlist', {})
+        
+        # Initialize post-processor
+        post_processing_config = self.wishlist_config.get('post_processing', {})
+        self.post_processor = PostProcessor(post_processing_config)
         
     def get_wishlist_file_path(self) -> Path:
         """Get the path to the wishlist file."""
@@ -363,6 +368,9 @@ class WishlistProcessor:
         
         logger.info(f"Wishlist processing complete: {processed} successful, {failed} failed")
 
+        # Run post-processing if enabled
+        post_processing_results = self._run_post_processing()
+
         # Show recent log summary
         self._show_log_summary()
 
@@ -371,7 +379,8 @@ class WishlistProcessor:
             'processed': processed,
             'failed': failed,
             'total': len(entries),
-            'results': results
+            'results': results,
+            'post_processing': post_processing_results
         }
 
     def _show_log_summary(self):
@@ -463,6 +472,61 @@ class WishlistProcessor:
                 return
         
         logger.warning(f"Timed out waiting for sldl processes to exit after {max_wait_time}s, proceeding anyway")
+
+    def _run_post_processing(self) -> Dict[str, Any]:
+        """Run post-processing on downloaded files.
+        
+        Returns:
+            Dictionary with post-processing results
+        """
+        if not self.post_processor.enabled:
+            logger.debug("Post-processing disabled")
+            return {'status': 'disabled', 'processed': 0}
+
+        # Check if ffmpeg is available for transcoding
+        if self.post_processor.transcode_opus and not self.post_processor.check_ffmpeg_available():
+            logger.warning("ffmpeg not available - opus transcoding disabled")
+            return {'status': 'error', 'message': 'ffmpeg not available', 'processed': 0}
+
+        # Get download directory and index file paths
+        download_dir = Path(self.wishlist_config.get('download_dir', '/library'))
+        
+        # Determine index file path
+        index_path = None
+        if self.wishlist_config.get('index_in_playlist_folder', True):
+            # Look for index files in subdirectories
+            index_files = list(download_dir.rglob("*.sldl"))
+            if index_files:
+                # Use the most recently modified index file
+                index_path = max(index_files, key=lambda p: p.stat().st_mtime)
+                logger.debug(f"Using index file: {index_path}")
+        else:
+            # Use global index
+            index_path = Path("/data/wishlist-index.sldl")
+
+        logger.info("Starting post-processing of downloaded files...")
+        
+        try:
+            results = self.post_processor.process_directory(download_dir, index_path)
+            
+            if results['processed'] > 0:
+                logger.info(f"Post-processing completed: {results['processed']} files processed")
+                if results['transcoded']:
+                    logger.info(f"Transcoded {len(results['transcoded'])} opus files to FLAC")
+            else:
+                logger.debug("No files needed post-processing")
+                
+            if results['errors']:
+                logger.warning(f"Post-processing errors: {len(results['errors'])}")
+                for error in results['errors']:
+                    logger.warning(f"  {error}")
+            
+            return results
+            
+        except Exception as e:
+            error_msg = f"Post-processing failed: {e}"
+            logger.error(error_msg)
+            return {'status': 'error', 'message': error_msg, 'processed': 0}
 
     def process_wishlist(self):
         """Process the wishlist file and run sldl for each entry."""

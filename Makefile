@@ -297,6 +297,15 @@ wishlist-status:
 	@echo "Showing wishlist run status and summary..."
 	poetry run toolcrate wishlist-run status
 
+# Post-processing targets
+post-process-opus:
+	@echo "Post-processing opus files to FLAC..."
+	poetry run python scripts/post-process-opus.py "/Volumes/External4TB/Music/Music Library/toolcrate-library"
+
+post-process-opus-dry:
+	@echo "Dry run: Post-processing opus files to FLAC..."
+	poetry run python scripts/post-process-opus.py "/Volumes/External4TB/Music/Music Library/toolcrate-library" --dry-run --verbose
+
 # Initial configuration shortcuts with different options
 init-config-poetry:
 	@echo "Running ToolCrate configuration setup with Poetry..."

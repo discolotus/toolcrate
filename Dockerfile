@@ -17,7 +17,7 @@ RUN apt-get update && apt-get install -y \
     build-essential \
     curl \
     git \
-    # Docker dependencies (if needed)
+    # Docker dependencies
     ca-certificates \
     gnupg \
     lsb-release \
@@ -27,6 +27,13 @@ RUN apt-get update && apt-get install -y \
     make \
     bash \
     && rm -rf /var/lib/apt/lists/*
+
+# Install Docker CLI and Docker Compose
+RUN curl -fsSL https://get.docker.com -o get-docker.sh && \
+    sh get-docker.sh && \
+    rm get-docker.sh && \
+    curl -L "https://github.com/docker/compose/releases/latest/download/docker-compose-$(uname -s)-$(uname -m)" -o /usr/local/bin/docker-compose && \
+    chmod +x /usr/local/bin/docker-compose
 
 # Install Poetry
 RUN curl -sSL https://install.python-poetry.org | python3 - \
@@ -61,8 +68,9 @@ RUN pip install -e .
 # Create necessary directories (including empty config directory)
 RUN mkdir -p /app/data/downloads /app/data/library /app/logs /app/config
 
-# Create a non-root user for security
+# Create a non-root user for security and add to docker group
 RUN useradd -m -u 1000 toolcrate && \
+    usermod -aG docker toolcrate && \
     chown -R toolcrate:toolcrate /app
 USER toolcrate
 

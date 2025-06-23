@@ -4,13 +4,27 @@
 import os
 import subprocess
 import logging
+import threading
+import queue
+import time
 from pathlib import Path
 from typing import List, Dict, Any, Optional
 
 from ..config.manager import ConfigManager
 
 logger = logging.getLogger(__name__)
+logger.setLevel(logging.INFO)  # Set log level to INFO
 
+# Remove manual logging configuration to prevent duplicate output
+# formatter = logging.Formatter('%(levelname)s - %(message)s')
+# handler = logging.StreamHandler()
+# handler.setFormatter(formatter)
+# logger.addHandler(handler)
+
+# Remove duplicate handler to prevent double output
+# for h in logger.handlers[:]:
+#     if h is not handler:
+#         logger.removeHandler(h)
 
 class WishlistProcessor:
     """Processes wishlist.txt file for scheduled downloads."""
@@ -105,12 +119,16 @@ class WishlistProcessor:
         # Add wishlist-specific flags
         wishlist_settings = self.wishlist_config.get('settings', {})
         
-        if not wishlist_settings.get('skip_existing', False):
-            # Don't skip existing files - check them for better quality
+        # Handle existing file behavior
+        skip_existing = wishlist_settings.get('skip_existing', True)  # Default to True (normal behavior)
+        check_for_better_quality = self.wishlist_config.get('check_existing_for_better_quality', False)
+        
+        if not skip_existing or check_for_better_quality:
+            # Don't skip existing files if explicitly disabled OR if checking for better quality
             cmd.append("--no-skip-existing")
         
-        if wishlist_settings.get('skip_check_pref_cond', True):
-            # Continue searching for preferred conditions even if file exists
+        if wishlist_settings.get('skip_check_pref_cond', False):
+            # Skip checking preferred conditions (disables quality upgrades) 
             cmd.append("--skip-check-pref-cond")
         
         if wishlist_settings.get('desperate_search', True):
@@ -148,7 +166,7 @@ class WishlistProcessor:
             True if successful, False otherwise
         """
         logger.info(f"Processing wishlist entry: {entry}")
-        
+
         try:
             # Build the command
             cmd = self.build_sldl_command(entry)
@@ -160,24 +178,101 @@ class WishlistProcessor:
             
             logger.info(f"Executing: {' '.join(docker_cmd)}")
             
-            # Run the command
-            result = subprocess.run(
+            # Run the command with real-time output
+            process = subprocess.Popen(
                 docker_cmd,
-                capture_output=True,
+                stdout=subprocess.PIPE,
+                stderr=subprocess.PIPE,
                 text=True,
-                timeout=3600  # 1 hour timeout per entry
+                bufsize=1,
+                universal_newlines=True
             )
+            
+            # Create queues for thread-safe communication
+            output_queue = queue.Queue()
+            
+            def read_stream(stream, stream_name):
+                """Read from a stream and put output in queue with stream identifier."""
+                try:
+                    for line in iter(stream.readline, ''):
+                        if line:
+                            output_queue.put((stream_name, line.rstrip()))
+                except Exception as e:
+                    output_queue.put((stream_name, f"Error reading {stream_name}: {e}"))
+                finally:
+                    # Signal that this stream is done
+                    output_queue.put((stream_name, None))
+            
+            # Start threads to read stdout and stderr concurrently
+            stdout_thread = threading.Thread(
+                target=read_stream, 
+                args=(process.stdout, 'stdout'),
+                daemon=True
+            )
+            stderr_thread = threading.Thread(
+                target=read_stream, 
+                args=(process.stderr, 'stderr'),
+                daemon=True
+            )
+            
+            stdout_thread.start()
+            stderr_thread.start()
+            
+            # Track which streams are still active
+            active_streams = {'stdout', 'stderr'}
+            stdout_lines = []
+            stderr_lines = []
+            
+            # Process output in real-time
+            while active_streams and process.poll() is None:
+                try:
+                    # Get output with a short timeout to check process status
+                    stream_name, line = output_queue.get(timeout=0.1)
+                    
+                    if line is None:
+                        # Stream finished
+                        active_streams.discard(stream_name)
+                    else:
+                        if stream_name == 'stdout':
+                            stdout_lines.append(line)
+                            logger.info(f"SLDL: {line}")
+                        elif stream_name == 'stderr':
+                            stderr_lines.append(line)
+                            logger.error(f"SLDL ERROR: {line}")
+                            
+                except queue.Empty:
+                    # No output available, continue to check process status
+                    continue
+            
+            # Process finished, drain any remaining output
+            process.wait()  # Ensure process is fully complete
+            
+            # Get any remaining output from the queue
+            while not output_queue.empty():
+                try:
+                    stream_name, line = output_queue.get_nowait()
+                    if line is not None:
+                        if stream_name == 'stdout':
+                            stdout_lines.append(line)
+                            logger.info(f"SLDL: {line}")
+                        elif stream_name == 'stderr':
+                            stderr_lines.append(line)
+                            logger.error(f"SLDL ERROR: {line}")
+                except queue.Empty:
+                    break
+            
+            # Wait for threads to complete
+            stdout_thread.join(timeout=1.0)
+            stderr_thread.join(timeout=1.0)
 
-            if result.returncode == 0:
+            return_code = process.returncode
+            
+            if return_code == 0:
                 logger.info(f"Successfully processed wishlist entry: {entry}")
-                if result.stdout:
-                    logger.info(f"Command output: {result.stdout}")
                 return True
             else:
                 logger.error(f"Failed to process wishlist entry: {entry}")
-                logger.error(f"Return code: {result.returncode}")
-                logger.error(f"Error output: {result.stderr}")
-                logger.error(f"Standard output: {result.stdout}")
+                logger.error(f"Return code: {return_code}")
                 logger.error(f"Command executed: {' '.join(docker_cmd)}")
                 return False
                 
@@ -218,7 +313,12 @@ class WishlistProcessor:
         failed = 0
         results = []
         
-        for entry in entries:
+        for i, entry in enumerate(entries):
+            # Wait for any previous sldl processes to fully exit (except first entry)
+            if i > 0:
+                logger.info("Waiting for previous sldl process to fully exit...")
+                self._wait_for_sldl_processes_to_exit()
+            
             success = self.process_wishlist_entry(entry)
             if success:
                 processed += 1
@@ -292,6 +392,74 @@ class WishlistProcessor:
         except Exception as e:
             logger.debug(f"Could not read log summary: {e}")
 
+    def _wait_for_sldl_processes_to_exit(self, max_wait_time: int = 60):
+        """Wait for any running sldl processes in the container to exit.
+        
+        Args:
+            max_wait_time: Maximum time to wait in seconds
+        """
+        import subprocess
+        
+        wait_time = 0
+        check_interval = 2
+        
+        while wait_time < max_wait_time:
+            try:
+                # Check for running sldl processes in the container
+                result = subprocess.run(
+                    ["docker", "exec", "sldl", "pgrep", "-f", "sldl"],
+                    capture_output=True,
+                    text=True,
+                    timeout=5
+                )
+                
+                if result.returncode != 0:
+                    # No sldl processes found, safe to continue
+                    logger.info("No active sldl processes detected, safe to proceed")
+                    return
+                
+                # sldl processes still running
+                process_count = len(result.stdout.strip().split('\n')) if result.stdout.strip() else 0
+                logger.info(f"Found {process_count} active sldl process(es), waiting {check_interval}s...")
+                time.sleep(check_interval)
+                wait_time += check_interval
+                
+            except subprocess.TimeoutExpired:
+                logger.warning("Timeout checking for sldl processes, proceeding anyway")
+                return
+            except Exception as e:
+                logger.warning(f"Error checking for sldl processes: {e}, proceeding anyway")
+                return
+        
+        logger.warning(f"Timed out waiting for sldl processes to exit after {max_wait_time}s, proceeding anyway")
+
+    def process_wishlist(self):
+        """Process the wishlist file and run sldl for each entry."""
+        wishlist_path = self.get_wishlist_file_path()
+        if not wishlist_path.exists():
+            logger.error(f"Wishlist file not found: {wishlist_path}")
+            return False
+
+        with open(wishlist_path, 'r') as f:
+            entries = [line.strip() for line in f if line.strip() and not line.strip().startswith('#')]
+
+        for entry in entries:
+            logger.info(f"Processing wishlist entry: {entry}")
+            # Run sldl command for this entry
+            cmd = ["sldl", "-c", "/config/sldl.conf", "--links-file", str(wishlist_path)]
+            try:
+                process = subprocess.Popen(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True, bufsize=1, universal_newlines=True)
+                for line in process.stdout:
+                    logger.info(line.strip())
+                process.wait()
+                if process.returncode != 0:
+                    logger.error(f"Error processing {entry}: {process.stderr.read()}")
+                    return False
+            except Exception as e:
+                logger.error(f"Error processing {entry}: {e}")
+                return False
+        return True
+
 
 def main():
     """Main entry point for wishlist processing."""
@@ -309,7 +477,7 @@ def main():
     log_level = logging.DEBUG if args.verbose else logging.INFO
     logging.basicConfig(
         level=log_level,
-        format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
+        format='%(levelname)s - %(message)s'
     )
     
     try:

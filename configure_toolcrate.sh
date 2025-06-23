@@ -182,6 +182,56 @@ if [ -f "${CONFIG_DIR}/toolcrate.yaml" ]; then
     fi
 fi
 
+# Function to detect existing configuration values
+detect_existing_config() {
+    local config_file="${CONFIG_DIR}/toolcrate.yaml"
+    
+    if [ -f "$config_file" ]; then
+        echo -e "${BLUE}Existing configuration detected. Using current values as defaults.${NC}"
+        
+        # Extract current values using grep and sed
+        existing_data_dir=$(grep "data_directory:" "$config_file" | sed 's/.*data_directory: *\(.*\)/\1/' | tr -d '"' | head -1)
+        existing_download_dir=$(grep "parent_dir:" "$config_file" | sed 's/.*parent_dir: *\(.*\)/\1/' | tr -d '"' | head -1)
+        existing_library_dir=$(grep "download_dir:" "$config_file" | grep -v "parent_dir" | sed 's/.*download_dir: *\(.*\)/\1/' | tr -d '"' | head -1)
+        existing_skip_dir=$(grep "skip_music_dir:" "$config_file" | sed 's/.*skip_music_dir: *\(.*\)/\1/' | tr -d '"' | head -1)
+        existing_username=$(grep "username:" "$config_file" | sed 's/.*username: *\(.*\)/\1/' | tr -d '"' | head -1)
+        existing_min_bitrate=$(grep "min_bitrate:" "$config_file" | sed 's/.*min_bitrate: *\(.*\)/\1/' | tr -d '"' | head -1)
+        existing_max_sample_rate=$(grep "max_sample_rate:" "$config_file" | sed 's/.*max_sample_rate: *\(.*\)/\1/' | tr -d '"' | head -1)
+        existing_concurrent=$(grep "concurrent_processes:" "$config_file" | sed 's/.*concurrent_processes: *\(.*\)/\1/' | tr -d '"' | head -1)
+        
+        # Set defaults from existing config if found, otherwise use generic defaults
+        default_data_dir="${existing_data_dir:-${TOOLCRATE_DIR}/data}"
+        default_download_dir="${existing_download_dir:-${default_data_dir}/downloads}"
+        default_library_dir="${existing_library_dir:-${default_data_dir}/library}"
+        default_skip_dir="${existing_skip_dir:-${default_data_dir}/existing-library}"
+        default_username="${existing_username}"
+        default_min_bitrate="${existing_min_bitrate:-320}"
+        default_max_sample_rate="${existing_max_sample_rate:-192000}"
+        default_concurrent="${existing_concurrent:-2}"
+        
+        echo -e "${GREEN}Using paths from existing configuration:${NC}"
+        [ -n "$existing_data_dir" ] && echo -e "  Data: $existing_data_dir"
+        [ -n "$existing_download_dir" ] && echo -e "  Downloads: $existing_download_dir"
+        [ -n "$existing_library_dir" ] && echo -e "  Library: $existing_library_dir"
+        echo
+    else
+        echo -e "${BLUE}No existing configuration found. Using generic defaults.${NC}"
+        
+        # Generic defaults for new installations
+        default_data_dir="${TOOLCRATE_DIR}/data"
+        default_download_dir="${default_data_dir}/downloads"
+        default_library_dir="${default_data_dir}/library"
+        default_skip_dir="${default_data_dir}/existing-library"
+        default_username=""
+        default_min_bitrate="320"
+        default_max_sample_rate="192000"
+        default_concurrent="2"
+    fi
+}
+
+# Detect existing configuration
+detect_existing_config
+
 echo -e "${GREEN}Gathering configuration information...${NC}"
 echo -e "${YELLOW}Press Enter to use default values shown in brackets.${NC}"
 echo
@@ -190,23 +240,23 @@ echo
 echo -e "${BLUE}=== General ToolCrate Settings ===${NC}"
 prompt_with_default "Project name" "toolcrate" "project_name"
 prompt_with_default "Log level (debug, info, warning, error)" "info" "log_level"
-prompt_with_default "Data directory" "${TOOLCRATE_DIR}/data" "data_dir"
+prompt_with_default "Data directory" "$default_data_dir" "data_dir"
 prompt_with_default "Log directory" "${TOOLCRATE_DIR}/logs" "log_dir"
 
 # Soulseek Settings
 echo -e "\n${BLUE}=== Soulseek (slsk-batchdl) Settings ===${NC}"
 echo -e "${YELLOW}Basic Authentication and Directories${NC}"
-prompt_with_default "Soulseek username" "" "slsk_username"
+prompt_with_default "Soulseek username" "$default_username" "slsk_username"
 prompt_with_default "Soulseek password" "" "slsk_password"
-prompt_with_default "Download directory" "${data_dir}/downloads" "download_dir"
-prompt_with_default "Music library directory (for skip checking)" "${data_dir}/music" "music_dir"
+prompt_with_default "Download directory" "$default_download_dir" "download_dir"
+prompt_with_default "Music library directory (for skip checking)" "$default_skip_dir" "music_dir"
 prompt_with_default "Failed downloads directory" "${data_dir}/failed" "failed_dir"
 
 echo -e "\n${YELLOW}Audio Quality Preferences${NC}"
 prompt_with_default "Preferred audio formats (comma-separated)" "flac,mp3" "preferred_formats"
-prompt_with_default "Minimum bitrate" "320" "min_bitrate"
+prompt_with_default "Minimum bitrate" "$default_min_bitrate" "min_bitrate"
 prompt_with_default "Maximum bitrate" "2500" "max_bitrate"
-prompt_with_default "Maximum sample rate" "192000" "max_sample_rate"
+prompt_with_default "Maximum sample rate" "$default_max_sample_rate" "max_sample_rate"
 
 # Set defaults for advanced audio settings (not prompted to reduce complexity)
 length_tolerance="3"
@@ -214,7 +264,7 @@ strict_title="true"
 strict_album="true"
 
 echo -e "\n${YELLOW}Search and Download Settings${NC}"
-prompt_with_default "Concurrent downloads" "2" "concurrent_downloads"
+prompt_with_default "Concurrent downloads" "$default_concurrent" "concurrent_downloads"
 
 # Set defaults for advanced search settings (not prompted to reduce complexity)
 search_timeout="6000"
@@ -392,7 +442,7 @@ slsk_batchdl:
   time_unit: "s"
   name_format: ""
   invalid_replace_str: " "
-  ytdlp_argument: ""
+  ytdlp_argument: "--audio-format mp3 --audio-quality 0"
   parse_title_template: ""
 
 # API Integration Configuration
@@ -415,17 +465,27 @@ youtube:
 wishlist:
   enabled: true
   file_path: "config/wishlist.txt"
-  download_dir: "${data_dir}/library"          # Downloads go to library, not downloads
+  download_dir: "${default_library_dir}"          # Downloads go to library, not downloads
   index_in_playlist_folder: true               # Index files stored in each playlist folder
   check_existing_for_better_quality: true     # Re-check existing files for upgrades
   slower_search: true                          # Allow thorough searches
+  post_processing:
+    enabled: true                              # Enable post-processing
+    transcode_opus: true                       # Convert opus files
+    output_format: "flac"                      # Output format: "flac" or "aac"
+    aac_bitrate: 320                          # AAC bitrate in kbps (when output_format is "aac")
+    flac_compression_level: 8                  # FLAC compression level 0-8 (when output_format is "flac")
+    update_index: true                         # Update sldl index after transcoding
+    delete_original_opus: true                 # Remove original opus files after transcoding
   settings:
     # Override base settings for wishlist downloads
     preferred_conditions:
       formats: ["flac", "wav", "mp3"]          # Prefer lossless for wishlist
       min_bitrate: 320                         # Higher quality for wishlist
     desperate_search: true                     # Use relaxed matching for wishlist
-    skip_check_pref_cond: false               # Always check preferred conditions
+    skip_existing: true                        # Skip existing files by default
+    skip_check_pref_cond: true                # Enable quality checking for upgrades
+    listen_port: 49998                        # Use same port as main config
 
 # Cron Job Configuration
 cron:
@@ -454,7 +514,15 @@ mounts:
   data:
     host_path: "${data_dir}"
     container_path: "/data"
-    description: "Data directory mount"
+    description: "Data directory mount (index files, logs, metadata)"
+  downloads:
+    host_path: "${download_dir}"
+    container_path: "/downloads"
+    description: "Regular downloads directory mount"
+  library:
+    host_path: "${default_library_dir}"
+    container_path: "/library"
+    description: "Library/wishlist downloads directory mount"
   config:
     host_path: "${CONFIG_DIR}"
     container_path: "/config"

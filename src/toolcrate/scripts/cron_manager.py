@@ -8,6 +8,7 @@ import tempfile
 from pathlib import Path
 import logging
 import shutil
+import yaml
 
 # Set up logging
 logging.basicConfig(
@@ -42,58 +43,24 @@ def check_crontab_for_job(job_identifier):
         return False
 
 def read_config_file(config_file=None):
-    """Read configuration from a config file.
+    """Read the toolcrate configuration file.
     
     Args:
-        config_file: Path to config file. If None, will look for toolcrate.conf in project root.
+        config_file: Optional path to config file. If None, uses default location.
         
     Returns:
-        Dict with configuration values.
+        dict: Configuration dictionary
     """
-    config = {
-        "download-path": os.path.expanduser("~/Music/downloads/sldl"),
-        "wishlist": os.path.expanduser("~/Music/downloads/sldl/wishlist.txt"),
-        "dj-sets": os.path.expanduser("~/Music/downloads/sldl/dj-sets.txt"),
-    }
-    
     if config_file is None:
-        # Look for config in the home directory first, then project root
-        home_config = os.path.expanduser("~/.config/toolcrate/toolcrate.conf")
-        if os.path.exists(home_config):
-            config_file = home_config
-        else:
-            # Try to find project root
-            current_dir = Path.cwd()
-            while current_dir != current_dir.parent:
-                if (current_dir / "toolcrate.conf").exists():
-                    config_file = current_dir / "toolcrate.conf"
-                    break
-                current_dir = current_dir.parent
+        # Use default config location (go up four directories from this file)
+        config_file = os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))), 'config', 'toolcrate.yaml')
     
-    if config_file and os.path.exists(config_file):
-        logger.info(f"Reading configuration from {config_file}")
+    try:
         with open(config_file, 'r') as f:
-            for line in f:
-                line = line.strip()
-                # Skip comments and empty lines
-                if not line or line.startswith('#'):
-                    continue
-                
-                # Parse key-value pairs
-                if '=' in line:
-                    key, value = line.split('=', 1)
-                    key = key.strip()
-                    value = value.strip()
-                    
-                    # Expand user paths (~/...)
-                    if key in ["download-path", "wishlist", "dj-sets"] and '~' in value:
-                        value = os.path.expanduser(value)
-                    
-                    config[key] = value
-    else:
-        logger.debug(f"Config file not found, using defaults")
-    
-    return config
+            return yaml.safe_load(f)
+    except Exception as e:
+        logger.error(f"Error reading config file: {e}")
+        return {}
 
 def add_identify_tracks_cron(file_type, frequency="hourly"):
     """Add a cron job to run identify-tracks with the specified file type and frequency.
@@ -201,7 +168,13 @@ def add_download_wishlist_cron(frequency="hourly"):
     
     # Get the wishlist file path from config
     config = read_config_file()
-    wishlist_path = config["wishlist"]
+    wishlist_config = config.get('wishlist', {})
+    wishlist_path = wishlist_config.get('file_path', 'config/wishlist.txt')
+    
+    # If wishlist_path is relative, resolve it relative to the project root
+    if not os.path.isabs(wishlist_path):
+        project_root = os.path.dirname(os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))))
+        wishlist_path = os.path.abspath(os.path.join(project_root, wishlist_path))
     
     if not os.path.exists(wishlist_path):
         print(f"Warning: Wishlist file not found at {wishlist_path}. The cron job will be added anyway.")

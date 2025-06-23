@@ -5,6 +5,7 @@ import os
 import subprocess
 import logging
 import json
+import csv
 from pathlib import Path
 from typing import List, Dict, Any, Optional
 
@@ -21,16 +22,25 @@ class PostProcessor:
         """
         self.config = config
         self.enabled = config.get('enabled', False)
-        self.transcode_opus = config.get('transcode_opus_to_flac', False)
+        # Support both old and new config keys for backward compatibility
+        self.transcode_opus = config.get('transcode_opus', config.get('transcode_opus_to_flac', False))
+        self.output_format = config.get('output_format', 'flac').lower()
+        self.aac_bitrate = config.get('aac_bitrate', 256)
+        self.flac_compression_level = config.get('flac_compression_level', 8)
         self.update_index = config.get('update_index', True)
         self.delete_original = config.get('delete_original_opus', True)
+        
+        # Validate output format
+        if self.output_format not in ['flac', 'aac']:
+            logger.warning(f"Invalid output format '{self.output_format}', defaulting to 'flac'")
+            self.output_format = 'flac'
         
     def process_directory(self, directory: Path, index_path: Optional[Path] = None) -> Dict[str, Any]:
         """Process all files in a directory.
         
         Args:
             directory: Directory to process
-            index_path: Path to sldl index file
+            index_path: Optional specific index file path
             
         Returns:
             Dictionary with processing results
@@ -43,7 +53,8 @@ class PostProcessor:
             'status': 'completed',
             'processed': 0,
             'transcoded': [],
-            'errors': []
+            'errors': [],
+            'index_updates': 0
         }
         
         if self.transcode_opus:
@@ -52,14 +63,25 @@ class PostProcessor:
             results['transcoded'].extend(opus_results['transcoded'])
             results['errors'].extend(opus_results['errors'])
             
-            # Update index if files were transcoded
-            if opus_results['transcoded'] and self.update_index and index_path:
-                self._update_sldl_index(opus_results['transcoded'], index_path)
+            # Update index files if files were transcoded
+            if opus_results['transcoded'] and self.update_index:
+                if index_path:
+                    # Update specific index file
+                    updates = self._update_sldl_index(opus_results['transcoded'], index_path)
+                    results['index_updates'] += updates
+                else:
+                    # Find and update all index files in the directory
+                    index_files = list(directory.rglob("*.sldl"))
+                    logger.info(f"Found {len(index_files)} index files to update")
+                    
+                    for idx_file in index_files:
+                        updates = self._update_sldl_index(opus_results['transcoded'], idx_file)
+                        results['index_updates'] += updates
         
         return results
     
     def _transcode_opus_files(self, directory: Path) -> Dict[str, Any]:
-        """Find and transcode opus files to FLAC.
+        """Find and transcode opus files to the configured output format.
         
         Args:
             directory: Directory to search for opus files
@@ -84,20 +106,24 @@ class PostProcessor:
         
         for opus_file in opus_files:
             try:
-                flac_file = opus_file.with_suffix('.flac')
+                # Determine output file extension based on format
+                if self.output_format == 'aac':
+                    output_file = opus_file.with_suffix('.m4a')
+                else:  # flac
+                    output_file = opus_file.with_suffix('.flac')
                 
-                # Skip if FLAC already exists
-                if flac_file.exists():
-                    logger.info(f"FLAC already exists, skipping: {flac_file.name}")
+                # Skip if output file already exists
+                if output_file.exists():
+                    logger.info(f"{self.output_format.upper()} already exists, skipping: {output_file.name}")
                     continue
                 
-                # Transcode opus to FLAC
-                success = self._transcode_file(opus_file, flac_file)
+                # Transcode opus to target format
+                success = self._transcode_file(opus_file, output_file)
                 
                 if success:
                     results['transcoded'].append({
                         'original': str(opus_file),
-                        'transcoded': str(flac_file),
+                        'transcoded': str(output_file),
                         'deleted_original': False
                     })
                     
@@ -111,7 +137,7 @@ class PostProcessor:
                             logger.warning(f"Failed to delete opus file {opus_file}: {e}")
                     
                     results['processed'] += 1
-                    logger.info(f"Successfully transcoded: {opus_file.name} -> {flac_file.name}")
+                    logger.info(f"Successfully transcoded: {opus_file.name} -> {output_file.name}")
                 else:
                     results['errors'].append(f"Failed to transcode: {opus_file}")
                     
@@ -127,21 +153,30 @@ class PostProcessor:
         
         Args:
             input_file: Input opus file
-            output_file: Output FLAC file
+            output_file: Output file (FLAC or AAC)
             
         Returns:
             True if successful, False otherwise
         """
         try:
-            # Use ffmpeg to transcode opus to FLAC
-            cmd = [
-                'ffmpeg',
-                '-i', str(input_file),
-                '-c:a', 'flac',
-                '-compression_level', '8',  # Maximum FLAC compression
-                '-y',  # Overwrite output file
-                str(output_file)
-            ]
+            # Build ffmpeg command based on output format
+            cmd = ['ffmpeg', '-i', str(input_file)]
+            
+            if self.output_format == 'aac':
+                # AAC encoding options
+                cmd.extend([
+                    '-c:a', 'aac',
+                    '-b:a', f'{self.aac_bitrate}k',
+                    '-movflags', '+faststart',  # Optimize for streaming
+                ])
+            else:  # flac
+                # FLAC encoding options
+                cmd.extend([
+                    '-c:a', 'flac',
+                    '-compression_level', str(self.flac_compression_level),
+                ])
+            
+            cmd.extend(['-y', str(output_file)])  # Overwrite output file
             
             logger.debug(f"Transcoding command: {' '.join(cmd)}")
             
@@ -179,54 +214,60 @@ class PostProcessor:
             return
         
         try:
-            # Read existing index
-            with open(index_path, 'r', encoding='utf-8') as f:
-                lines = f.readlines()
+            # Read the CSV index file
+            with open(index_path, 'r', encoding='utf-8', newline='') as f:
+                reader = csv.DictReader(f)
+                rows = list(reader)
             
-            updated_lines = []
             updates_made = 0
             
-            for line in lines:
-                line = line.strip()
-                if not line:
-                    updated_lines.append(line)
-                    continue
+            # Update rows that match transcoded files
+            for row in rows:
+                filepath = row.get('filepath', '')
                 
-                # Try to parse the line as JSON
-                try:
-                    entry = json.loads(line)
+                # Check if this row matches any transcoded file
+                for transcoded in transcoded_files:
+                    original_path = Path(transcoded['original'])
+                    transcoded_path = Path(transcoded['transcoded'])
                     
-                    # Check if this entry matches any transcoded file
-                    for transcoded in transcoded_files:
-                        original_path = transcoded['original']
-                        transcoded_path = transcoded['transcoded']
+                    # Convert to relative paths for comparison
+                    # The index uses relative paths like "./filename.opus"
+                    original_filename = original_path.name
+                    transcoded_filename = transcoded_path.name
+                    
+                    # Check if the filepath matches the original opus file
+                    if (filepath.endswith(original_filename) or 
+                        filepath == f"./{original_filename}" or
+                        filepath == original_filename):
                         
-                        # Update the entry if it matches the original opus file
-                        if entry.get('path') == original_path:
-                            entry['path'] = transcoded_path
-                            entry['transcoded_from_opus'] = True
-                            updates_made += 1
-                            logger.debug(f"Updated index entry: {original_path} -> {transcoded_path}")
-                            break
-                    
-                    updated_lines.append(json.dumps(entry))
-                    
-                except json.JSONDecodeError:
-                    # Keep non-JSON lines as-is
-                    updated_lines.append(line)
+                        # Update the filepath to point to the transcoded file
+                        if filepath.startswith('./'):
+                            row['filepath'] = f"./{transcoded_filename}"
+                        else:
+                            row['filepath'] = transcoded_filename
+                        
+                        updates_made += 1
+                        logger.debug(f"Updated index entry: {filepath} -> {row['filepath']}")
+                        break
             
-            # Write updated index back
+            # Write updated CSV back
             if updates_made > 0:
-                with open(index_path, 'w', encoding='utf-8') as f:
-                    for line in updated_lines:
-                        f.write(line + '\n')
+                with open(index_path, 'w', encoding='utf-8', newline='') as f:
+                    if rows:
+                        fieldnames = rows[0].keys()
+                        writer = csv.DictWriter(f, fieldnames=fieldnames)
+                        writer.writeheader()
+                        writer.writerows(rows)
                 
-                logger.info(f"Updated {updates_made} entries in sldl index")
+                logger.info(f"Updated {updates_made} entries in sldl index: {index_path}")
             else:
-                logger.debug("No index entries needed updating")
+                logger.debug(f"No index entries needed updating in: {index_path}")
                 
         except Exception as e:
-            logger.error(f"Failed to update sldl index: {e}")
+            logger.error(f"Failed to update sldl index {index_path}: {e}")
+            updates_made = 0
+        
+        return updates_made
     
     def check_ffmpeg_available(self) -> bool:
         """Check if ffmpeg is available for transcoding.

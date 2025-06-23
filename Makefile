@@ -1,6 +1,6 @@
 # ToolCrate Makefile for unified testing with Poetry
 
-.PHONY: help test test-all test-python test-shell test-unit test-integration test-coverage test-quick clean install setup dev-install install-global install-pipx install-docker format lint check init-config config config-validate config-generate-sldl config-generate-wishlist-sldl config-generate-docker config-check-mounts config-show wishlist-test wishlist-run wishlist-run-verbose wishlist-logs wishlist-status test-docker test-docker-build test-docker-run test-docker-shell test-docker-clean test-docker-pull test-docker-registry test-docker-smart cron-add-wishlist
+.PHONY: help test test-all test-python test-shell test-unit test-integration test-coverage test-quick clean install setup dev-install install-global install-pipx install-docker format lint check init-config config config-validate config-generate-sldl config-generate-wishlist-sldl config-generate-docker config-check-mounts config-show wishlist-test wishlist-run wishlist-run-verbose wishlist-logs wishlist-status test-docker test-docker-build test-docker-run test-docker-shell test-docker-clean test-docker-pull test-docker-registry test-docker-smart cron-add-wishlist configure-opus-flac configure-opus-aac-256 configure-opus-aac-320 configure-opus-show
 
 # Default target
 help:
@@ -30,6 +30,12 @@ help:
 	@echo "  make wishlist-logs  - Show recent wishlist run logs"
 	@echo "  make wishlist-status - Show wishlist run status and summary"
 	@echo "  make config-generate-wishlist-sldl - Generate wishlist-specific sldl.conf"
+	@echo ""
+	@echo "Opus Transcoding Configuration:"
+	@echo "  make configure-opus-flac - Configure opus → FLAC (lossless, ~70-90MB/track)"
+	@echo "  make configure-opus-aac-256 - Configure opus → AAC 256kbps (~6-10MB/track)"
+	@echo "  make configure-opus-aac-320 - Configure opus → AAC 320kbps (~8-12MB/track)"
+	@echo "  make configure-opus-show - Show current transcoding configuration"
 	@echo ""
 	@echo "Testing:"
 	@echo "  make test           - Run all tests (Python + shell)"
@@ -305,6 +311,23 @@ post-process-opus:
 post-process-opus-dry:
 	@echo "Dry run: Post-processing opus files to FLAC..."
 	poetry run python scripts/post-process-opus.py "/Volumes/External4TB/Music/Music Library/toolcrate-library" --dry-run --verbose
+
+# Opus transcoding configuration targets
+configure-opus-flac:
+	@echo "Configuring opus transcoding to FLAC (lossless, large files)..."
+	poetry run python scripts/configure-opus-transcoding.py flac
+
+configure-opus-aac-256:
+	@echo "Configuring opus transcoding to AAC 256kbps (good quality, smaller files)..."
+	poetry run python scripts/configure-opus-transcoding.py aac 256
+
+configure-opus-aac-320:
+	@echo "Configuring opus transcoding to AAC 320kbps (high quality, smaller files)..."
+	poetry run python scripts/configure-opus-transcoding.py aac 320
+
+configure-opus-show:
+	@echo "Current opus transcoding configuration:"
+	@grep -A 10 "post_processing:" config/toolcrate.yaml | head -10
 
 # Initial configuration shortcuts with different options
 init-config-poetry:

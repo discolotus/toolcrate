@@ -488,31 +488,21 @@ class WishlistProcessor:
             logger.warning("ffmpeg not available - opus transcoding disabled")
             return {'status': 'error', 'message': 'ffmpeg not available', 'processed': 0}
 
-        # Get download directory and index file paths
+        # Get download directory and find all index files
         download_dir = Path(self.wishlist_config.get('download_dir', '/library'))
         
-        # Determine index file path
-        index_path = None
-        if self.wishlist_config.get('index_in_playlist_folder', True):
-            # Look for index files in subdirectories
-            index_files = list(download_dir.rglob("*.sldl"))
-            if index_files:
-                # Use the most recently modified index file
-                index_path = max(index_files, key=lambda p: p.stat().st_mtime)
-                logger.debug(f"Using index file: {index_path}")
-        else:
-            # Use global index
-            index_path = Path("/data/wishlist-index.sldl")
-
         logger.info("Starting post-processing of downloaded files...")
         
         try:
-            results = self.post_processor.process_directory(download_dir, index_path)
+            # Process the directory and let the post-processor find all index files
+            results = self.post_processor.process_directory(download_dir)
             
             if results['processed'] > 0:
                 logger.info(f"Post-processing completed: {results['processed']} files processed")
                 if results['transcoded']:
                     logger.info(f"Transcoded {len(results['transcoded'])} opus files to FLAC")
+                if results.get('index_updates', 0) > 0:
+                    logger.info(f"Updated {results['index_updates']} index entries")
             else:
                 logger.debug("No files needed post-processing")
                 

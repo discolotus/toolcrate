@@ -1,6 +1,6 @@
 # ToolCrate Makefile for unified testing with Poetry
 
-.PHONY: help test test-all test-python test-shell test-unit test-integration test-coverage test-quick clean install setup dev-install install-global install-pipx install-docker format lint check init-config config config-validate config-generate-sldl config-generate-wishlist-sldl config-generate-docker config-check-mounts config-show wishlist-test wishlist-run wishlist-run-verbose wishlist-logs wishlist-status test-docker test-docker-build test-docker-run test-docker-shell test-docker-clean test-docker-pull test-docker-registry test-docker-smart
+.PHONY: help test test-all test-python test-shell test-unit test-integration test-coverage test-quick clean install setup dev-install install-global install-pipx install-docker format lint check init-config config config-validate config-generate-sldl config-generate-wishlist-sldl config-generate-docker config-check-mounts config-show wishlist-test wishlist-run wishlist-run-verbose wishlist-logs wishlist-status test-docker test-docker-build test-docker-run test-docker-shell test-docker-clean test-docker-pull test-docker-registry test-docker-smart cron-add-wishlist
 
 # Default target
 help:
@@ -277,6 +277,12 @@ wishlist-test:
 
 wishlist-run:
 	@echo "Running wishlist processing..."
+	@if ! docker ps | grep -q "sldl"; then \
+		echo "Docker container 'sldl' is not running. Rebuilding and starting containers..."; \
+		docker-compose -f config/docker-compose.yml up -d --build; \
+	else \
+		echo "Docker container 'sldl' is running."; \
+	fi
 	poetry run python -m toolcrate.wishlist.processor
 
 wishlist-run-verbose:
@@ -426,5 +432,9 @@ test-docker-examples:
 	@echo ""
 	@echo "# Clean up:"
 	@echo "make test-docker-clean"
+
+# New target 'cron-add-wishlist'
+cron-add-wishlist:
+	poetry run python -c "from toolcrate.scripts.cron_manager import add_download_wishlist_cron; add_download_wishlist_cron()"
 
 

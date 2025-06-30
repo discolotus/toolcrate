@@ -38,6 +38,9 @@ class WishlistProcessor:
             config_manager: Optional ConfigManager instance. If None, creates a new one.
         """
         self.config_manager = config_manager or ConfigManager()
+        # Load the configuration if it hasn't been loaded yet
+        if not self.config_manager.config:
+            self.config_manager.load_config()
         self.config = self.config_manager.config
         self.wishlist_config = self.config.get('wishlist', {})
         

@@ -19,6 +19,7 @@ from .wrappers import (
     recreate_slsk_container,
 )
 from .binary_manager import ensure_sldl_binary, BinaryError, get_binary_path
+from ..downloaders.audio import AudioDownloader
 from .schedule import schedule
 from .wishlist_run import wishlist_run
 from .queue import queue
@@ -1270,8 +1271,6 @@ def download(url):
     If the URL is a playlist, it will be downloaded to ~/Music/downloads/playlist-name/
     If it's a single track, it will be downloaded to ~/Music/downloads/
     """
-    from ..downloaders.audio import AudioDownloader
-
     downloader = AudioDownloader(output_path=str(Path.home() / "Music" / "downloads"))
     result = downloader.download(url)
     

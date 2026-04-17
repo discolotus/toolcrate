@@ -114,7 +114,7 @@ jobs:
       - name: Install core dependencies only
         run: poetry install --without dev
 
-      - name: Verify package imports without optional deps
+      - name: Verify package imports with core deps only
         run: |
           poetry run python -c "
           import toolcrate
@@ -122,6 +122,6 @@ jobs:
           import toolcrate.cli.main
           import toolcrate.cli.wrappers
           import toolcrate.cli.binary_manager
-          from toolcrate.cli.main import main, info
+          from toolcrate.cli.main import main, info, download
           print('All core imports OK')
           "

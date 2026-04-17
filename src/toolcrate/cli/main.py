@@ -1,28 +1,31 @@
 #!/usr/bin/env python3
 """Main CLI entry point for ToolCrate."""
 
-import sys
-import os
 import json
-import subprocess
+import os
 import shutil
+import subprocess
+import sys
 from pathlib import Path
+
 import click
 
+from ..downloaders.audio import AudioDownloader
+from .binary_manager import BinaryError, ensure_sldl_binary, get_binary_path
+from .queue import queue
+from .schedule import schedule
+from .wishlist_run import wishlist_run
 from .wrappers import (
+    get_project_root,
+    get_spotify_playlist_name,
+    get_youtube_playlist_name,
+    recreate_slsk_container,
+    run_mdl,
+    run_shazam,
     run_sldl_docker_command,
     run_sldl_native,
     run_slsk,
-    run_shazam,
-    run_mdl,
-    get_project_root,
-    recreate_slsk_container,
 )
-from .binary_manager import ensure_sldl_binary, BinaryError, get_binary_path
-from ..downloaders.audio import AudioDownloader
-from .schedule import schedule
-from .wishlist_run import wishlist_run
-from .queue import queue
 
 
 @click.group()
@@ -62,7 +65,7 @@ def info():
     click.echo("    • toolcrate queue run - Process queue immediately")
 
 
-@main.command(context_settings=dict(ignore_unknown_options=True, allow_extra_args=True))
+@main.command(context_settings={'ignore_unknown_options': True, 'allow_extra_args': True})
 @click.pass_context
 def sldl(ctx):
     """Run the slsk-batchdl (sldl) binary.
@@ -108,7 +111,7 @@ def sldl_where():
     if path.exists():
         click.echo(str(path))
     else:
-        click.echo(f"Not installed. Run `toolcrate sldl --help` to trigger install, or `toolcrate sldl-upgrade`.")
+        click.echo("Not installed. Run `toolcrate sldl --help` to trigger install, or `toolcrate sldl-upgrade`.")
         sys.exit(1)
 
 
@@ -131,7 +134,7 @@ def slsk_tool_group():
 def slsk_tool_setup():
     """Setup the Soulseek batch download tool container and credentials."""
     click.echo("Setting up Soulseek batch download tool...")
-    
+
     # Check Docker is installed
     try:
         subprocess.run(["docker", "--version"], check=True, capture_output=True)
@@ -140,21 +143,21 @@ def slsk_tool_setup():
         click.echo("Error: Docker is not installed or not in PATH")
         click.echo("Please install Docker Desktop and try again")
         return 1
-    
+
     # Ensure config directory exists
     user_config_dir = Path.home() / ".config" / "sldl"
     os.makedirs(user_config_dir, exist_ok=True)
     user_conf_file_path = user_config_dir / "sldl.conf"
-    
+
     # Prompt for credentials
     click.echo("Please enter your Soulseek credentials:")
     username = click.prompt("Soulseek username", type=str)
     password = click.prompt("Soulseek password", type=str, hide_input=True)
-    
+
     # Create or update config file
     config_lines = []
     if user_conf_file_path.exists():
-        with open(user_conf_file_path, 'r') as f:
+        with open(user_conf_file_path) as f:
             for line in f:
                 if not line.strip().startswith("username =") and not line.strip().startswith("password ="):
                     config_lines.append(line.strip())
@@ -170,17 +173,17 @@ def slsk_tool_setup():
             'name-format = "[%(artist)s] %(title)s"',
             "listen-port = 50000"
         ]
-    
+
     # Add credentials
     config_lines.append(f"username = {username}")
     config_lines.append(f"password = {password}")
-    
+
     # Write config file
     with open(user_conf_file_path, 'w') as f:
         f.write("\n".join(config_lines))
-    
+
     click.echo(f"Credentials saved to {user_conf_file_path}")
-    
+
     # Setup download directory
     default_download_dir = os.path.expanduser("~/Music/downloads")
     download_dir = click.prompt(
@@ -188,11 +191,11 @@ def slsk_tool_setup():
         default=default_download_dir,
         type=str
     )
-    
+
     # Create download directory if it doesn't exist
     os.makedirs(download_dir, exist_ok=True)
     click.echo(f"Download directory {download_dir} created/verified")
-    
+
     # Ask if user wants to recreate container
     if click.confirm("Do you want to build and start the container now?", default=True):
         root_dir = get_project_root()
@@ -202,10 +205,10 @@ def slsk_tool_setup():
         else:
             click.echo("Container setup failed - please check Docker is running and try again")
             return 1
-    
+
     return 0
 
-@slsk_tool_group.command(name="run", context_settings=dict(ignore_unknown_options=True))
+@slsk_tool_group.command(name="run", context_settings={'ignore_unknown_options': True})
 @click.argument("args", nargs=-1, type=click.UNPROCESSED)
 def slsk_tool_run(args):
     """Run sldl with the provided arguments."""
@@ -218,25 +221,25 @@ def slsk_tool_run(args):
 @click.option("--log-file", type=click.Path(), help="Name of log file (will be saved in the logs directory)")
 def batch_download(playlist_file, config_file, log_file):
     """Process a list of Spotify playlists from a text file and download them using sldl."""
-    import time
     import logging
-    from pathlib import Path
     import os
-    import subprocess
     import re  # For extracting playlist IDs
+    import subprocess
+    import time
     from datetime import datetime
-    import requests
-    
+    from pathlib import Path
+
+
     # Configure logging
     logs_dir = Path("logs")
     os.makedirs(logs_dir, exist_ok=True)
-    
+
     if not log_file:
         timestamp = time.strftime("%Y%m%d-%H%M%S")
         log_file = logs_dir / f"batch_download_{timestamp}.log"
     else:
         log_file = logs_dir / log_file
-    
+
     # Set up logging to file
     logging.basicConfig(
         filename=log_file,
@@ -244,37 +247,37 @@ def batch_download(playlist_file, config_file, log_file):
         format='%(asctime)s - %(levelname)s - %(message)s',
         datefmt='%Y-%m-%d %H:%M:%S'
     )
-    
+
     # Log start time
     logging.info(f"=== Batch download started at {time.strftime('%Y-%m-%d %H:%M:%S')} ===")
-    
+
     # Get project directory
     project_dir = Path.cwd()
-    
+
     # Configure paths
     if not playlist_file:
         playlist_file = project_dir / "playlists.txt"
     else:
         playlist_file = Path(playlist_file)
-    
+
     if not config_file:
         config_file = project_dir / "sldl.conf"
     else:
         config_file = Path(config_file)
-    
+
     # Try default config location if specified file doesn't exist
     default_config = project_dir / "sldl.conf"
-    
+
     # Output configuration
-    click.echo(f"Batch download configuration:")
+    click.echo("Batch download configuration:")
     click.echo(f"  Playlist file: {playlist_file}")
     click.echo(f"  Config file: {config_file}")
     click.echo(f"  Log file: {log_file}")
-    
+
     # Ensure logs directory exists
     logs_dir = project_dir / "logs"
     os.makedirs(logs_dir, exist_ok=True)
-    
+
     # Set log file path in logs directory
     if log_file:
         # If user specified a log file, use just the filename part and put it in logs directory
@@ -284,15 +287,15 @@ def batch_download(playlist_file, config_file, log_file):
         # Default log file with timestamp to avoid overwriting
         timestamp = time.strftime("%Y%m%d-%H%M%S")
         log_file = logs_dir / f"batch_download_{timestamp}.log"
-    
+
     not_found_file = logs_dir / "not_found_songs.txt"
-    
+
     click.echo(f"Log file will be saved to: {log_file}")
-    
+
     # Check if we need to create a default config file
     if not config_file.exists() and not default_config.exists():
         click.echo(f"No config file found. Creating template config at {default_config}")
-        
+
         # Create a template config file
         template_config = """# sldl config file
 # Generated automatically by toolcrate
@@ -315,7 +318,7 @@ log_level = INFO
         try:
             with open(default_config, "w") as f:
                 f.write(template_config)
-            
+
             config_file = default_config
             click.echo(f"Created template config file at {default_config}")
             click.echo("Please edit this file to add your Soulseek credentials before running again.")
@@ -323,7 +326,7 @@ log_level = INFO
         except Exception as e:
             click.echo(f"Error creating config file: {e}")
             return 1
-    
+
     # Ensure config file exists - first check the specified path, then try default location
     if not config_file.exists() and config_file != default_config:
         click.echo(f"Warning: Specified config file {config_file} not found, trying default location {default_config}")
@@ -336,16 +339,16 @@ log_level = INFO
     elif not config_file.exists():
         click.echo(f"Error: Config file not found at {config_file}")
         return 1
-    
+
     click.echo(f"Using config file: {config_file}")
-    
+
     # Ensure config directory exists in slsk-batchdl
     slsk_config_dir = project_dir / "src" / "slsk-batchdl" / "config"
     os.makedirs(slsk_config_dir, exist_ok=True)
-    
+
     # Create a symlink or copy the config file to the slsk-batchdl/config directory
     slsk_config_file = slsk_config_dir / "sldl.conf"
-    
+
     # Always ensure we have the latest config file in the Docker config directory
     if os.path.exists(slsk_config_file):
         if os.path.islink(slsk_config_file):
@@ -361,13 +364,13 @@ log_level = INFO
                 except Exception as e:
                     click.echo(f"Warning: Could not backup existing config: {e}")
             os.remove(slsk_config_file)
-    
+
     # Copy the config file to the Docker directory
     try:
         # Try to create a symlink first (works on Linux/macOS)
         absolute_config_path = os.path.abspath(config_file)
         click.echo(f"Using config from: {absolute_config_path}")
-        
+
         try:
             os.symlink(absolute_config_path, slsk_config_file)
             click.echo(f"Created symlink from {config_file} to {slsk_config_file}")
@@ -378,14 +381,14 @@ log_level = INFO
     except Exception as e:
         click.echo(f"Warning: Could not link/copy config file to Docker directory: {e}")
         click.echo("Will attempt to pass config directly to Docker container")
-    
+
     # Check if Docker is running
     try:
         docker_check = subprocess.run(["pgrep", "-f", "docker"], capture_output=True)
         if docker_check.returncode != 0:
             click.echo("Docker daemon is not running. Attempting to start it...")
             subprocess.run(["open", "-a", "Docker"])
-            
+
             # Wait for Docker to start
             for i in range(1, 13):
                 time.sleep(5)
@@ -394,17 +397,17 @@ log_level = INFO
                     click.echo("Docker daemon started successfully")
                     break
                 click.echo(f"Waiting for Docker to start... ({i}/12)")
-            
+
             if docker_check.returncode != 0:
                 click.echo("Error: Failed to start Docker daemon")
                 return 1
-            
+
             # Give Docker a moment to fully initialize
             time.sleep(10)
     except Exception as e:
         click.echo(f"Error checking Docker status: {e}")
         return 1
-    
+
     # Check if Docker container is running
     try:
         # First check if the container exists (regardless of state)
@@ -413,7 +416,7 @@ log_level = INFO
             capture_output=True,
             text=True
         )
-        
+
         # Check if any container with "sldl" in the name exists
         existing_container = False
         container_name = None
@@ -426,26 +429,26 @@ log_level = INFO
 
         if existing_container:
             click.echo(f"Found existing sldl container: {container_name}")
-            
+
             # Check if it's running
             docker_ps = subprocess.run(
                 ["docker", "ps", "--format", "{{.Names}}"],
                 capture_output=True,
                 text=True
             )
-            
+
             container_running = container_name in docker_ps.stdout
-            
+
             if not container_running:
-                click.echo(f"Starting container using docker compose...")
+                click.echo("Starting container using docker compose...")
                 # Find the docker-compose directory
                 root_dir = get_project_root()
                 compose_dir = root_dir / "src" / "slsk-batchdl"
-                
+
                 # Change directory and run docker compose up
                 current_dir = os.getcwd()
                 os.chdir(compose_dir)
-                
+
                 subprocess.run(["docker", "compose", "up", "-d"], check=True)
 
                 # Restore original directory
@@ -456,29 +459,29 @@ log_level = INFO
                 container_running = True
         else:
             click.echo("No existing sldl container found, creating a new one...")
-            
+
             # Check if slsk-batchdl image exists
             docker_images = subprocess.run(
                 ["docker", "images", "--format", "{{.Repository}}"],
                 capture_output=True,
                 text=True
             )
-            
+
             # Look for various possible image names
             image_names = ["slsk-batchdl", "slsk-batchdl-sldl", "sldl"]
             image_exists = False
             image_name = None
-            
+
             for name in image_names:
                 if name in docker_images.stdout:
                     image_exists = True
                     image_name = name
                     break
-            
+
             if not image_exists:
                 # Try to build the image
                 click.echo("No sldl image found. Attempting to build from Dockerfile...")
-                
+
                 dockerfile_path = project_dir / "src" / "slsk-batchdl" / "Dockerfile"
                 if os.path.exists(dockerfile_path):
                     try:
@@ -497,18 +500,18 @@ log_level = INFO
                     click.echo(f"Error: Dockerfile not found at {dockerfile_path}")
                     click.echo("Please build the Docker image manually with: docker build -t slsk-batchdl ./src/slsk-batchdl")
                     return 1
-            
+
             # Prepare directories
             slsk_config_dir = project_dir / "src" / "slsk-batchdl" / "config"
             os.makedirs(slsk_config_dir, exist_ok=True)
-            
+
             data_dir = project_dir / "src" / "slsk-batchdl" / "data"
             os.makedirs(data_dir, exist_ok=True)
-            
+
             # Start the container using docker run
             container_name = "sldl"
             click.echo(f"Starting container {container_name} with image {image_name}...")
-            
+
             run_cmd = [
                 "docker", "run", "-d",
                 "--name", container_name,
@@ -517,7 +520,7 @@ log_level = INFO
                 "-v", f"{os.path.abspath(data_dir)}:/data",
                 image_name
             ]
-            
+
             try:
                 subprocess.run(run_cmd, check=True)
                 click.echo(f"Container {container_name} started successfully")
@@ -541,27 +544,27 @@ log_level = INFO
     except Exception as e:
         click.echo(f"Error managing Docker container: {e}")
         return 1
-    
+
     # Read playlists from file
-    with open(playlist_file, "r") as f:
+    with open(playlist_file) as f:
         playlists = [line.strip() for line in f if line.strip() and not line.strip().startswith("#")]
-    
+
     playlist_count = min(len(playlists), 100)  # Process up to 100 playlists
-    
+
     click.echo(f"Found {playlist_count} playlists to process:")
     for i, playlist in enumerate(playlists[:playlist_count]):
         click.echo(f"Playlist {i+1}: {playlist}")
-    
+
     # Process each playlist
     for i, playlist in enumerate(playlists[:playlist_count]):
         logging.info(f"Processing playlist {i+1}/{playlist_count}: {playlist}")
         click.echo(f"\nProcessing playlist {i+1}/{playlist_count}: {playlist}")
-        
+
         # Create organized directory structure for downloads
         download_base_dir = os.path.expanduser("~/Music/downloads")
         playlist_name = None
         playlist_type = None
-        
+
         # Determine playlist source and extract name
         if "spotify.com" in playlist:
             playlist_type = "spotify"
@@ -574,13 +577,13 @@ log_level = INFO
         else:
             playlist_type = "other"
             playlist_name = f"playlist-{datetime.now().strftime('%Y%m%d-%H%M%S')}"
-        
+
         # Create directory structure
         custom_download_dir = os.path.join(download_base_dir, playlist_type, playlist_name)
         os.makedirs(custom_download_dir, exist_ok=True)
         logging.info(f"Created download directory: {custom_download_dir}")
         click.echo(f"Download directory: {custom_download_dir}")
-        
+
         # Call sldl for this playlist
         try:
             # Determine if we need to mount the config directory
@@ -589,7 +592,7 @@ log_level = INFO
                 if os.path.exists(slsk_config_file):
                     # Create container path for playlist downloads
                     container_download_dir = f"/downloads/{playlist_type}/{playlist_name}"
-                    
+
                     # Create a temporary script to update config and run command
                     import tempfile
                     with tempfile.NamedTemporaryFile(mode='w+', delete=False, suffix='.sh') as script:
@@ -597,14 +600,14 @@ log_level = INFO
                         # Ensure directories exist
                         script.write(f'mkdir -p {container_download_dir}\n')
                         script.write(f'chmod 777 {container_download_dir}\n')
-                        
+
                         # Create temporary config with custom download directory
                         script.write('cp /config/sldl.conf /tmp/temp_sldl.conf\n')
                         script.write('grep -v "download-dir" /tmp/temp_sldl.conf > /tmp/sldl.conf.new\n')
                         script.write('grep -v "path =" /tmp/sldl.conf.new > /tmp/sldl.conf.newer\n')
                         script.write(f'echo "path = {container_download_dir}" >> /tmp/sldl.conf.newer\n')
                         script.write('cat /tmp/sldl.conf.newer > /tmp/temp_sldl.conf\n')
-                        
+
                         # Special handling for Spotify and YouTube URLs
                         if 'spotify.com' in playlist:
                             script.write(f'cd {container_download_dir} && sldl --config /tmp/temp_sldl.conf --input-type spotify "{playlist}"\n')
@@ -612,37 +615,37 @@ log_level = INFO
                             script.write(f'cd {container_download_dir} && sldl --config /tmp/temp_sldl.conf --input-type youtube "{playlist}"\n')
                         else:
                             script.write(f'cd {container_download_dir} && sldl --config /tmp/temp_sldl.conf "{playlist}"\n')
-                        
+
                         script_path = script.name
-                    
+
                     # Make script executable
                     os.chmod(script_path, 0o755)
-                    
+
                     # Copy script to container
                     try:
                         subprocess.run(
                             ["docker", "cp", script_path, f"{container_name}:/tmp/run_playlist.sh"],
                             check=True
                         )
-                        
+
                         # Execute script in container
                         click.echo(f"Executing search for playlist {i+1}/{playlist_count}: {playlist}")
-                        process = subprocess.run(
+                        subprocess.run(
                             ["docker", "exec", "-it", container_name, "sh", "/tmp/run_playlist.sh"],
                             check=False  # Don't check result to avoid Python error on Ctrl+C
                         )
-                        
+
                         # Clean up
                         os.unlink(script_path)
                     except Exception as e:
                         logging.error(f"Error executing script in container: {e}")
                         click.echo(f"Error: {e}")
-                        
+
                 else:
                     # Fall back to existing implementation if needed
                     logging.warning("Config file not found in container, falling back to default approach")
                     click.echo("Warning: Using default approach (may not use custom directory structure)")
-                    
+
                     # If that failed, try to copy the file directly
                     container_config_path = "/tmp/sldl.conf"
                     try:
@@ -651,7 +654,7 @@ log_level = INFO
                             check=True
                         )
                         click.echo(f"Copied config file to Docker container at {container_config_path}")
-                        
+
                         cmd = [
                             "docker", "exec", container_name,
                             "sldl", "--config", container_config_path, playlist
@@ -664,11 +667,11 @@ log_level = INFO
                             "sldl", "--config", "/config/sldl.conf", playlist
                         ]
                         click.echo("Falling back to default config location. This may not work.")
-            
+
             MAX_RETRIES = 2
             retry_count = 0
             success = False
-            
+
             while retry_count <= MAX_RETRIES and not success:
                 try:
                     # Add timeout to prevent hanging indefinitely
@@ -679,16 +682,16 @@ log_level = INFO
                         text=True,
                         timeout=300  # 5 minute timeout
                     )
-                    
+
                     # Check container health after command
                     container_check = subprocess.run(
                         ["docker", "container", "inspect", container_name, "--format", "{{.State.Status}}"],
                         capture_output=True,
                         text=True
                     )
-                    
+
                     container_status = container_check.stdout.strip()
-                    
+
                     # Log command details
                     with open(log_file, "a") as log:
                         log.write(f"--- Processing {playlist} (Attempt {retry_count+1}) ---\n")
@@ -700,21 +703,21 @@ log_level = INFO
                         log.write("\n--- STDERR ---\n")
                         log.write(result.stderr)
                         log.write("\n-------------\n\n")
-                    
+
                     # Handle different error scenarios
                     if result.returncode != 0:
                         # Log more detailed error information
                         if "Input error" in result.stdout:
                             click.echo(f"Input error detected: {result.stdout.strip()}")
-                            
-                            # If we're getting "Unknown argument: --search" 
+
+                            # If we're getting "Unknown argument: --search"
                             if "Unknown argument: --search" in result.stdout:
                                 # This shouldn't happen anymore, but just in case
                                 cmd = [c for c in cmd if c != "--search"]
                                 click.echo("Fixed command by removing --search parameter")
                                 # Don't count this as a retry, just fix the command and try again
                                 continue
-                            
+
                             # Input errors related to URL formats
                             if "url" in result.stdout.lower():
                                 if "spotify" in result.stdout.lower():
@@ -726,7 +729,7 @@ log_level = INFO
                                     cmd.insert(insert_pos + 1, "spotify")
                                     click.echo("Fixed command for Spotify URL")
                                     continue  # Try again with fixed command
-                                    
+
                                 elif "youtube" in result.stdout.lower():
                                     # Fix YouTube URL command
                                     cmd = [c for c in cmd if c != "--input-type" and c != "youtube"]
@@ -738,34 +741,34 @@ log_level = INFO
                                     continue  # Try again with fixed command
                         if "No such container" in result.stderr:
                             # Container disappeared, try to restart it
-                            click.echo(f"Container disappeared. Attempting to restart with docker compose...")
-                            
+                            click.echo("Container disappeared. Attempting to restart with docker compose...")
+
                             # Find the docker-compose directory
                             root_dir = get_project_root()
                             compose_dir = root_dir / "src" / "slsk-batchdl"
-                            
+
                             # Change directory and restart with docker compose
                             current_dir = os.getcwd()
                             os.chdir(compose_dir)
-                            
+
                             # First down to ensure clean state
                             subprocess.run(["docker", "compose", "down"], check=False, capture_output=True)
-                            
+
                             # Then up to start fresh
                             restart_result = subprocess.run(
                                 ["docker", "compose", "up", "-d"],
                                 capture_output=True,
                                 text=True
                             )
-                            
+
                             # Restore original directory
                             os.chdir(current_dir)
-                            
+
                             if restart_result.returncode != 0:
                                 # Container couldn't be restarted, it may need to be recreated
                                 raise Exception(f"Failed to restart container: {restart_result.stderr}")
-                            
-                            click.echo(f"Container restarted with docker compose. Waiting 10 seconds...")
+
+                            click.echo("Container restarted with docker compose. Waiting 10 seconds...")
                             time.sleep(10)
                         elif "executable file not found" in result.stderr:
                             # sldl command not found in container
@@ -776,50 +779,50 @@ log_level = INFO
                             click.echo(f"Command failed with exit code {result.returncode}")
                             click.echo("Error details:")
                             click.echo(result.stderr)
-                            
+
                             # If this is the last retry, show more diagnostic information
                             if retry_count == MAX_RETRIES:
                                 click.echo("Collecting diagnostic information...")
                                 diag_cmd = ["docker", "logs", container_name]
                                 diag_result = subprocess.run(diag_cmd, capture_output=True, text=True)
-                                
+
                                 with open(log_file, "a") as log:
                                     log.write("=== DIAGNOSTIC INFO ===\n")
                                     log.write(f"Docker logs for {container_name}:\n")
                                     log.write(diag_result.stdout)
                                     log.write(diag_result.stderr)
                                     log.write("======================\n\n")
-                                
+
                                 click.echo(f"Diagnostic information saved to {log_file}")
                     else:
                         # Command succeeded
                         success = True
                         click.echo(f"Successfully processed playlist {playlist}")
-                
+
                 except subprocess.TimeoutExpired:
-                    click.echo(f"Command timed out after 300 seconds. Attempting to kill and restart...")
-                    
+                    click.echo("Command timed out after 300 seconds. Attempting to kill and restart...")
+
                     # Kill the hanging command but keep the container
                     try:
                         # Find and kill the process in the container
                         kill_cmd = ["docker", "exec", container_name, "pkill", "-f", "sldl"]
                         subprocess.run(kill_cmd, check=False)
-                        
+
                         # Wait a moment for cleanup
                         time.sleep(5)
-                        
+
                         with open(log_file, "a") as log:
                             log.write(f"Command timed out for playlist {playlist}. Killed process.\n")
                     except Exception as e:
                         click.echo(f"Error killing hanging process: {e}")
-                
+
                 except Exception as e:
                     # General exception handling
                     click.echo(f"Error executing command: {e}")
-                    
+
                     with open(log_file, "a") as log:
                         log.write(f"Error during command execution: {str(e)}\n")
-                    
+
                     # Check if container is still running
                     try:
                         container_check = subprocess.run(
@@ -827,95 +830,95 @@ log_level = INFO
                             capture_output=True,
                             text=True
                         )
-                        
+
                         if "running" not in container_check.stdout:
-                            click.echo(f"Container is not running. Attempting to restart with docker compose...")
-                            
+                            click.echo("Container is not running. Attempting to restart with docker compose...")
+
                             # Find the docker-compose directory
                             root_dir = get_project_root()
                             compose_dir = root_dir / "src" / "slsk-batchdl"
-                            
+
                             # Change directory and restart with docker compose
                             current_dir = os.getcwd()
                             os.chdir(compose_dir)
-                            
+
                             # Start with docker compose up
                             subprocess.run(["docker", "compose", "up", "-d"], check=False)
-                            
+
                             # Restore original directory
                             os.chdir(current_dir)
-                            
+
                             click.echo("Container restarted with docker compose")
                             time.sleep(10)
                     except Exception as e2:
                         click.echo(f"Error checking container status: {e2}")
-                
+
                 retry_count += 1
-                
+
                 if not success and retry_count <= MAX_RETRIES:
                     click.echo(f"Retrying command (attempt {retry_count+1}/{MAX_RETRIES+1})...")
                     time.sleep(5)  # Wait before retry
-            
+
             if not success:
                 click.echo(f"Failed to process playlist {playlist} after {MAX_RETRIES+1} attempts.")
                 click.echo(f"Check the log file at {log_file} for details.")
-                
+
                 # Log as not found so it gets included in the not found list
                 with open(log_file, "a") as log:
                     log.write(f"All downloads failed: {playlist}\n")
-            
+
             # Add delay between playlists
             if i < playlist_count - 1:
                 click.echo("Waiting 10 seconds before processing next playlist...")
                 time.sleep(10)
-                
+
         except Exception as e:
             click.echo(f"Error processing playlist {playlist}: {e}")
-    
+
     # Extract songs that were not found
     click.echo("Extracting songs that were not found during the search...")
-    
+
     # Create the not found songs file with a header
     timestamp = time.strftime("%Y%m%d-%H%M%S")
     not_found_file = logs_dir / f"not_found_songs_{timestamp}.txt"
-    
+
     with open(not_found_file, "w") as nf:
         nf.write(f"# Songs not found during batch download on {time.strftime('%Y-%m-%d %H:%M:%S')}\n")
         nf.write("# From playlists:\n")
-        
+
         for playlist in playlists[:playlist_count]:
             nf.write(f"# - {playlist}\n")
-        
+
         nf.write("\n")
-    
+
     # Extract not found songs from log file
     try:
-        with open(log_file, "r") as log:
+        with open(log_file) as log:
             log_content = log.read()
-            
+
         # Use a regular expression to find not found songs
         not_found_songs = set()
         for match in re.finditer(r"Not found: (.*?)$|All downloads failed: (.*?)$", log_content, re.MULTILINE):
             song = match.group(1) or match.group(2)
             if song:
                 not_found_songs.add(song)
-        
+
         # Write the sorted list to the not found file
         with open(not_found_file, "a") as nf:
             for song in sorted(not_found_songs):
                 nf.write(f"{song}\n")
-        
+
         not_found_count = len(not_found_songs)
         click.echo(f"Found {not_found_count} songs that could not be downloaded")
         click.echo(f"List saved to {not_found_file}")
-        
+
     except Exception as e:
         click.echo(f"Error extracting not found songs: {e}")
-    
+
     # Log end time
     with open(log_file, "a") as log:
         log.write(f"=== Batch download completed at {time.strftime('%Y-%m-%d %H:%M:%S')} ===\n\n")
-    
+
     return 0
 
 @slsk_tool_group.command(name="diagnose")
@@ -923,7 +926,7 @@ log_level = INFO
 def diagnose_docker(container_name):
     """Diagnose Docker container issues."""
     click.echo(f"Diagnosing Docker container '{container_name}'...")
-    
+
     # Check if Docker is installed
     try:
         subprocess.run(["docker", "--version"], check=True, capture_output=True)
@@ -932,16 +935,16 @@ def diagnose_docker(container_name):
         click.echo("❌ Docker is not installed or not in PATH")
         click.echo("Please install Docker Desktop and try again")
         return 1
-    
+
     # Check if Docker daemon is running
     try:
-        docker_ps = subprocess.run(["docker", "ps"], check=True, capture_output=True)
+        subprocess.run(["docker", "ps"], check=True, capture_output=True)
         click.echo("✅ Docker daemon is running")
     except subprocess.CalledProcessError:
         click.echo("❌ Docker daemon is not running")
         click.echo("Please start Docker Desktop and try again")
         return 1
-    
+
     # Check if container exists
     try:
         inspect_cmd = ["docker", "container", "inspect", container_name]
@@ -955,12 +958,12 @@ def diagnose_docker(container_name):
         click.echo(f"❌ Container '{container_name}' does not exist")
         click.echo("Run 'slsk-tool setup' to create the container")
         return 1
-    
+
     # Check if container is running
     try:
         status_cmd = ["docker", "container", "inspect", container_name, "--format", "{{.State.Status}}"]
         status_result = subprocess.run(status_cmd, capture_output=True, text=True)
-        
+
         if status_result.returncode == 0:
             status = status_result.stdout.strip()
             if status == "running":
@@ -968,48 +971,48 @@ def diagnose_docker(container_name):
             else:
                 click.echo(f"❌ Container '{container_name}' is not running (status: {status})")
                 click.echo(f"Run 'docker start {container_name}' to start it")
-                
+
                 # Ask if user wants to start the container
                 if click.confirm("Do you want to start the container now?", default=True):
                     # Find the docker-compose directory
                     root_dir = get_project_root()
                     compose_dir = root_dir / "src" / "slsk-batchdl"
-                    
+
                     # Change directory and run docker compose up
                     current_dir = os.getcwd()
                     os.chdir(compose_dir)
-                    
+
                     start_result = subprocess.run(
                         ["docker", "compose", "up", "-d"],
                         capture_output=True,
                         text=True
                     )
-                    
+
                     # Restore original directory
                     os.chdir(current_dir)
-                    
+
                     if start_result.returncode == 0:
-                        click.echo(f"✅ Container started with docker compose up")
+                        click.echo("✅ Container started with docker compose up")
                     else:
                         click.echo(f"❌ Failed to start container: {start_result.stderr}")
                         return 1
     except subprocess.CalledProcessError:
-        click.echo(f"❌ Failed to get container status")
+        click.echo("❌ Failed to get container status")
         return 1
-    
+
     # Check config directory in container
     try:
         config_cmd = ["docker", "exec", container_name, "ls", "-la", "/config"]
         config_result = subprocess.run(config_cmd, capture_output=True, text=True)
         if config_result.returncode == 0:
             click.echo("✅ Container has access to /config directory")
-            
+
             # Check if sldl.conf exists
             if "sldl.conf" in config_result.stdout:
                 click.echo("✅ sldl.conf found in container config directory")
             else:
                 click.echo("❌ sldl.conf not found in container config directory")
-                
+
                 # Copy sldl.conf to container
                 user_config_dir = Path.home() / ".config" / "sldl"
                 user_conf_file_path = user_config_dir / "sldl.conf"
@@ -1029,7 +1032,7 @@ def diagnose_docker(container_name):
             click.echo(f"Error: {config_result.stderr}")
     except subprocess.CalledProcessError:
         click.echo("❌ Error checking container config directory")
-    
+
     # Check downloads directory in container
     try:
         downloads_cmd = ["docker", "exec", container_name, "ls", "-la", "/downloads"]
@@ -1039,7 +1042,7 @@ def diagnose_docker(container_name):
         else:
             click.echo("❌ Container does not have access to /downloads directory")
             click.echo(f"Error: {downloads_result.stderr}")
-            
+
             # Try to create the downloads directory
             if click.confirm("Do you want to create the /downloads directory in the container?", default=True):
                 mkdir_cmd = ["docker", "exec", container_name, "mkdir", "-p", "/downloads"]
@@ -1055,7 +1058,7 @@ def diagnose_docker(container_name):
                     click.echo(f"❌ Failed to create /downloads directory: {mkdir_result.stderr}")
     except subprocess.CalledProcessError:
         click.echo("❌ Error checking container downloads directory")
-    
+
     # Check if sldl binary is available
     try:
         sldl_cmd = ["docker", "exec", container_name, "which", "sldl"]
@@ -1065,7 +1068,7 @@ def diagnose_docker(container_name):
         else:
             click.echo("❌ sldl binary not found in container")
             click.echo("The container image may be incorrectly built")
-            
+
             # Ask if user wants to recreate container
             if click.confirm("Do you want to recreate the container?", default=True):
                 root_dir = get_project_root()
@@ -1077,7 +1080,7 @@ def diagnose_docker(container_name):
                     return 1
     except subprocess.CalledProcessError:
         click.echo("❌ Error checking sldl binary in container")
-    
+
     click.echo("\nDiagnostics complete.")
     return 0
 
@@ -1130,7 +1133,7 @@ def mdl_tool(args):
 def diagnose_docker_container(container_name, log_file=None):
     """Perform diagnostics on a Docker container and optionally log results."""
     click.echo(f"Performing diagnostics on container '{container_name}'...")
-    
+
     diagnostics = {
         "container_status": None,
         "container_details": None,
@@ -1139,13 +1142,13 @@ def diagnose_docker_container(container_name, log_file=None):
         "processes": None,
         "network": None
     }
-    
+
     try:
         # Check container status
         status_cmd = ["docker", "container", "inspect", container_name, "--format", "{{.State.Status}}"]
         status_result = subprocess.run(status_cmd, capture_output=True, text=True)
         diagnostics["container_status"] = status_result.stdout.strip() if status_result.returncode == 0 else "Error"
-        
+
         # Get container details
         details_cmd = ["docker", "container", "inspect", container_name]
         details_result = subprocess.run(details_cmd, capture_output=True, text=True)
@@ -1154,27 +1157,27 @@ def diagnose_docker_container(container_name, log_file=None):
                 diagnostics["container_details"] = json.loads(details_result.stdout)
             except json.JSONDecodeError:
                 diagnostics["container_details"] = details_result.stdout
-        
+
         # Get container logs
         logs_cmd = ["docker", "logs", container_name]
         logs_result = subprocess.run(logs_cmd, capture_output=True, text=True)
         diagnostics["logs"] = logs_result.stdout if logs_result.returncode == 0 else "Error: " + logs_result.stderr
-        
+
         # Check filesystem in container
         fs_cmd = ["docker", "exec", container_name, "ls", "-la", "/"]
         fs_result = subprocess.run(fs_cmd, capture_output=True, text=True)
         diagnostics["filesystem"] = fs_result.stdout if fs_result.returncode == 0 else "Error: " + fs_result.stderr
-        
+
         # Check config directory
         config_cmd = ["docker", "exec", container_name, "ls", "-la", "/config"]
         config_result = subprocess.run(config_cmd, capture_output=True, text=True)
         diagnostics["config_dir"] = config_result.stdout if config_result.returncode == 0 else "Error: " + config_result.stderr
-        
+
         # Check running processes
         ps_cmd = ["docker", "exec", container_name, "ps", "-ef"]
         ps_result = subprocess.run(ps_cmd, capture_output=True, text=True)
         diagnostics["processes"] = ps_result.stdout if ps_result.returncode == 0 else "Error: " + ps_result.stderr
-        
+
         # Check network
         net_cmd = ["docker", "exec", container_name, "netstat", "-an"]
         net_result = subprocess.run(net_cmd, capture_output=True, text=True)
@@ -1183,17 +1186,17 @@ def diagnose_docker_container(container_name, log_file=None):
             net_cmd = ["docker", "exec", container_name, "ip", "addr"]
             net_result = subprocess.run(net_cmd, capture_output=True, text=True)
         diagnostics["network"] = net_result.stdout if net_result.returncode == 0 else "Error: " + net_result.stderr
-        
+
         # Print diagnostic summary
         click.echo(f"Container status: {diagnostics['container_status']}")
-        
+
         if diagnostics['container_status'] == 'running':
             click.echo("Container is running")
-            
+
             # Check if config directory is accessible
             if "Error" not in diagnostics["config_dir"]:
                 click.echo("Config directory is accessible")
-                
+
                 # Check for sldl.conf in config directory
                 if "sldl.conf" in diagnostics["config_dir"]:
                     click.echo("sldl.conf found in config directory")
@@ -1203,7 +1206,7 @@ def diagnose_docker_container(container_name, log_file=None):
                 click.echo("WARNING: Config directory is not accessible")
         else:
             click.echo(f"WARNING: Container is not running (status: {diagnostics['container_status']})")
-        
+
         # Log complete diagnostics
         if log_file:
             with open(log_file, "a") as log:
@@ -1221,16 +1224,16 @@ def diagnose_docker_container(container_name, log_file=None):
                 log.write("\n--- NETWORK ---\n")
                 log.write(diagnostics["network"])
                 log.write("\n================================\n\n")
-            
+
             click.echo(f"Full diagnostics written to {log_file}")
-        
+
         return diagnostics
-        
+
     except Exception as e:
         click.echo(f"Error during diagnostics: {e}")
         if log_file:
             with open(log_file, "a") as log:
-                log.write(f"\n=== DIAGNOSTIC ERROR ===\n")
+                log.write("\n=== DIAGNOSTIC ERROR ===\n")
                 log.write(f"Error performing diagnostics on container {container_name}: {str(e)}\n")
         return {"error": str(e)}
 
@@ -1240,26 +1243,26 @@ def check_docker_health(container_name):
         # Check if container exists
         exists_cmd = ["docker", "container", "inspect", container_name]
         exists_result = subprocess.run(exists_cmd, capture_output=True, text=True)
-        
+
         if exists_result.returncode != 0:
             return False, f"Container '{container_name}' does not exist"
-        
+
         # Check if container is running
         status_cmd = ["docker", "container", "inspect", container_name, "--format", "{{.State.Status}}"]
         status_result = subprocess.run(status_cmd, capture_output=True, text=True)
-        
+
         if status_result.returncode != 0 or status_result.stdout.strip() != "running":
             return False, f"Container '{container_name}' is not running (status: {status_result.stdout.strip()})"
-        
+
         # Check if sldl is available in the container
         sldl_cmd = ["docker", "exec", container_name, "which", "sldl"]
         sldl_result = subprocess.run(sldl_cmd, capture_output=True, text=True)
-        
+
         if sldl_result.returncode != 0:
             return False, "sldl command not found in container"
-        
+
         return True, "Container is healthy"
-        
+
     except Exception as e:
         return False, f"Error checking container health: {e}"
 
@@ -1267,13 +1270,13 @@ def check_docker_health(container_name):
 @click.argument('url')
 def download(url):
     """Download audio from a YouTube or SoundCloud URL.
-    
+
     If the URL is a playlist, it will be downloaded to ~/Music/downloads/playlist-name/
     If it's a single track, it will be downloaded to ~/Music/downloads/
     """
     downloader = AudioDownloader(output_path=str(Path.home() / "Music" / "downloads"))
     result = downloader.download(url)
-    
+
     if result:
         click.echo(f"✅ Download complete! Files saved to: {result}")
     else:

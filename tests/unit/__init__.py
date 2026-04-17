@@ -1,1 +1,1 @@
-"""Unit tests for the toolcrate package.""" 
+"""Unit tests for the toolcrate package."""

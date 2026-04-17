@@ -3,13 +3,10 @@
 import io
 import json
 import os
-import platform
 import stat
-import sys
 import urllib.error
 import zipfile
-from pathlib import Path
-from unittest.mock import MagicMock, call, patch
+from unittest.mock import MagicMock, patch
 
 import pytest
 
@@ -26,7 +23,6 @@ from toolcrate.cli.binary_manager import (
     get_platform_asset_name,
     resolve_latest_version,
 )
-
 
 # ---------------------------------------------------------------------------
 # Helpers

@@ -19,7 +19,6 @@ import urllib.error
 import urllib.request
 import zipfile
 from pathlib import Path
-from typing import Optional
 
 from loguru import logger
 
@@ -240,7 +239,7 @@ def _build_from_source(project_root: Path) -> Path:
 
 
 def ensure_sldl_binary(
-    project_root: Optional[Path] = None,
+    project_root: Path | None = None,
     force_refresh: bool = False,
 ) -> Path:
     """Return a path to a working sldl binary, installing or building if needed.

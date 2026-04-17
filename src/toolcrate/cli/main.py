@@ -3,12 +3,23 @@
 
 import sys
 import os
+import json
 import subprocess
 import shutil
 from pathlib import Path
 import click
 
-from .wrappers import run_sldl_docker_command, run_slsk, get_project_root, recreate_slsk_container
+from .wrappers import (
+    run_sldl_docker_command,
+    run_sldl_native,
+    run_slsk,
+    run_shazam,
+    run_mdl,
+    get_project_root,
+    recreate_slsk_container,
+)
+from .binary_manager import ensure_sldl_binary, BinaryError, get_binary_path
+from ..downloaders.audio import AudioDownloader
 from .schedule import schedule
 from .wishlist_run import wishlist_run
 from .queue import queue
@@ -32,7 +43,9 @@ def info():
     click.echo("  - slsk-tool: Soulseek batch download tool")
     click.echo("  - shazam-tool: Music recognition tool")
     click.echo("  - mdl-tool: Music metadata utility")
-    click.echo("  - sldl: Run commands in slsk-batchdl docker container")
+    click.echo("  - sldl: Run the slsk-batchdl binary (native; set TOOLCRATE_USE_DOCKER=1 for Docker)")
+    click.echo("  - sldl-upgrade: Re-download or rebuild the sldl binary")
+    click.echo("  - sldl-where: Show the sldl binary install path")
     click.echo("  - schedule: Manage scheduled downloads and cron jobs")
     click.echo("    • toolcrate schedule add -s '<cron>' [--type wishlist|download] - Add scheduled job")
     click.echo("    • toolcrate schedule hourly/daily [--type wishlist|download] - Easy scheduling")
@@ -52,25 +65,51 @@ def info():
 @main.command(context_settings=dict(ignore_unknown_options=True, allow_extra_args=True))
 @click.pass_context
 def sldl(ctx):
-    """Run commands in the slsk-batchdl docker container.
+    """Run the slsk-batchdl (sldl) binary.
 
-    When called without arguments, enters an interactive shell in the container.
-    When called with arguments, executes the slsk-batchdl command with those arguments.
-    The config file path (-c /config/sldl.conf) is automatically included.
+    By default this runs the native sldl binary, downloading the latest upstream
+    release on first use (or building it from the git submodule as a fallback —
+    useful on macOS where downloaded binaries are blocked by Gatekeeper).
+
+    Set TOOLCRATE_USE_DOCKER=1 to use the legacy Docker-based execution.
+
+    The config file path (-c <project>/config/sldl.conf) is automatically
+    included when that file exists.
 
     Examples:
-        toolcrate sldl                           # Enter interactive shell
-        toolcrate --build sldl                   # Rebuild container and enter shell
-        toolcrate sldl --help                    # Show slsk-batchdl help
+        toolcrate sldl --help                    # Show sldl help
         toolcrate sldl -a "artist" -t "track"    # Download specific track
-        toolcrate --build sldl <playlist-url>    # Rebuild container and download from playlist
-        toolcrate sldl --version                 # Show slsk-batchdl version
+        toolcrate --build sldl                   # Re-download / rebuild the binary
+        toolcrate sldl <playlist-url>            # Download from playlist
     """
-    # Get the build flag from the parent context
     build_flag = ctx.obj.get('build', False) if ctx.obj else False
 
-    # Pass all arguments to the docker command runner
-    run_sldl_docker_command(ctx.params, ctx.args, build=build_flag)
+    if os.environ.get("TOOLCRATE_USE_DOCKER"):
+        run_sldl_docker_command(ctx.params, ctx.args, build=build_flag)
+    else:
+        run_sldl_native(ctx.params, ctx.args, build=build_flag)
+
+
+@main.command(name="sldl-upgrade")
+def sldl_upgrade():
+    """Re-download (or rebuild) the sldl binary to the latest upstream release."""
+    try:
+        path = ensure_sldl_binary(project_root=get_project_root(), force_refresh=True)
+        click.echo(f"sldl updated at {path}")
+    except BinaryError as e:
+        click.echo(f"Error: {e}")
+        sys.exit(1)
+
+
+@main.command(name="sldl-where")
+def sldl_where():
+    """Print the installation path of the sldl binary."""
+    path = get_binary_path()
+    if path.exists():
+        click.echo(str(path))
+    else:
+        click.echo(f"Not installed. Run `toolcrate sldl --help` to trigger install, or `toolcrate sldl-upgrade`.")
+        sys.exit(1)
 
 
 # Add the schedule command group
@@ -378,12 +417,13 @@ log_level = INFO
         # Check if any container with "sldl" in the name exists
         existing_container = False
         container_name = None
+        container_running = False
         for line in docker_container_ls.stdout.splitlines():
             if "sldl" in line.lower():
                 existing_container = True
                 container_name = line.strip()
                 break
-        
+
         if existing_container:
             click.echo(f"Found existing sldl container: {container_name}")
             
@@ -407,12 +447,13 @@ log_level = INFO
                 os.chdir(compose_dir)
                 
                 subprocess.run(["docker", "compose", "up", "-d"], check=True)
-                
+
                 # Restore original directory
                 os.chdir(current_dir)
-                
+
                 click.echo("Container started with docker compose up")
                 time.sleep(5)  # Give it time to start
+                container_running = True
         else:
             click.echo("No existing sldl container found, creating a new one...")
             
@@ -481,17 +522,19 @@ log_level = INFO
                 subprocess.run(run_cmd, check=True)
                 click.echo(f"Container {container_name} started successfully")
                 time.sleep(5)  # Give it time to initialize
+                container_running = True
             except subprocess.CalledProcessError as e:
                 # Check if container already exists but couldn't be started
                 click.echo(f"Error starting container: {e}")
                 click.echo("Trying to remove container if it exists but is not running...")
-                
+
                 try:
                     subprocess.run(["docker", "rm", container_name], check=False)
                     # Try running it again
                     subprocess.run(run_cmd, check=True)
                     click.echo(f"Container {container_name} started successfully on second attempt")
                     time.sleep(5)
+                    container_running = True
                 except subprocess.CalledProcessError as e2:
                     click.echo(f"Error on second attempt: {e2}")
                     return 1
@@ -1236,68 +1279,6 @@ def download(url):
     else:
         click.echo("❌ Download failed. Please check the URL and try again.")
 
-
-
-@main.group(name="schedule")
-def schedule_group():
-    """Manage scheduled jobs for toolcrate commands."""
-    pass
-
-@schedule_group.command(name="add")
-@click.argument("file_type", type=click.Choice(["wishlist", "dj-sets"]))
-@click.option("--frequency", type=click.Choice(["hourly", "daily", "weekly"]), default="hourly",
-              help="How often to run the job (default: hourly)")
-@click.option("--custom-schedule", help="Custom cron schedule (e.g., '*/30 * * * *' for every 30 minutes)")
-def schedule_add(file_type, frequency, custom_schedule):
-    """Add a scheduled job to run toolcrate commands regularly.
-    
-    FILE_TYPE can be:
-    - wishlist: Process wishlist.txt file
-    - dj-sets: Process dj-sets.txt file
-    """
-    from toolcrate.scripts.cron_manager import add_identify_tracks_cron, add_download_wishlist_cron
-    
-    # Use custom schedule if provided
-    if custom_schedule:
-        schedule = custom_schedule
-    else:
-        schedule = frequency
-        
-    if file_type == "wishlist":
-        result = add_download_wishlist_cron(schedule)
-    else:  # dj-sets
-        result = add_identify_tracks_cron(file_type, schedule)
-    
-    return 0 if result else 1
-
-@schedule_group.command(name="remove")
-@click.argument("file_type", type=click.Choice(["wishlist", "dj-sets"]))
-def schedule_remove(file_type):
-    """Remove a scheduled job.
-    
-    FILE_TYPE can be:
-    - wishlist: Remove wishlist processing job
-    - dj-sets: Remove DJ sets processing job
-    """
-    from toolcrate.scripts.cron_manager import remove_scheduled_job
-    
-    if file_type == "wishlist":
-        result = remove_scheduled_job("download-wishlist")
-    else:  # dj-sets
-        result = remove_scheduled_job(f"identify-tracks-{file_type}")
-    
-    return 0 if result else 1
-
-@schedule_group.command(name="list")
-def schedule_list():
-    """List all scheduled jobs for toolcrate commands.
-    
-    This will show all cron jobs related to toolcrate commands.
-    """
-    from toolcrate.scripts.cron_manager import list_scheduled_jobs
-    
-    result = list_scheduled_jobs()
-    return 0 if result else 1
 
 if __name__ == "__main__":
     main()

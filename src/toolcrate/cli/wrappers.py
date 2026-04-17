@@ -522,6 +522,56 @@ def run_mdl():
     sys.exit(1)
 
 
+def run_sldl_native(params, args, build=False):
+    """Run sldl directly as a native binary, downloading or building on demand.
+
+    This is the default path. It replaces the Docker-based execution for the
+    `toolcrate sldl` command. The binary is installed under
+    ~/.local/share/toolcrate/bin/sldl on first use.
+
+    Args:
+        params: Click parameters (currently unused)
+        args: List of command arguments to pass to sldl
+        build: If True, force a refresh of the binary (re-download / rebuild)
+    """
+    from .binary_manager import ensure_sldl_binary, BinaryError
+    from ..config.manager import ConfigManager
+
+    project_root = get_project_root()
+    config_path = project_root / "config" / "toolcrate.yaml"
+    sldl_conf_path = project_root / "config" / "sldl.conf"
+
+    # Regenerate sldl.conf from toolcrate.yaml so the binary picks up current config
+    try:
+        config_manager = ConfigManager(str(config_path))
+        config_manager.generate_sldl_conf()
+        logger.info("Updated sldl.conf from toolcrate.yaml")
+    except Exception as e:
+        logger.warning(f"Failed to update sldl.conf: {e}")
+        # Continue anyway - use existing config file if present
+
+    try:
+        binary = ensure_sldl_binary(project_root=project_root, force_refresh=build)
+    except BinaryError as e:
+        click.echo(f"Error: could not provision sldl binary: {e}")
+        sys.exit(1)
+
+    if not args:
+        # No args: show help (replaces the old docker interactive shell behavior)
+        cmd = [str(binary), "--help"]
+    elif sldl_conf_path.exists():
+        cmd = [str(binary), "-c", str(sldl_conf_path), *args]
+    else:
+        cmd = [str(binary), *args]
+
+    logger.info(f"Executing: {' '.join(cmd)}")
+    try:
+        os.execv(str(binary), [binary.name, *cmd[1:]])
+    except OSError as e:
+        click.echo(f"Error executing sldl: {e}")
+        sys.exit(1)
+
+
 def run_sldl_docker_command(params, args, build=False):
     """Run a command in the slsk-batchdl docker container.
 

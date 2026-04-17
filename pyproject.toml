@@ -52,7 +52,7 @@ coverage = "^7.0.0"
 black = "^24.0.0"
 isort = "^5.12.0"
 mypy = "^1.8.0"
-ruff = "^0.1.0"  # Fast linter/formatter
+ruff = ">=0.2.0"  # Fast linter/formatter; [tool.ruff.lint] requires >=0.2.0
 pre-commit = "^3.6.0"  # Git hooks
 setuptools = "^80.9.0"
 

@@ -1,0 +1,127 @@
+name: CI
+
+on:
+  push:
+    branches: [main, develop]
+  pull_request:
+    branches: [main, develop]
+
+jobs:
+  # ─── Lint & type-check (fast, single Python version) ─────────────────────
+  lint:
+    name: Lint & Type Check
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install Poetry
+        uses: snok/install-poetry@v1
+        with:
+          version: latest
+          virtualenvs-create: true
+          virtualenvs-in-project: true
+
+      - name: Cache virtualenv
+        uses: actions/cache@v4
+        with:
+          path: .venv
+          key: venv-lint-${{ hashFiles('poetry.lock') }}
+
+      - name: Install dependencies
+        run: poetry install --with dev
+
+      - name: Ruff lint
+        run: poetry run ruff check src/ tests/unit/
+
+      - name: Mypy (non-blocking — new code only)
+        # Targets only the modules introduced or changed in this PR;
+        # the broader codebase will be added incrementally as types are fixed.
+        run: poetry run mypy src/toolcrate/cli/binary_manager.py --ignore-missing-imports
+        continue-on-error: true
+
+  # ─── Unit tests (matrix across supported Python versions) ────────────────
+  test:
+    name: Tests (Python ${{ matrix.python-version }})
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        python-version: ["3.9", "3.11", "3.12"]
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python-version }}
+
+      - name: Install Poetry
+        uses: snok/install-poetry@v1
+        with:
+          version: latest
+          virtualenvs-create: true
+          virtualenvs-in-project: true
+
+      - name: Cache virtualenv
+        uses: actions/cache@v4
+        with:
+          path: .venv
+          key: venv-${{ matrix.python-version }}-${{ hashFiles('poetry.lock') }}
+
+      - name: Install dependencies
+        run: poetry install --with dev
+
+      - name: Run unit tests with coverage
+        run: |
+          poetry run pytest tests/unit/ \
+            -v --tb=short \
+            -m "not integration and not slow" \
+            --cov=src/toolcrate \
+            --cov-report=term-missing \
+            --cov-report=xml \
+            --no-header
+
+      - name: Upload coverage report
+        uses: actions/upload-artifact@v4
+        if: matrix.python-version == '3.11'
+        with:
+          name: coverage-xml
+          path: coverage.xml
+          retention-days: 7
+
+  # ─── Smoke test: package imports cleanly ─────────────────────────────────
+  import-check:
+    name: Import smoke test
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install Poetry
+        uses: snok/install-poetry@v1
+        with:
+          version: latest
+          virtualenvs-create: true
+          virtualenvs-in-project: true
+
+      - name: Install core dependencies only
+        run: poetry install --without dev
+
+      - name: Verify package imports without optional deps
+        run: |
+          poetry run python -c "
+          import toolcrate
+          import toolcrate.cli
+          import toolcrate.cli.main
+          import toolcrate.cli.wrappers
+          import toolcrate.cli.binary_manager
+          from toolcrate.cli.main import main, info
+          print('All core imports OK')
+          "

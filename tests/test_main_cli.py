@@ -47,7 +47,7 @@ class TestMainCLI:
         assert "slsk-tool: Soulseek batch download tool" in result.output
         assert "shazam-tool: Music recognition tool" in result.output
         assert "mdl-tool: Music metadata utility" in result.output
-        assert "sldl: Run commands in slsk-batchdl docker container" in result.output
+        assert "sldl: Run the slsk-batchdl binary" in result.output
 
     def test_info_command_help(self):
         """Test that info command help works."""
@@ -69,32 +69,19 @@ class TestMainCLI:
 
     def test_info_command_direct_call(self):
         """Test calling info command directly."""
-        with patch("click.echo") as mock_echo:
-            # Use the CliRunner to avoid sys.argv interference
-            result = self.runner.invoke(info, [])
+        result = self.runner.invoke(info, [])
 
-            # Verify the command executed successfully
-            assert result.exit_code == 0
-
-            # Verify all expected calls were made (updated to match actual output)
-            expected_calls = [
-                "ToolCrate - Available Tools:",
-                "  - slsk-tool: Soulseek batch download tool",
-                "  - shazam-tool: Music recognition tool",
-                "  - mdl-tool: Music metadata utility",
-                "  - sldl: Run commands in slsk-batchdl docker container",
-                "  - schedule: Manage scheduled downloads and cron jobs",
-                "  - wishlist-run: View logs and status from scheduled wishlist runs",
-                "  - queue: Manage download queue for individual links",
-            ]
-
-            # Check that we have the expected number of calls (19 total including detailed help)
-            assert mock_echo.call_count == 19
-
-            # Verify the main command descriptions are present
-            actual_calls = [call.args[0] for call in mock_echo.call_args_list]
-            for expected_call in expected_calls:
-                assert expected_call in actual_calls
+        assert result.exit_code == 0
+        assert "ToolCrate - Available Tools:" in result.output
+        assert "slsk-tool: Soulseek batch download tool" in result.output
+        assert "shazam-tool: Music recognition tool" in result.output
+        assert "mdl-tool: Music metadata utility" in result.output
+        assert "sldl: Run the slsk-batchdl binary" in result.output
+        assert "sldl-upgrade:" in result.output
+        assert "sldl-where:" in result.output
+        assert "schedule:" in result.output
+        assert "wishlist-run:" in result.output
+        assert "queue:" in result.output
 
     def test_main_group_commands_list(self):
         """Test that main group lists available commands."""
@@ -109,7 +96,7 @@ class TestMainCLI:
         result = self.runner.invoke(main, ["sldl", "--help"])
         # The command should exist, but may fail due to docker dependencies
         # We just check that it's recognized as a valid command
-        assert "sldl" in result.output or "docker" in result.output.lower()
+        assert "sldl" in result.output
 
     def test_sldl_command_help(self):
         """Test that sldl command shows help information."""

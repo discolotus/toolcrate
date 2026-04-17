@@ -9,7 +9,7 @@ import sys
 import urllib.error
 import zipfile
 from pathlib import Path
-from unittest.mock import MagicMock, call, mock_open, patch
+from unittest.mock import MagicMock, call, patch
 
 import pytest
 

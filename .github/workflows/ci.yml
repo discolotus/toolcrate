@@ -45,6 +45,8 @@ jobs:
   test:
     name: Tests (Python ${{ matrix.python-version }})
     runs-on: ubuntu-latest
+    permissions:
+      pull-requests: write  # needed to post coverage comment
     strategy:
       fail-fast: false
       matrix:

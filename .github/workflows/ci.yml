@@ -100,14 +100,19 @@ jobs:
     permissions:
       pull-requests: write
     steps:
-      - uses: actions/download-artifact@v4
+      - uses: actions/checkout@v4
+
+      - name: Download coverage report
+        uses: actions/download-artifact@v4
         with:
           name: coverage-xml
+          path: .
 
-      - name: Parse coverage and comment on PR
+      - name: Comment coverage on PR
         uses: py-cov-action/python-coverage-comment-action@v3
         with:
           GITHUB_TOKEN: ${{ github.token }}
+          COVERAGE_XML_FILENAME: coverage.xml
 
   # ─── Smoke test: package imports cleanly ─────────────────────────────────
   import-check:

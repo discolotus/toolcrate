@@ -129,6 +129,27 @@ jobs:
               });
             }
 
+  integration-test:
+    name: Integration Tests
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: astral-sh/setup-uv@v5
+        with:
+          enable-cache: true
+
+      - name: Install dependencies
+        run: uv sync
+
+      - name: Run integration tests
+        # uv run puts .venv/bin on PATH, so subprocess calls to `toolcrate`
+        # inside the test suite resolve correctly without extra PATH manipulation.
+        # tests/integration/test_real_network_downloads.py self-skips unless
+        # TOOLCRATE_REAL_NETWORK_TESTS=1 is set.
+        run: |
+          uv run pytest tests/integration/ -v --tb=short
+
   import-check:
     name: Import smoke test
     runs-on: ubuntu-latest

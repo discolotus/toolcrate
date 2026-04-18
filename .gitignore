@@ -198,6 +198,9 @@ src/Shazam-Tool/
 .venv/
 **/toolcrate.yaml
 
+# uv cache
+.uv/
+
 config/sldl-wishlist.conf
 config/wishlist.txt
 config/crontabs/

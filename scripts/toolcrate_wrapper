@@ -14,6 +14,6 @@ elif command -v toolcrate >/dev/null 2>&1; then
     toolcrate "$@"
 else
     echo "Error: toolcrate not found. Please install it or set up the development environment."
-    echo "To set up development environment: poetry install"
+    echo "To set up development environment: uv sync"
     exit 1
 fi

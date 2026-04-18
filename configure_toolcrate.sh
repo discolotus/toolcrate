@@ -18,8 +18,8 @@ show_help() {
     echo "       make init-config [OPTIONS]"
     echo
     echo "Options:"
-    echo "  --use-poetry     Force use of Poetry for dependency management"
-    echo "  --no-poetry      Force use of manual virtual environment"
+    echo "  --use-uv     Force use of uv for dependency management"
+    echo "  --no-uv      Force use of manual virtual environment"
     echo "  --help, -h       Show this help message"
     echo
     echo "This script creates comprehensive YAML configuration files for ToolCrate"
@@ -27,7 +27,7 @@ show_help() {
     echo
     echo "Alternative usage:"
     echo "  make init-config         # Run with auto-detection"
-    echo "  make init-config-poetry  # Force Poetry usage"
+    echo "  make init-config-uv  # Force uv usage"
     echo "  make init-config-venv    # Force virtual environment usage"
     echo
     echo "After initial setup, use 'make config' to regenerate tool configs from YAML."
@@ -39,11 +39,11 @@ show_help() {
 USE_POETRY=""
 for arg in "$@"; do
     case $arg in
-        --use-poetry)
+        --use-uv)
             USE_POETRY="true"
             shift
             ;;
-        --no-poetry)
+        --no-uv)
             USE_POETRY="false"
             shift
             ;;
@@ -60,7 +60,7 @@ done
 
 echo -e "${BLUE}ToolCrate Comprehensive Setup${NC}"
 echo -e "${BLUE}=============================${NC}"
-echo -e "${GREEN}Enhanced setup with Poetry integration and comprehensive slsk-batchdl configuration${NC}"
+echo -e "${GREEN}Enhanced setup with uv integration and comprehensive slsk-batchdl configuration${NC}"
 echo
 
 # Get the absolute path of the current directory
@@ -68,29 +68,27 @@ TOOLCRATE_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 CONFIG_DIR="${TOOLCRATE_DIR}/config"
 CRON_DIR="${CONFIG_DIR}/crontabs"
 
-# Function to check if Poetry is available and setup environment
-setup_poetry_env() {
-    echo -e "${GREEN}Setting up Poetry environment...${NC}"
+# Function to check if uv is available and setup environment
+setup_uv_env() {
+    echo -e "${GREEN}Setting up uv environment...${NC}"
 
-    # Check if Poetry is installed
-    if ! command -v poetry >/dev/null 2>&1; then
-        echo -e "${YELLOW}Poetry not found. Installing Poetry...${NC}"
-        curl -sSL https://install.python-poetry.org | python3 -
+    if ! command -v uv >/dev/null 2>&1; then
+        echo -e "${YELLOW}uv not found. Installing uv...${NC}"
+        curl -LsSf https://astral.sh/uv/install.sh | sh
 
-        # Add Poetry to PATH for current session
         export PATH="$HOME/.local/bin:$PATH"
 
-        if ! command -v poetry >/dev/null 2>&1; then
-            echo -e "${RED}❌ Poetry installation failed. Please install manually.${NC}"
-            echo -e "${YELLOW}Visit: https://python-poetry.org/docs/#installation${NC}"
+        if ! command -v uv >/dev/null 2>&1; then
+            echo -e "${RED}❌ uv installation failed. Please install manually.${NC}"
+            echo -e "${YELLOW}Visit: https://docs.astral.sh/uv/getting-started/installation/${NC}"
             exit 1
         fi
     fi
 
-    echo -e "${GREEN}Installing dependencies with Poetry...${NC}"
-    poetry install --with dev
+    echo -e "${GREEN}Installing dependencies with uv...${NC}"
+    uv sync
 
-    echo -e "${GREEN}✅ Poetry environment ready!${NC}"
+    echo -e "${GREEN}✅ uv environment ready!${NC}"
 }
 
 # Function to ensure virtual environment is active (fallback)
@@ -113,14 +111,13 @@ ensure_venv_fallback() {
 
 # Determine which environment setup to use
 if [ "$USE_POETRY" = "false" ]; then
-    echo -e "${YELLOW}Using manual virtual environment setup (--no-poetry specified).${NC}"
+    echo -e "${YELLOW}Using manual virtual environment setup (--no-uv specified).${NC}"
     ensure_venv_fallback
-elif [ "$USE_POETRY" = "true" ] || (command -v poetry >/dev/null 2>&1 && [ -f "pyproject.toml" ]); then
-    setup_poetry_env
+elif command -v uv >/dev/null 2>&1 && [ -f "pyproject.toml" ]; then
+    setup_uv_env
 else
-    echo -e "${YELLOW}Poetry not found. Using manual virtual environment setup.${NC}"
-    echo -e "${YELLOW}For better experience, install Poetry or run: ./configure_toolcrate.sh --use-poetry${NC}"
-    echo -e "${YELLOW}Or use: make init-config-poetry${NC}"
+    echo -e "${YELLOW}uv not found. Using manual virtual environment setup.${NC}"
+    echo -e "${YELLOW}For better experience, install uv: curl -LsSf https://astral.sh/uv/install.sh | sh${NC}"
     ensure_venv_fallback
 fi
 
@@ -862,16 +859,15 @@ fi
 # Install Python dependencies
 echo -e "\n${GREEN}Checking Python dependencies...${NC}"
 
-# Check if we're using Poetry
-if command -v poetry >/dev/null 2>&1 && [ -f "pyproject.toml" ]; then
-    echo -e "${GREEN}Using Poetry for dependency management...${NC}"
+# Check if we're using uv
+if command -v uv >/dev/null 2>&1 && [ -f "pyproject.toml" ]; then
+    echo -e "${GREEN}Using uv for dependency management...${NC}"
 
-    # Ensure dependencies are installed
-    if ! poetry run python -c "import yaml" 2>/dev/null; then
-        echo -e "${YELLOW}Installing dependencies with Poetry...${NC}"
-        poetry install --with dev
+    if ! uv run python -c "import yaml" 2>/dev/null; then
+        echo -e "${YELLOW}Installing dependencies with uv...${NC}"
+        uv sync
     else
-        echo -e "${GREEN}Dependencies already installed with Poetry${NC}"
+        echo -e "${GREEN}Dependencies already installed${NC}"
     fi
 else
     # Fallback to pip in virtual environment
@@ -891,10 +887,9 @@ fi
 # Validate the generated configuration
 echo -e "\n${GREEN}Validating configuration...${NC}"
 
-# Use Poetry if available, otherwise use virtual environment
-if command -v poetry >/dev/null 2>&1 && [ -f "pyproject.toml" ]; then
+if command -v uv >/dev/null 2>&1 && [ -f "pyproject.toml" ]; then
     cd "$CONFIG_DIR"
-    if poetry run python validate-config.py toolcrate.yaml; then
+    if uv run python validate-config.py toolcrate.yaml; then
         echo -e "${GREEN}✅ Configuration validation passed!${NC}"
     else
         echo -e "${YELLOW}⚠️  Configuration validation found issues. Please review.${NC}"
@@ -909,8 +904,8 @@ elif [ -n "$VIRTUAL_ENV" ] && command -v python &> /dev/null; then
     fi
     cd "$TOOLCRATE_DIR"
 else
-    echo -e "${YELLOW}Poetry or virtual environment not available. Skipping configuration validation.${NC}"
-    echo -e "${YELLOW}Run manually: poetry run python config/validate-config.py config/toolcrate.yaml${NC}"
+    echo -e "${YELLOW}uv or virtual environment not available. Skipping configuration validation.${NC}"
+    echo -e "${YELLOW}Run manually: uv run python config/validate-config.py config/toolcrate.yaml${NC}"
 fi
 
 # Summary
@@ -924,13 +919,11 @@ echo -e "${GREEN}Log directory: ${log_dir}${NC}"
 echo
 echo -e "${YELLOW}Next steps:${NC}"
 echo -e "1. Review and edit ${CONFIG_DIR}/toolcrate.yaml if needed"
-echo -e "2. Run the main installation: ./install.sh"
+echo -e "2. Run 'uv sync' to install dependencies"
 
-# Show appropriate environment activation instructions
-if command -v poetry >/dev/null 2>&1 && [ -f "pyproject.toml" ]; then
-    echo -e "3. Use Poetry for commands: poetry run <command>"
-    echo -e "   Or activate manually: source \$(poetry env info --path)/bin/activate"
-    echo -e "4. Test your configuration: poetry run slsk-tool --help"
+if command -v uv >/dev/null 2>&1 && [ -f "pyproject.toml" ]; then
+    echo -e "3. Use uv for commands: uv run <command>"
+    echo -e "4. Test your configuration: uv run slsk-tool --help"
 else
     echo -e "3. Always activate virtual environment: source .venv/bin/activate"
     echo -e "4. Test your configuration: slsk-tool --help"
@@ -957,14 +950,12 @@ echo
 echo -e "${YELLOW}Usage examples:${NC}"
 
 # Show Poetry examples if available
-if command -v poetry >/dev/null 2>&1 && [ -f "pyproject.toml" ]; then
-    echo -e "${BLUE}Using Poetry (recommended):${NC}"
-    echo -e "  poetry run slsk-tool 'artist - song title'"
-    echo -e "  poetry run slsk-tool --config ${CONFIG_DIR}/sldl.conf 'playlist-url'"
-    echo -e "  poetry run slsk-tool --profile lossless 'album search'"
-    echo -e "  poetry run python config_manager.py validate"
+if command -v uv >/dev/null 2>&1 && [ -f "pyproject.toml" ]; then
+    echo -e "${BLUE}Using uv (recommended):${NC}"
+    echo -e "  uv run slsk-tool 'artist - song title'"
+    echo -e "  uv run slsk-tool --config ${CONFIG_DIR}/sldl.conf 'playlist-url'"
+    echo -e "  uv run slsk-tool --profile lossless 'album search'"
     echo -e "  make test  # Run all tests"
-    echo -e "  make setup  # Setup Poetry environment"
     echo
 fi
 

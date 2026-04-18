@@ -6,28 +6,23 @@ services:
       context: .
       dockerfile: Dockerfile
     image: toolcrate:latest
-    container_name: toolcrate-app
+    container_name: toolcrate
     restart: unless-stopped
     environment:
       - PYTHONPATH=/app/src
       - PYTHONUNBUFFERED=1
     working_dir: /app
+    volumes:
+      # Config: place sldl.conf, toolcrate.yaml etc. here
+      - ${TOOLCRATE_CONFIG:-./config}:/app/config
+      # Downloads land here
+      - ${TOOLCRATE_DATA:-./data}:/app/data
+      - ${TOOLCRATE_LOGS:-./logs}:/app/logs
     networks:
       - toolcrate-network
-    volumes:
-      - toolcrate-data:/app/data
-      - toolcrate-logs:/app/logs
-      - toolcrate-config:/app/config
+    # Keeps container running so cron and exec commands work
     command: ["tail", "-f", "/dev/null"]
 
 networks:
   toolcrate-network:
     driver: bridge
-
-volumes:
-  toolcrate-data:
-    driver: local
-  toolcrate-logs:
-    driver: local
-  toolcrate-config:
-    driver: local

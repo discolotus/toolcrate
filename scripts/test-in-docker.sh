@@ -3,7 +3,7 @@ set -e
 
 echo "=== ToolCrate Docker Testing Environment ==="
 echo "Python version: $(python3 --version)"
-echo "Poetry version: $(uv --version)"
+echo "uv version: $(uv --version)"
 echo "Docker version: $(docker --version)"
 
 # Start cron service for testing cron-related functionality
@@ -26,9 +26,9 @@ fi
 echo ""
 
 # Ensure Poetry environment is properly set up
-echo "Setting up Poetry environment..."
+echo "Syncing uv environment..."
 uv sync
-echo "Poetry environment ready!"
+echo "uv environment ready!"
 
 # Verify toolcrate command is available
 echo "Verifying toolcrate installation..."

@@ -1,10 +1,10 @@
 """Unit tests for the CLI module of toolcrate."""
 
 import unittest
-from unittest.mock import patch
+
 from click.testing import CliRunner
 
-from toolcrate.cli.main import main, info
+from toolcrate.cli.main import info, main
 
 
 class TestCLI(unittest.TestCase):
@@ -49,4 +49,4 @@ class TestCLI(unittest.TestCase):
 
 
 if __name__ == "__main__":
-    unittest.main() 
+    unittest.main()

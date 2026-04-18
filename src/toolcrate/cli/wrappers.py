@@ -2,25 +2,18 @@
 """Wrapper functions for external tools."""
 
 import os
+import re
 import shutil
 import subprocess
 import sys
-from pathlib import Path
-import time
-from datetime import datetime
-import re
-import requests
 import unicodedata
+from pathlib import Path
 
 import click
+import requests
 from loguru import logger
 
 # Check Python version - align with pyproject.toml requirements
-if sys.version_info < (3, 9):
-    print("Error: ToolCrate requires Python 3.9 or higher")
-    print(f"Current Python version: {sys.version_info.major}.{sys.version_info.minor}")
-    print("Please upgrade your Python version.")
-    sys.exit(1)
 
 
 def check_dependency(name, binary_name=None):
@@ -66,25 +59,25 @@ def ensure_slsk_container_running(root_dir):
     """Ensure the sldl container is running using docker-compose."""
     # Container not running, start it
     slsk_dir = root_dir / "src" / "slsk-batchdl"
-    
+
     try:
         logger.info(f"Starting slsk-batchdl container using docker compose in {slsk_dir}")
-        
+
         # Change directory and run docker compose
         current_dir = os.getcwd()
         os.chdir(slsk_dir)
-        
+
         # Start the container
         subprocess.run(
             ["docker", "compose", "up", "-d"],
             check=True,
             text=True,
         )
-        
+
         # Restore original directory
         os.chdir(current_dir)
         return True
-            
+
     except (subprocess.CalledProcessError, FileNotFoundError) as e:
         logger.error(f"Error starting Docker container: {e}")
         return False
@@ -142,28 +135,28 @@ def recreate_slsk_container(root_dir):
     """Force recreation of the sldl container."""
     logger.info("Recreating sldl container...")
     slsk_dir = root_dir / "src" / "slsk-batchdl"
-    
+
     if not slsk_dir.exists():
         logger.error(f"slsk-batchdl directory not found at {slsk_dir}")
         return False
-    
+
     try:
         current_dir = os.getcwd()
         os.chdir(slsk_dir)
-        
+
         # Stop and remove existing containers
         subprocess.run(
             ["docker", "compose", "down"],
             check=False,
             capture_output=True
         )
-        
+
         # Start the container
         subprocess.run(
             ["docker", "compose", "up", "-d"],
             check=True
         )
-        
+
         # Restore original directory
         os.chdir(current_dir)
         return True
@@ -187,7 +180,7 @@ def sanitize_filename(name):
 def get_spotify_playlist_name(playlist_url):
     """Get the name of a Spotify playlist from its URL."""
     playlist_id = playlist_url.split("/")[-1].split("?")[0]
-    
+
     # First try to get name using Spotify's embed API which doesn't require auth
     try:
         # Use Spotify's embed API to get basic playlist info without requiring auth
@@ -196,23 +189,23 @@ def get_spotify_playlist_name(playlist_url):
             "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36"
         }
         response = requests.get(embed_url, headers=headers)
-        
+
         if response.status_code == 200:
-            # Try multiple regex patterns to extract playlist name 
+            # Try multiple regex patterns to extract playlist name
             patterns = [
                 r'<title>(.*?)(\s*[-–]\s*)|</title>',  # Standard title format
                 r'<h1[^>]*>(.*?)</h1>',                # H1 tag that might contain the name
                 r'data-testid="playlist-name"[^>]*>(.*?)</[^>]*>',  # Modern Spotify data attribute
                 r'property="og:title"\s+content="([^"]+)"'  # Open Graph title
             ]
-            
+
             for pattern in patterns:
                 match = re.search(pattern, response.text)
                 if match:
                     playlist_name = match.group(1).strip()
                     logger.info(f"Found Spotify playlist name: {playlist_name}")
                     return sanitize_filename(playlist_name)
-                    
+
             # Additional fallback - look for JSON data in the page
             json_data_match = re.search(r'Spotify\.Entity\s*=\s*({.*?});', response.text, re.DOTALL)
             if json_data_match:
@@ -228,7 +221,7 @@ def get_spotify_playlist_name(playlist_url):
                     pass
     except Exception as e:
         logger.warning(f"Error getting Spotify playlist name from embed API: {e}")
-    
+
     # If we couldn't get the name, fall back to using the ID
     logger.warning(f"Could not get playlist name, using ID instead: {playlist_id}")
     return f"spotify-{playlist_id}"
@@ -242,14 +235,14 @@ def get_youtube_playlist_name(playlist_url):
         playlist_id = playlist_url.split("list=")[1].split("&")[0]
     else:
         playlist_id = playlist_url.split("/")[-1].split("?")[0]
-    
+
     # Try to get YouTube playlist name
     try:
         # Use YouTube's oEmbed API to get playlist info
         if playlist_id:
             oembed_url = f"https://www.youtube.com/oembed?url=https://www.youtube.com/playlist?list={playlist_id}&format=json"
             response = requests.get(oembed_url)
-            
+
             if response.status_code == 200:
                 data = response.json()
                 playlist_name = data.get("title", "")
@@ -258,7 +251,7 @@ def get_youtube_playlist_name(playlist_url):
                     return sanitize_filename(playlist_name)
     except Exception as e:
         logger.warning(f"Error getting YouTube playlist name: {e}")
-    
+
     # If we couldn't get the name, fall back to using the ID
     logger.warning(f"Could not get YouTube playlist name, using ID instead: {playlist_id}")
     return f"youtube-{playlist_id}"
@@ -266,10 +259,10 @@ def get_youtube_playlist_name(playlist_url):
 
 def read_config_file(config_file=None):
     """Read configuration from a config file.
-    
+
     Args:
         config_file: Path to config file. If None, will look for toolcrate.conf in project root.
-        
+
     Returns:
         Dict with configuration values.
     """
@@ -278,39 +271,39 @@ def read_config_file(config_file=None):
         "wishlist": os.path.expanduser("~/Music/downloads/sldl/wishlist.txt"),
         "dj-sets": os.path.expanduser("~/Music/downloads/sldl/dj-sets.txt"),
     }
-    
+
     if config_file is None:
         config_file = get_project_root() / "toolcrate.conf"
-    
+
     if os.path.exists(config_file):
         logger.info(f"Reading configuration from {config_file}")
-        with open(config_file, 'r') as f:
+        with open(config_file) as f:
             for line in f:
                 line = line.strip()
                 # Skip comments and empty lines
                 if not line or line.startswith('#'):
                     continue
-                
+
                 # Parse key-value pairs
                 if '=' in line:
                     key, value = line.split('=', 1)
                     key = key.strip()
                     value = value.strip()
-                    
+
                     # Expand user paths (~/...)
                     if key in ["download-path", "wishlist", "dj-sets"] and '~' in value:
                         value = os.path.expanduser(value)
-                    
+
                     config[key] = value
     else:
         logger.debug(f"Config file {config_file} not found, using defaults")
-    
+
     return config
 
 
 def run_slsk(download_path=None, links_file=None, open_shell=False):
     """Run the Soulseek batch downloader.
-    
+
     Args:
         download_path: Path where downloads will be saved (mounted as /data in container)
         links_file: Path to a text file containing links to process one by one
@@ -522,6 +515,56 @@ def run_mdl():
     sys.exit(1)
 
 
+def run_sldl_native(params, args, build=False):
+    """Run sldl directly as a native binary, downloading or building on demand.
+
+    This is the default path. It replaces the Docker-based execution for the
+    `toolcrate sldl` command. The binary is installed under
+    ~/.local/share/toolcrate/bin/sldl on first use.
+
+    Args:
+        params: Click parameters (currently unused)
+        args: List of command arguments to pass to sldl
+        build: If True, force a refresh of the binary (re-download / rebuild)
+    """
+    from ..config.manager import ConfigManager
+    from .binary_manager import BinaryError, ensure_sldl_binary
+
+    project_root = get_project_root()
+    config_path = project_root / "config" / "toolcrate.yaml"
+    sldl_conf_path = project_root / "config" / "sldl.conf"
+
+    # Regenerate sldl.conf from toolcrate.yaml so the binary picks up current config
+    try:
+        config_manager = ConfigManager(str(config_path))
+        config_manager.generate_sldl_conf()
+        logger.info("Updated sldl.conf from toolcrate.yaml")
+    except Exception as e:
+        logger.warning(f"Failed to update sldl.conf: {e}")
+        # Continue anyway - use existing config file if present
+
+    try:
+        binary = ensure_sldl_binary(project_root=project_root, force_refresh=build)
+    except BinaryError as e:
+        click.echo(f"Error: could not provision sldl binary: {e}")
+        sys.exit(1)
+
+    if not args:
+        # No args: show help (replaces the old docker interactive shell behavior)
+        cmd = [str(binary), "--help"]
+    elif sldl_conf_path.exists():
+        cmd = [str(binary), "-c", str(sldl_conf_path), *args]
+    else:
+        cmd = [str(binary), *args]
+
+    logger.info(f"Executing: {' '.join(cmd)}")
+    try:
+        os.execv(str(binary), [binary.name, *cmd[1:]])
+    except OSError as e:
+        click.echo(f"Error executing sldl: {e}")
+        sys.exit(1)
+
+
 def run_sldl_docker_command(params, args, build=False):
     """Run a command in the slsk-batchdl docker container.
 
@@ -531,6 +574,7 @@ def run_sldl_docker_command(params, args, build=False):
         build: Whether to rebuild the container before running
     """
     import subprocess
+
     from ..config.manager import ConfigManager
 
     # Check if docker is available

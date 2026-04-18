@@ -1,12 +1,14 @@
 #!/usr/bin/env python3
 """Schedule management CLI for ToolCrate."""
 
-import click
+import builtins
 import logging
+import os
 import subprocess
 import tempfile
-import os
-from typing import List, Dict, Any
+from typing import Any
+
+import click
 
 from ..config.manager import ConfigManager
 from ..wishlist.processor import WishlistProcessor
@@ -76,7 +78,7 @@ def remove_toolcrate_jobs_from_crontab() -> str:
     return '\n'.join(cleaned_lines)
 
 
-def add_toolcrate_jobs_to_crontab(config_manager: ConfigManager, jobs: List[Dict[str, Any]], cron_enabled: bool = True) -> bool:
+def add_toolcrate_jobs_to_crontab(config_manager: ConfigManager, jobs: list[dict[str, Any]], cron_enabled: bool = True) -> bool:
     """Add ToolCrate jobs to the user's crontab."""
     # Remove existing ToolCrate jobs first
     current_crontab = remove_toolcrate_jobs_from_crontab()
@@ -93,7 +95,7 @@ def add_toolcrate_jobs_to_crontab(config_manager: ConfigManager, jobs: List[Dict
     return update_crontab(new_crontab)
 
 
-def generate_crontab_section(config_manager: ConfigManager, jobs: List[Dict[str, Any]], cron_enabled: bool = True) -> str:
+def generate_crontab_section(config_manager: ConfigManager, jobs: list[dict[str, Any]], cron_enabled: bool = True) -> str:
     """Generate the ToolCrate section for crontab."""
     lines = [
         "# ToolCrate Scheduled Downloads",
@@ -143,14 +145,14 @@ def generate_crontab_section(config_manager: ConfigManager, jobs: List[Dict[str,
 @click.pass_context
 def schedule(ctx):
     """Manage scheduled downloads and cron jobs.
-    
+
     The schedule command allows you to manage automated wishlist downloads
     using cron jobs. You can add, remove, or disable scheduled downloads.
     """
     # Ensure we have a config manager in the context
     if not hasattr(ctx, 'obj') or ctx.obj is None:
         ctx.obj = {}
-    
+
     if 'config_manager' not in ctx.obj:
         ctx.obj['config_manager'] = ConfigManager()
 
@@ -178,13 +180,13 @@ def add(ctx, schedule: str, name: str, description: str, type: str):
     Use https://crontab.guru/ to help create cron expressions.
     """
     config_manager = ctx.obj['config_manager']
-    
+
     try:
         # Validate cron expression (basic validation)
         parts = schedule.split()
         if len(parts) != 5:
             raise click.BadParameter("Cron schedule must have 5 parts: minute hour day month weekday")
-        
+
         # Auto-generate name and description if not provided
         if name is None:
             if type == 'wishlist':
@@ -226,7 +228,7 @@ def add(ctx, schedule: str, name: str, description: str, type: str):
             'description': description,
             'enabled': True
         }
-        
+
         # Add to jobs list
         config['cron']['jobs'].append(new_job)
 
@@ -239,16 +241,16 @@ def add(ctx, schedule: str, name: str, description: str, type: str):
             click.echo(f"✅ Added scheduled job '{name}' with schedule '{schedule}'")
             click.echo(f"📝 Description: {description}")
             if cron_enabled:
-                click.echo(f"🕒 Job automatically installed to crontab and is active")
+                click.echo("🕒 Job automatically installed to crontab and is active")
             else:
-                click.echo(f"🕒 Job installed to crontab but is disabled")
+                click.echo("🕒 Job installed to crontab but is disabled")
                 click.echo("💡 Run 'toolcrate schedule enable' to activate all jobs")
         else:
             click.echo(f"✅ Added scheduled job '{name}' with schedule '{schedule}'")
             click.echo(f"📝 Description: {description}")
             click.echo("⚠️  Could not automatically install to crontab")
             click.echo("💡 Run 'toolcrate schedule install' to install manually")
-        
+
     except Exception as e:
         logger.error(f"Error adding scheduled job: {e}")
         click.echo(f"❌ Error adding scheduled job: {e}")
@@ -416,18 +418,18 @@ def remove(ctx, name: str):
         toolcrate schedule remove --name hourly_queue
     """
     config_manager = ctx.obj['config_manager']
-    
+
     try:
         config_manager.load_config()
         config = config_manager.config
-        
+
         if 'cron' not in config or 'jobs' not in config['cron']:
             click.echo("No scheduled jobs found.")
             return
-        
+
         jobs = config['cron']['jobs']
         job_found = False
-        
+
         for i, job in enumerate(jobs):
             if job.get('name') == name:
                 if click.confirm(f"Remove scheduled job '{name}'?"):
@@ -455,7 +457,7 @@ def remove(ctx, name: str):
             click.echo("Available jobs:")
             for job in jobs:
                 click.echo(f"  - {job.get('name', 'unnamed')}")
-    
+
     except Exception as e:
         logger.error(f"Error removing scheduled job: {e}")
         click.echo(f"❌ Error removing scheduled job: {e}")
@@ -539,18 +541,18 @@ def edit(ctx, name: str, schedule: str):
 @click.pass_context
 def disable(ctx):
     """Disable all scheduled downloads.
-    
+
     This disables cron job execution but keeps the job definitions.
     """
     config_manager = ctx.obj['config_manager']
-    
+
     try:
         config_manager.load_config()
         config = config_manager.config
-        
+
         if 'cron' not in config:
             config['cron'] = {'enabled': False, 'jobs': []}
-        
+
         config['cron']['enabled'] = False
         config_manager.update_cron_section(config['cron'])
 
@@ -565,7 +567,7 @@ def disable(ctx):
             click.echo("💡 Job definitions are preserved. Use 'toolcrate schedule enable' to re-enable.")
             if jobs:
                 click.echo("⚠️  Could not update crontab automatically")
-        
+
     except Exception as e:
         logger.error(f"Error disabling scheduled jobs: {e}")
         click.echo(f"❌ Error disabling scheduled jobs: {e}")
@@ -576,15 +578,15 @@ def disable(ctx):
 @click.pass_context
 def enable(ctx):
     """Enable scheduled downloads.
-    
+
     This enables cron job execution for all defined jobs.
     """
     config_manager = ctx.obj['config_manager']
-    
+
     try:
         config_manager.load_config()
         config = config_manager.config
-        
+
         if 'cron' not in config:
             config['cron'] = {'enabled': True, 'jobs': []}
         else:
@@ -606,7 +608,7 @@ def enable(ctx):
         else:
             click.echo("✅ Enabled scheduled downloads")
             click.echo("💡 No jobs defined yet. Use 'toolcrate schedule add' to create jobs")
-        
+
     except Exception as e:
         logger.error(f"Error enabling scheduled jobs: {e}")
         click.echo(f"❌ Error enabling scheduled jobs: {e}")
@@ -618,36 +620,36 @@ def enable(ctx):
 def list(ctx):
     """List all scheduled jobs."""
     config_manager = ctx.obj['config_manager']
-    
+
     try:
         config_manager.load_config()
         config = config_manager.config
-        
+
         cron_config = config.get('cron', {})
         enabled = cron_config.get('enabled', False)
         jobs = cron_config.get('jobs', [])
-        
+
         click.echo(f"Scheduled Downloads: {'✅ Enabled' if enabled else '❌ Disabled'}")
         click.echo()
-        
+
         if not jobs:
             click.echo("No scheduled jobs defined.")
             click.echo("Use 'toolcrate schedule add' to create a job.")
             return
-        
+
         click.echo(f"Jobs ({len(jobs)}):")
         for job in jobs:
             name = job.get('name', 'unnamed')
             schedule = job.get('schedule', 'unknown')
             description = job.get('description', 'No description')
             job_enabled = job.get('enabled', True)
-            
+
             status = "✅" if job_enabled else "❌"
             click.echo(f"  {status} {name}")
             click.echo(f"      Schedule: {schedule}")
             click.echo(f"      Description: {description}")
             click.echo()
-        
+
     except Exception as e:
         logger.error(f"Error listing scheduled jobs: {e}")
         click.echo(f"❌ Error listing scheduled jobs: {e}")
@@ -691,11 +693,11 @@ def status(ctx):
                     elif line and not line.startswith('# '):
                         active_jobs += 1
 
-            click.echo(f"Crontab Status: ✅ Installed")
+            click.echo("Crontab Status: ✅ Installed")
             click.echo(f"Active Jobs: {active_jobs}")
             click.echo(f"Disabled Jobs: {commented_jobs}")
         else:
-            click.echo(f"Crontab Status: ❌ Not installed")
+            click.echo("Crontab Status: ❌ Not installed")
 
         click.echo()
         if jobs:
@@ -780,7 +782,7 @@ def install(ctx):
         raise click.Abort()
 
 
-def generate_cron_file(config_manager: ConfigManager, jobs: List[Dict[str, Any]]) -> str:
+def generate_cron_file(config_manager: ConfigManager, jobs: builtins.list[dict[str, Any]]) -> str:
     """Generate cron file content from job definitions."""
     lines = [
         "# ToolCrate Scheduled Downloads",
@@ -790,21 +792,21 @@ def generate_cron_file(config_manager: ConfigManager, jobs: List[Dict[str, Any]]
         "# Format: minute hour day month weekday command",
         ""
     ]
-    
+
     # Get project root for command paths
     project_root = config_manager.config_dir.parent
-    
+
     for job in jobs:
         if not job.get('enabled', True):
             continue
-            
+
         name = job.get('name', 'unnamed')
         schedule = job.get('schedule', '0 2 * * *')
         description = job.get('description', '')
         command = job.get('command', 'wishlist')
-        
+
         lines.append(f"# {name}: {description}")
-        
+
         if command == 'wishlist':
             # Wishlist processing command
             cmd = f"cd {project_root} && poetry run python -m toolcrate.wishlist.processor"
@@ -814,10 +816,10 @@ def generate_cron_file(config_manager: ConfigManager, jobs: List[Dict[str, Any]]
         else:
             # Custom command
             cmd = f"cd {project_root} && {command}"
-        
+
         lines.append(f"{schedule} {cmd}")
         lines.append("")
-    
+
     return "\n".join(lines)
 
 
@@ -825,38 +827,38 @@ def generate_cron_file(config_manager: ConfigManager, jobs: List[Dict[str, Any]]
 @click.pass_context
 def test(ctx):
     """Test wishlist processing without scheduling.
-    
+
     This runs the wishlist processor once to test your configuration.
     """
     config_manager = ctx.obj['config_manager']
-    
+
     try:
         click.echo("🧪 Testing wishlist processing...")
-        
+
         processor = WishlistProcessor(config_manager)
         results = processor.process_all_entries()
-        
+
         click.echo()
         click.echo(f"Test Results: {results['status']}")
-        
+
         if results['status'] == 'completed':
             click.echo(f"✅ Processed: {results['processed']}/{results['total']}")
             click.echo(f"❌ Failed: {results['failed']}/{results['total']}")
-            
+
             if results['failed'] > 0:
                 click.echo()
                 click.echo("Failed entries:")
                 for result in results['results']:
                     if not result['success']:
                         click.echo(f"  - {result['entry']}")
-        
+
         elif results['status'] == 'disabled':
             click.echo("❌ Wishlist processing is disabled in configuration")
         elif results['status'] == 'empty':
             click.echo("📝 No entries found in wishlist file")
             wishlist_path = processor.get_wishlist_file_path()
             click.echo(f"💡 Add entries to: {wishlist_path}")
-        
+
     except Exception as e:
         logger.error(f"Error testing wishlist processing: {e}")
         click.echo(f"❌ Error testing wishlist processing: {e}")

@@ -1,0 +1,188 @@
+name: CI
+
+on:
+  push:
+    branches: [main, develop]
+  pull_request:
+    branches: [main, develop]
+
+jobs:
+  # ─── Lint & type-check (fast, single Python version) ─────────────────────
+  lint:
+    name: Lint & Type Check
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install Poetry
+        run: |
+          pip install poetry
+          poetry config virtualenvs.in-project true
+
+      - name: Cache virtualenv
+        uses: actions/cache@v4
+        with:
+          path: .venv
+          key: venv-lint-${{ hashFiles('poetry.lock') }}
+
+      - name: Install dependencies
+        run: poetry install --with dev
+
+      - name: Ruff lint
+        run: poetry run ruff check src/ tests/unit/
+
+      - name: Mypy (non-blocking — new code only)
+        # Targets only the modules introduced or changed in this PR;
+        # the broader codebase will be added incrementally as types are fixed.
+        run: poetry run mypy src/toolcrate/cli/binary_manager.py --ignore-missing-imports
+        continue-on-error: true
+
+  # ─── Unit tests (matrix across supported Python versions) ────────────────
+  test:
+    name: Tests (Python ${{ matrix.python-version }})
+    runs-on: ubuntu-latest
+    permissions:
+      pull-requests: write  # needed to post coverage comment
+    strategy:
+      fail-fast: false
+      matrix:
+        # Python 3.9 reached EOL in October 2025 and is no longer available
+        # on ubuntu-latest (24.04). Minimum supported version is now 3.10.
+        python-version: ["3.10", "3.11", "3.12"]
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python-version }}
+
+      - name: Install Poetry
+        run: |
+          pip install poetry
+          poetry config virtualenvs.in-project true
+
+      - name: Cache virtualenv
+        uses: actions/cache@v4
+        with:
+          path: .venv
+          key: venv-${{ matrix.python-version }}-${{ hashFiles('poetry.lock') }}
+
+      - name: Install dependencies
+        run: poetry install --with dev
+
+      - name: Run unit tests with coverage
+        run: |
+          poetry run pytest tests/unit/ \
+            -v --tb=short \
+            -m "not integration and not slow" \
+            --cov=src/toolcrate \
+            --cov-report=term-missing \
+            --cov-report=xml \
+            --cov-report=json \
+            --no-header
+
+      - name: Check coverage threshold
+        if: matrix.python-version == '3.11'
+        run: poetry run coverage report --fail-under=14
+
+      - name: Write coverage to job summary
+        if: matrix.python-version == '3.11'
+        run: |
+          poetry run python - <<'PYEOF'
+          import json, os
+          with open("coverage.json") as f:
+              data = json.load(f)
+          tot = data["totals"]
+          pct = tot["percent_covered"]
+          covered = tot["covered_lines"]
+          total = tot["num_statements"]
+
+          rows = []
+          for fname, fdata in sorted(data["files"].items()):
+              s = fdata["summary"]
+              short = fname.replace("src/toolcrate/", "")
+              rows.append(f"| `{short}` | {s['num_statements']} | {s['missing_lines']} | {s['percent_covered']:.0f}% |")
+
+          lines = [
+              f"## Coverage: {pct:.1f}%",
+              f"**{covered} / {total}** statements covered",
+              "",
+              "| File | Stmts | Miss | Cover |",
+              "|------|------:|-----:|------:|",
+          ] + rows
+
+          md = "\n".join(lines)
+          with open("coverage-summary.md", "w") as f:
+              f.write(md)
+          with open(os.environ["GITHUB_STEP_SUMMARY"], "a") as f:
+              f.write(md + "\n")
+          PYEOF
+
+      - name: Post coverage comment on PR
+        if: matrix.python-version == '3.11' && github.event_name == 'pull_request'
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const fs = require('fs');
+            const body = fs.readFileSync('coverage-summary.md', 'utf8');
+            const marker = '<!-- toolcrate-coverage -->';
+            const fullBody = `${marker}\n${body}`;
+
+            const { data: comments } = await github.rest.issues.listComments({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: context.issue.number,
+            });
+
+            const existing = comments.find(c => c.body.includes(marker));
+            if (existing) {
+              await github.rest.issues.updateComment({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                comment_id: existing.id,
+                body: fullBody,
+              });
+            } else {
+              await github.rest.issues.createComment({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                issue_number: context.issue.number,
+                body: fullBody,
+              });
+            }
+
+  # ─── Smoke test: package imports cleanly ─────────────────────────────────
+  import-check:
+    name: Import smoke test
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install Poetry
+        run: |
+          pip install poetry
+          poetry config virtualenvs.in-project true
+
+      - name: Install core dependencies only
+        run: poetry install --without dev
+
+      - name: Verify package imports with core deps only
+        run: |
+          poetry run python -c "
+          import toolcrate
+          import toolcrate.cli
+          import toolcrate.cli.main
+          import toolcrate.cli.wrappers
+          import toolcrate.cli.binary_manager
+          from toolcrate.cli.main import main, info, download
+          print('All core imports OK')
+          "

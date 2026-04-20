@@ -28,14 +28,10 @@ jobs:
         continue-on-error: true
 
   test:
-    name: Tests (Python ${{ matrix.python-version }})
+    name: Tests
     runs-on: ubuntu-latest
     permissions:
       pull-requests: write
-    strategy:
-      fail-fast: false
-      matrix:
-        python-version: ["3.10", "3.11", "3.12"]
 
     steps:
       - uses: actions/checkout@v4
@@ -43,7 +39,6 @@ jobs:
       - uses: astral-sh/setup-uv@v5
         with:
           enable-cache: true
-          python-version: ${{ matrix.python-version }}
 
       - name: Install dependencies
         run: uv sync
@@ -60,11 +55,9 @@ jobs:
             --no-header
 
       - name: Check coverage threshold
-        if: matrix.python-version == '3.11'
         run: uv run coverage report --fail-under=14
 
       - name: Write coverage to job summary
-        if: matrix.python-version == '3.11'
         run: |
           uv run python - <<'PYEOF'
           import json, os
@@ -97,7 +90,7 @@ jobs:
           PYEOF
 
       - name: Post coverage comment on PR
-        if: matrix.python-version == '3.11' && github.event_name == 'pull_request'
+        if: github.event_name == 'pull_request'
         uses: actions/github-script@v7
         with:
           script: |

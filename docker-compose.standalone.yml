@@ -1,0 +1,30 @@
+# Docker Compose configuration for ToolCrate standalone container
+# This version does not mount any local directories - everything is self-contained
+
+version: '3.8'
+
+services:
+  toolcrate-standalone:
+    build:
+      context: .
+      dockerfile: Dockerfile.test
+    image: toolcrate:standalone
+    container_name: toolcrate-standalone
+    environment:
+      - PYTHONPATH=/app/src
+      - PYTHONUNBUFFERED=1
+    working_dir: /app
+    networks:
+      - toolcrate-network
+    # Default command runs tests, but can be overridden
+    command: ["python", "-m", "pytest", "tests/", "-v"]
+    
+    # Optional: if you need Docker-in-Docker for testing
+    # Uncomment the following lines:
+    # privileged: true
+    # volumes:
+    #   - /var/run/docker.sock:/var/run/docker.sock
+
+networks:
+  toolcrate-network:
+    driver: bridge

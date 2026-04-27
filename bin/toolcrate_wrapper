@@ -1,6 +1,0 @@
-#!/bin/bash
-# Wrapper script for toolcrate
-
-TOOLCRATE_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
-
-exec uv run --project "${TOOLCRATE_DIR}" --extra shazam toolcrate "$@"

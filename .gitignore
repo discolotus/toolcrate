@@ -46,6 +46,8 @@ htmlcov/
 .cache
 nosetests.xml
 coverage.xml
+coverage.json
+coverage-summary.md
 *.cover
 .hypothesis/
 .pytest_cache/
@@ -142,17 +144,29 @@ Network Trash Folder
 Temporary Items
 .apdisk
 
-# Project-specific ignores
+# ToolCrate-specific ignores
 # Runtime files and logs
 logs/
 tmp/
-config/*.log
-config/cron.log
-config/wishlist.log
+*.log
 
-# User-specific configuration (contains credentials)
+# User-specific configuration files (contain credentials)
 sldl.conf
+toolcrate.conf
 config/sldl.conf
+config/toolcrate.conf
+
+# User data files
+config/wishlist.txt
+config/wishlist.log
+config/cron.log
+playlists.txt
+examples/urls.txt
+
+# Build and runtime artifacts
+src/bin/sldl
+src/bin/sldl.pdb
+config/crontabs/
 
 # Test artifacts
 .pytest_cache/
@@ -164,10 +178,39 @@ build/
 dist/
 *.egg-info/
 
-# IDE
+# IDE and editor files
 .vscode/
 .idea/
 *.swp
 *.swo
 *~
 
+# Downloaded content and user data
+downloads/
+data/
+recognised-lists/
+# External tools and binaries
+src/bin/
+src/slsk-batchdl/
+src/Shazam-Tool/
+
+# Virtual environment
+.venv/
+**/toolcrate.yaml
+
+config/sldl-wishlist.conf
+config/wishlist.txt
+config/crontabs/
+**index.sldl
+**.mp3
+**.flac
+**.wav
+**.alac
+**.m4a
+**.opus
+**.ogg
+**.aac
+**.incomplete
+
+
+config/download-queue.txt

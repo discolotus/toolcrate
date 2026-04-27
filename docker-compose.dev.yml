@@ -1,0 +1,83 @@
+# Docker Compose configuration for ToolCrate development environment
+# This provides a complete development setup with hot-reloading and debugging capabilities
+
+version: '3.8'
+
+services:
+  toolcrate-dev:
+    build:
+      context: .
+      dockerfile: Dockerfile.test
+      target: development  # We'll add this stage
+    image: toolcrate:dev
+    container_name: toolcrate-dev
+    environment:
+      - PYTHONPATH=/workspace/src
+      - PYTHONUNBUFFERED=1
+      - TOOLCRATE_ENV=development
+      - TOOLCRATE_DEBUG=1
+    volumes:
+      # Mount source code for hot-reloading
+      - ./src:/workspace/src
+      - ./tests:/workspace/tests
+      - ./config:/workspace/config
+      - ./scripts:/workspace/scripts
+      - ./docs:/workspace/docs
+      # Persistent volumes for development data
+      - dev-data:/workspace/data
+      - dev-logs:/workspace/logs
+      # Poetry cache for faster rebuilds
+      - poetry-cache:/root/.cache/pypoetry
+    working_dir: /workspace
+    networks:
+      - toolcrate-dev-network
+    ports:
+      - "8000:8000"  # For potential web interface
+      - "5678:5678"  # For debugpy remote debugging
+    # Keep container running for development
+    command: ["tail", "-f", "/dev/null"]
+    
+  # slsk-batchdl service for testing sldl integration
+  sldl-dev:
+    build:
+      context: ./src/slsk-batchdl
+      dockerfile: Dockerfile
+    image: slsk-batchdl:dev
+    container_name: sldl-dev
+    environment:
+      - TZ=UTC
+      - PUID=1000
+      - PGID=1000
+    volumes:
+      - ./config:/config
+      - dev-data:/data
+    networks:
+      - toolcrate-dev-network
+    depends_on:
+      - toolcrate-dev
+
+  # Optional: Database for future features
+  redis-dev:
+    image: redis:7-alpine
+    container_name: toolcrate-redis-dev
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis-data:/data
+    networks:
+      - toolcrate-dev-network
+    command: redis-server --appendonly yes
+
+networks:
+  toolcrate-dev-network:
+    driver: bridge
+
+volumes:
+  dev-data:
+    driver: local
+  dev-logs:
+    driver: local
+  poetry-cache:
+    driver: local
+  redis-data:
+    driver: local

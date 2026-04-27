@@ -1,0 +1,41 @@
+# Docker Compose configuration for ToolCrate
+# Generated from toolcrate.yaml on Fri Jun 06 20:17:01  2025
+#
+# Mount paths: ./config → /config, ./data → /data
+# Run from project root directory when using relative paths
+
+services:
+  sldl:
+    build:
+      context: ../src/slsk-batchdl
+      dockerfile: Dockerfile
+    image: slsk-batchdl:latest
+    container_name: sldl
+    environment:
+      - TZ=UTC
+      - PUID=1000
+      - PGID=1000
+    volumes:
+      - .:/config
+      - ../data:/data
+    restart: unless-stopped
+    networks:
+      - toolcrate-network
+
+networks:
+  toolcrate-network:
+    driver: bridge
+
+volumes:
+  config:
+    driver: local
+    driver_opts:
+      type: none
+      o: bind
+      device: .
+  data:
+    driver: local
+    driver_opts:
+      type: none
+      o: bind
+      device: ../data

@@ -1,0 +1,25 @@
+# ToolCrate Configuration Example
+# Copy this file to your user config directory or project root
+# Location: ~/.config/toolcrate/toolcrate.conf (Linux/macOS) or %APPDATA%/toolcrate/toolcrate.conf (Windows)
+
+# Path where downloads will be saved (mounted as /data in container)
+download-path = ~/Music/downloads/sldl
+
+# Path to wishlist file (music you want to download)
+wishlist = ~/Music/downloads/sldl/wishlist.txt
+
+# Path to DJ sets file (DJ sets you want to download)
+dj-sets = ~/Music/downloads/sldl/dj-sets.txt
+
+# Path for Shazam tool output directory
+# This directory will store folders for each analyzed video with:
+# - CSV files of recognized songs
+# - Downloaded audio files 
+# - Soulseek-downloaded tracks
+shazam-output-dir = ~/Music/toolcrate-shazam
+
+# Logging configuration
+log-level = INFO
+log-file = ~/.local/share/toolcrate/logs/toolcrate.log
+
+# Other settings will be added here in future versions 

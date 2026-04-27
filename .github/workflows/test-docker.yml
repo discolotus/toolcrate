@@ -35,18 +35,25 @@ jobs:
         username: ${{ github.actor }}
         password: ${{ secrets.GITHUB_TOKEN }}
 
+    - name: Prepare Docker image tag
+      id: image-tag
+      run: |
+        raw_ref="${GITHUB_HEAD_REF:-$GITHUB_REF_NAME}"
+        safe_ref="$(printf '%s' "$raw_ref" | sed 's#[^A-Za-z0-9_.-]#-#g')"
+        echo "tag=$safe_ref" >> "$GITHUB_OUTPUT"
+
     - name: Pull Docker test image
       run: |
         # Try to pull the branch-specific image, fallback to latest
-        docker pull ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:${{ github.ref_name }} || \
+        docker pull ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:${{ steps.image-tag.outputs.tag }} || \
         docker pull ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:latest || \
         echo "No pre-built image found, will build locally"
 
     - name: Run ${{ matrix.test-type }} tests
       run: |
         # Use the pulled image or build locally if not available
-        if docker image inspect ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:${{ github.ref_name }} >/dev/null 2>&1; then
-          IMAGE_TAG="${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:${{ github.ref_name }}"
+        if docker image inspect ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:${{ steps.image-tag.outputs.tag }} >/dev/null 2>&1; then
+          IMAGE_TAG="${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:${{ steps.image-tag.outputs.tag }}"
         elif docker image inspect ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:latest >/dev/null 2>&1; then
           IMAGE_TAG="${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:latest"
         else
@@ -82,11 +89,18 @@ jobs:
         username: ${{ github.actor }}
         password: ${{ secrets.GITHUB_TOKEN }}
 
+    - name: Prepare Docker image tag
+      id: image-tag
+      run: |
+        raw_ref="${GITHUB_HEAD_REF:-$GITHUB_REF_NAME}"
+        safe_ref="$(printf '%s' "$raw_ref" | sed 's#[^A-Za-z0-9_.-]#-#g')"
+        echo "tag=$safe_ref" >> "$GITHUB_OUTPUT"
+
     - name: Run all tests with docker-compose
       run: |
         # Update docker-compose to use registry image if available
-        if docker manifest inspect ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:${{ github.ref_name }} >/dev/null 2>&1; then
-          sed -i "s|image: toolcrate:test|image: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:${{ github.ref_name }}|g" docker-compose.test.yml
+        if docker manifest inspect ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:${{ steps.image-tag.outputs.tag }} >/dev/null 2>&1; then
+          sed -i "s|image: toolcrate:test|image: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:${{ steps.image-tag.outputs.tag }}|g" docker-compose.test.yml
           sed -i 's|build:|# build:|g' docker-compose.test.yml
           sed -i 's|context: \.|# context: \.|g' docker-compose.test.yml
           sed -i 's|dockerfile: Dockerfile\.test|# dockerfile: Dockerfile\.test|g' docker-compose.test.yml

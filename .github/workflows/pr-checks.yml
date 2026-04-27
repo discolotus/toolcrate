@@ -36,8 +36,10 @@ jobs:
     if: needs.check-draft.outputs.is_draft == 'false'
     steps:
     - name: Validate PR title
+      env:
+        PR_TITLE: ${{ github.event.pull_request.title }}
       run: |
-        title="${{ github.event.pull_request.title }}"
+        title="$PR_TITLE"
         if [[ ${#title} -lt 10 ]]; then
           echo "PR title is too short (minimum 10 characters)"
           exit 1
@@ -49,8 +51,10 @@ jobs:
         echo "PR title validation passed"
 
     - name: Validate PR description
+      env:
+        PR_BODY: ${{ github.event.pull_request.body }}
       run: |
-        body="${{ github.event.pull_request.body }}"
+        body="$PR_BODY"
         if [[ ${#body} -lt 20 ]]; then
           echo "PR description is too short (minimum 20 characters)"
           exit 1

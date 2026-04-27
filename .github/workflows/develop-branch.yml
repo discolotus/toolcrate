@@ -62,7 +62,7 @@ jobs:
       run: |
         case "${{ matrix.test-category }}" in
           unit)
-            poetry run pytest tests/ -v -m "not integration" --junitxml=test-results-unit-${{ matrix.python-version }}.xml
+            poetry run pytest tests/unit/ -v -m "not integration" --junitxml=test-results-unit-${{ matrix.python-version }}.xml
             ;;
           integration)
             poetry run pytest tests/test_integration.py -v --junitxml=test-results-integration-${{ matrix.python-version }}.xml

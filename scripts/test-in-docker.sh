@@ -66,7 +66,7 @@ case "${1:-all}" in
         ;;
     "unit")
         echo "Running unit tests..."
-        poetry run pytest tests/ -v -m "not integration"
+        poetry run pytest tests/unit/ -v -m "not integration"
         ;;
     "integration")
         echo "Running integration tests..."

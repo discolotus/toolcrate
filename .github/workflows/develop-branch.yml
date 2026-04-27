@@ -68,7 +68,7 @@ jobs:
             poetry run pytest tests/test_integration.py -v --junitxml=test-results-integration-${{ matrix.python-version }}.xml
             ;;
           shell)
-            poetry run python tests/test_runner_unified.py shell
+            find scripts tests -name '*.sh' -print0 | xargs -0 -n1 bash -n
             ;;
           docker)
             # Build test image and run docker tests

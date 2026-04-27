@@ -221,6 +221,10 @@ jobs:
   pr-checks-summary:
     name: PR Checks Summary
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      issues: write
+      pull-requests: write
     needs: [check-draft, pr-validation, quick-tests, breaking-changes, file-checks, dependency-check]
     if: always() && needs.check-draft.outputs.is_draft == 'false'
     steps:
@@ -250,6 +254,7 @@ jobs:
 
     - name: Comment on PR
       if: success()
+      continue-on-error: true
       uses: actions/github-script@v6
       with:
         script: |

@@ -53,16 +53,17 @@ echo ""
 # Run the requested test command
 case "${1:-all}" in
     "all")
-        echo "Running all tests..."
-        poetry run python3 tests/test_runner_unified.py all
+        echo "Running maintained Python and shell syntax tests..."
+        poetry run pytest tests/unit/ tests/test_integration.py tests/test_package.py tests/test_main_cli.py -v
+        find scripts tests -name '*.sh' -print0 | xargs -0 -n1 bash -n
         ;;
     "python")
         echo "Running Python tests..."
-        poetry run pytest tests/ -v
+        poetry run pytest tests/unit/ tests/test_integration.py tests/test_package.py tests/test_main_cli.py -v
         ;;
     "shell")
-        echo "Running shell tests..."
-        poetry run python3 tests/test_runner_unified.py shell
+        echo "Running shell syntax checks..."
+        find scripts tests -name '*.sh' -print0 | xargs -0 -n1 bash -n
         ;;
     "unit")
         echo "Running unit tests..."

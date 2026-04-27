@@ -13,8 +13,10 @@ packages = [{include = "toolcrate", from = "src"}]
 [tool.poetry.dependencies]
 python = ">=3.8,<4.0"
 click = "^8.1.3"  # For CLI interface
-pydantic = "^2.0.0"  # For data validation
 loguru = "^0.7.0"  # For logging
+pydub = "^0.25.1"  # Audio processing for Shazam integration
+shazamio = "^0.6.0"  # Shazam recognition API
+yt-dlp = "^2024.1.0"  # YouTube/SoundCloud audio download support
 
 [tool.poetry.dev-dependencies]
 pytest = "^7.3.1"

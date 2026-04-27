@@ -241,7 +241,7 @@ jobs:
         docker run --rm toolcrate:prod toolcrate --version
         
         echo "Testing test image..."
-        docker run --rm toolcrate:test python -c "import pytest; print('Test environment ready')"
+        docker run --rm toolcrate:test poetry run python -c "import pytest; print('Test environment ready')"
 
     - name: Check version consistency
       run: |

@@ -119,7 +119,6 @@ def generate_crontab_section(
 
     # Get project root for command paths
     project_root = config_manager.config_dir.parent
-    wrapper_script = "/Users/tleo/code/toolcrate/scripts/cron_wrapper.sh"
 
     for job in jobs:
         name = job.get("name", "unnamed")
@@ -132,16 +131,13 @@ def generate_crontab_section(
 
         if command == "wishlist":
             # Wishlist processing command
-            orig_cmd = f"poetry run python -m toolcrate.wishlist.processor"
+            cmd = f"cd {project_root} && poetry run python -m toolcrate.wishlist.processor"
         elif command == "queue":
             # Queue processing command
-            orig_cmd = f"poetry run python -m toolcrate.queue.processor"
+            cmd = f"cd {project_root} && poetry run python -m toolcrate.queue.processor"
         else:
             # Custom command
-            orig_cmd = command
-
-        # Wrap the command with the cron_wrapper.sh script
-        cmd = f"cd {project_root} && {wrapper_script} {orig_cmd}"
+            cmd = f"cd {project_root} && {command}"
 
         # Comment out the job if cron is disabled or job is disabled
         if not cron_enabled or not job_enabled:
@@ -291,7 +287,7 @@ def add(ctx, schedule: str, name: str, description: str, type: str):
     except Exception as e:
         logger.error(f"Error adding scheduled job: {e}")
         click.echo(f"❌ Error adding scheduled job: {e}")
-        raise click.Abort() from None
+        raise click.Abort()
 
 
 @schedule.command()
@@ -590,7 +586,7 @@ def remove(ctx, name: str):
     except Exception as e:
         logger.error(f"Error removing scheduled job: {e}")
         click.echo(f"❌ Error removing scheduled job: {e}")
-        raise click.Abort() from None
+        raise click.Abort()
 
 
 @schedule.command()
@@ -670,7 +666,7 @@ def edit(ctx, name: str, schedule: str):
     except Exception as e:
         logger.error(f"Error editing scheduled job: {e}")
         click.echo(f"❌ Error editing scheduled job: {e}")
-        raise click.Abort() from None
+        raise click.Abort()
 
 
 @schedule.command()
@@ -711,7 +707,7 @@ def disable(ctx):
     except Exception as e:
         logger.error(f"Error disabling scheduled jobs: {e}")
         click.echo(f"❌ Error disabling scheduled jobs: {e}")
-        raise click.Abort() from None
+        raise click.Abort()
 
 
 @schedule.command()
@@ -754,12 +750,12 @@ def enable(ctx):
     except Exception as e:
         logger.error(f"Error enabling scheduled jobs: {e}")
         click.echo(f"❌ Error enabling scheduled jobs: {e}")
-        raise click.Abort() from None
+        raise click.Abort()
 
 
-@schedule.command("list")
+@schedule.command()
 @click.pass_context
-def list_jobs(ctx):
+def list(ctx):
     """List all scheduled jobs."""
     config_manager = ctx.obj["config_manager"]
 
@@ -795,7 +791,7 @@ def list_jobs(ctx):
     except Exception as e:
         logger.error(f"Error listing scheduled jobs: {e}")
         click.echo(f"❌ Error listing scheduled jobs: {e}")
-        raise click.Abort() from None
+        raise click.Abort()
 
 
 @schedule.command()
@@ -858,7 +854,7 @@ def status(ctx):
     except Exception as e:
         logger.error(f"Error checking cron status: {e}")
         click.echo(f"❌ Error checking cron status: {e}")
-        raise click.Abort() from None
+        raise click.Abort()
 
 
 @schedule.command()
@@ -921,7 +917,7 @@ def install(ctx):
     except Exception as e:
         logger.error(f"Error installing cron jobs: {e}")
         click.echo(f"❌ Error installing cron jobs: {e}")
-        raise click.Abort() from None
+        raise click.Abort()
 
 
 def generate_cron_file(
@@ -953,16 +949,13 @@ def generate_cron_file(
 
         if command == "wishlist":
             # Wishlist processing command
-            orig_cmd = f"poetry run python -m toolcrate.wishlist.processor"
+            cmd = f"cd {project_root} && poetry run python -m toolcrate.wishlist.processor"
         elif command == "queue":
             # Queue processing command
-            orig_cmd = f"poetry run python -m toolcrate.queue.processor"
+            cmd = f"cd {project_root} && poetry run python -m toolcrate.queue.processor"
         else:
             # Custom command
-            orig_cmd = command
-
-        # Wrap the command with the cron_wrapper.sh script
-        cmd = f"cd {project_root} && {wrapper_script} {orig_cmd}"
+            cmd = f"cd {project_root} && {command}"
 
         lines.append(f"{schedule} {cmd}")
         lines.append("")
@@ -1009,7 +1002,7 @@ def test(ctx):
     except Exception as e:
         logger.error(f"Error testing wishlist processing: {e}")
         click.echo(f"❌ Error testing wishlist processing: {e}")
-        raise click.Abort() from None
+        raise click.Abort()
 
 
 @schedule.command()
@@ -1055,4 +1048,4 @@ def test_queue(ctx):
     except Exception as e:
         logger.error(f"Error testing queue processing: {e}")
         click.echo(f"❌ Error testing queue processing: {e}")
-        raise click.Abort() from None
+        raise click.Abort()

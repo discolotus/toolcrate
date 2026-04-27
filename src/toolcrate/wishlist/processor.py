@@ -27,8 +27,12 @@ class WishlistProcessor:
 
     def get_wishlist_file_path(self) -> Path:
         """Get the path to the wishlist file."""
-        # Always use the config directory for the wishlist file
-        return self.config_manager.config_dir / "wishlist.txt"
+        wishlist_path = self.wishlist_config.get("file_path", "config/wishlist.txt")
+        if not os.path.isabs(wishlist_path):
+            # Make relative to project root
+            project_root = self.config_manager.config_dir.parent
+            return project_root / wishlist_path
+        return Path(wishlist_path)
 
     def ensure_wishlist_file_exists(self) -> Path:
         """Ensure the wishlist file exists, create if it doesn't."""

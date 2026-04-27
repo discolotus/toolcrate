@@ -79,7 +79,7 @@ def logs(lines: int, follow: bool, app_logs: bool, since: str | None):
     except Exception as e:
         logger.error(f"Error reading logs: {e}")
         click.echo(f"❌ Error reading logs: {e}")
-        raise click.Abort() from e
+        raise click.Abort()
 
 
 @wishlist_run.command()
@@ -112,7 +112,7 @@ def status():
     except Exception as e:
         logger.error(f"Error getting status: {e}")
         click.echo(f"❌ Error getting status: {e}")
-        raise click.Abort() from e
+        raise click.Abort()
 
 
 @wishlist_run.command()
@@ -156,7 +156,7 @@ def tail(lines: int):
     except Exception as e:
         logger.error(f"Error following logs: {e}")
         click.echo(f"❌ Error following logs: {e}")
-        raise click.Abort() from e
+        raise click.Abort()
 
 
 def _show_recent_logs(log_path: Path, lines: int, since: str | None):
@@ -202,23 +202,20 @@ def _follow_log_file(log_path: Path):
         )
 
         try:
-            if process.stdout:
-                for line in iter(process.stdout.readline, ""):
-                    line = line.rstrip()
-                    if line:
-                        # Add color formatting
-                        if "ERROR" in line or "Failed:" in line:
-                            click.echo(click.style(line, fg="red"))
-                        elif (
-                            "SUCCESS" in line or "Succeeded:" in line or "Succeded:" in line
-                        ):
-                            click.echo(click.style(line, fg="green"))
-                        elif "WARNING" in line or "WARN" in line:
-                            click.echo(click.style(line, fg="yellow"))
-                        else:
-                            click.echo(line)
-            else:
-                click.echo("Error: Could not read process output")
+            for line in iter(process.stdout.readline, ""):
+                line = line.rstrip()
+                if line:
+                    # Add color formatting
+                    if "ERROR" in line or "Failed:" in line:
+                        click.echo(click.style(line, fg="red"))
+                    elif (
+                        "SUCCESS" in line or "Succeeded:" in line or "Succeded:" in line
+                    ):
+                        click.echo(click.style(line, fg="green"))
+                    elif "WARNING" in line or "WARN" in line:
+                        click.echo(click.style(line, fg="yellow"))
+                    else:
+                        click.echo(line)
         except KeyboardInterrupt:
             process.terminate()
             click.echo("\n👋 Stopped following logs")
@@ -281,7 +278,7 @@ def _filter_lines_by_time(lines: list[str], cutoff_time: datetime) -> list[str]:
             else:
                 # If we can't parse timestamp, include the line
                 filtered.append(line)
-        except Exception:
+        except:
             # If timestamp parsing fails, include the line
             filtered.append(line)
 
@@ -314,7 +311,7 @@ def _analyze_app_logs(log_path: Path) -> dict[str, Any]:
                         last_run = datetime.fromisoformat(
                             timestamp_str.replace(" ", "T")
                         )
-                    except Exception:
+                    except:
                         pass
 
                 if "complete" in line.lower():

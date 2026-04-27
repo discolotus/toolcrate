@@ -13,12 +13,7 @@ import click
 import requests
 from loguru import logger
 
-# Check Python version
-if sys.version_info < (3, 9) or sys.version_info >= (4, 0):
-    print("Error: ToolCrate requires Python 3.9 or higher (but less than 4.0)")
-    print(f"Current Python version: {sys.version_info.major}.{sys.version_info.minor}")
-    print("Please upgrade your Python version.")
-    sys.exit(1)
+# Check Python version - align with pyproject.toml requirements
 
 
 def check_dependency(name, binary_name=None):
@@ -279,7 +274,7 @@ def read_config_file(config_file=None):
     """
     config = {
         "download-path": os.path.expanduser("~/Music/downloads/sldl"),
-        "wishlist": os.path.expanduser("~/.config/toolcrate/wishlist.txt"),
+        "wishlist": os.path.expanduser("~/Music/downloads/sldl/wishlist.txt"),
         "dj-sets": os.path.expanduser("~/Music/downloads/sldl/dj-sets.txt"),
     }
 
@@ -338,16 +333,19 @@ def run_slsk(download_path=None, links_file=None, open_shell=False):
         if path.exists() and os.access(path, os.X_OK):
             logger.info(f"Using local sldl binary from {path}")
             os.execv(str(path), ["sldl"] + args)
+            return
 
     # Check for native binary in PATH
     if check_dependency("sldl"):
         logger.info("Using sldl binary from PATH")
         os.execvp("sldl", ["sldl"] + args)
+        return
 
     # Check for slsk-batchdl binary in PATH
     if check_dependency("slsk-batchdl"):
         logger.info("Using slsk-batchdl binary from PATH")
         os.execvp("slsk-batchdl", ["slsk-batchdl"] + args)
+        return
 
     # Check for Docker image
     if check_docker_image("slsk-batchdl"):
@@ -366,6 +364,7 @@ def run_slsk(download_path=None, links_file=None, open_shell=False):
         ] + args
 
         os.execvp("docker", cmd)
+        return
 
     # Try to build from source as a last resort
     src_dir = root_dir / "src" / "slsk-batchdl"
@@ -407,6 +406,7 @@ def run_slsk(download_path=None, links_file=None, open_shell=False):
                 os.chmod(binary_path, 0o755)
                 logger.info(f"Built sldl at {binary_path}")
                 os.execv(str(binary_path), ["sldl"] + args)
+                return
 
         except (subprocess.CalledProcessError, FileNotFoundError):
             logger.warning("Failed to build sldl from source")
@@ -451,6 +451,7 @@ def run_shazam():
     if check_dependency("shazam-tool"):
         logger.info("Using shazam-tool binary from PATH")
         os.execvp("shazam-tool", ["shazam-tool"] + args)
+        return
 
     # Check for Docker image
     if check_docker_image("shazam-tool"):
@@ -468,6 +469,7 @@ def run_shazam():
         ] + args
 
         os.execvp("docker", cmd)
+        return
 
     # Not found
     click.echo(
@@ -483,6 +485,7 @@ def run_mdl():
         logger.info("Using native mdl-utils binary")
         args = sys.argv[1:]
         os.execvp("mdl-utils", ["mdl-utils"] + args)
+        return
 
     # Check for Python module
     try:
@@ -511,10 +514,61 @@ def run_mdl():
         ] + args
 
         os.execvp("docker", cmd)
+        return
 
     # Not found
     click.echo("Error: mdl-utils not found. Please install it or its Docker image.")
     sys.exit(1)
+
+
+def run_sldl_native(params, args, build=False):
+    """Run sldl directly as a native binary, downloading or building on demand.
+
+    This is the default path. It replaces the Docker-based execution for the
+    `toolcrate sldl` command. The binary is installed under
+    ~/.local/share/toolcrate/bin/sldl on first use.
+
+    Args:
+        params: Click parameters (currently unused)
+        args: List of command arguments to pass to sldl
+        build: If True, force a refresh of the binary (re-download / rebuild)
+    """
+    from ..config.manager import ConfigManager
+    from .binary_manager import BinaryError, ensure_sldl_binary
+
+    project_root = get_project_root()
+    config_path = project_root / "config" / "toolcrate.yaml"
+    sldl_conf_path = project_root / "config" / "sldl.conf"
+
+    # Regenerate sldl.conf from toolcrate.yaml so the binary picks up current config
+    try:
+        config_manager = ConfigManager(str(config_path))
+        config_manager.generate_sldl_conf()
+        logger.info("Updated sldl.conf from toolcrate.yaml")
+    except Exception as e:
+        logger.warning(f"Failed to update sldl.conf: {e}")
+        # Continue anyway - use existing config file if present
+
+    try:
+        binary = ensure_sldl_binary(project_root=project_root, force_refresh=build)
+    except BinaryError as e:
+        click.echo(f"Error: could not provision sldl binary: {e}")
+        sys.exit(1)
+
+    if not args:
+        # No args: show help (replaces the old docker interactive shell behavior)
+        cmd = [str(binary), "--help"]
+    elif sldl_conf_path.exists():
+        cmd = [str(binary), "-c", str(sldl_conf_path), *args]
+    else:
+        cmd = [str(binary), *args]
+
+    logger.info(f"Executing: {' '.join(cmd)}")
+    try:
+        os.execv(str(binary), [binary.name, *cmd[1:]])
+    except OSError as e:
+        click.echo(f"Error executing sldl: {e}")
+        sys.exit(1)
 
 
 def run_sldl_docker_command(params, args, build=False):

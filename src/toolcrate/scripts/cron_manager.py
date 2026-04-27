@@ -51,7 +51,7 @@ def read_config_file(config_file=None):
     """
     config = {
         "download-path": os.path.expanduser("~/Music/downloads/sldl"),
-        "wishlist": "/config/wishlist.txt",  # Use /config directory
+        "wishlist": os.path.expanduser("~/Music/downloads/sldl/wishlist.txt"),
         "dj-sets": os.path.expanduser("~/Music/downloads/sldl/dj-sets.txt"),
     }
 
@@ -228,34 +228,45 @@ def add_download_wishlist_cron(frequency="hourly"):
         # Assume it's a custom cron schedule
         schedule = frequency
 
-    # Get project root for command paths
-    project_root = os.path.abspath(os.path.join(os.path.dirname(__file__), '../../'))
-    wrapper_script = os.path.join(project_root, "scripts", "cron_wrapper.sh")
+    # Create the full cron command
+    cron_cmd = f"{schedule} {toolcrate_path} sldl --links-file {wishlist_path} > /tmp/toolcrate-download-wishlist.log 2>&1"
 
-    # Create the full cron command using the wrapper script
-    cron_cmd = f"{schedule} cd {project_root} && {wrapper_script} {toolcrate_path} sldl --input {wishlist_path} > /tmp/toolcrate-download-wishlist.log 2>&1"
-
-    # Add the job to crontab
+    # Get current crontab
     try:
-        # Get current crontab
-        current_crontab = subprocess.check_output(["crontab", "-l"], text=True)
+        result = subprocess.run(
+            ["crontab", "-l"], capture_output=True, text=True, check=False
+        )
 
-        # Add new job
-        new_crontab = current_crontab.strip() + "\n\n" + job_id + "\n" + cron_cmd + "\n"
+        current_crontab = result.stdout if result.returncode == 0 else ""
 
-        # Write new crontab
-        subprocess.run(["crontab", "-"], input=new_crontab, text=True, check=True)
+        # Create a temporary file with the new crontab
+        with tempfile.NamedTemporaryFile(mode="w+", delete=False) as temp:
+            if current_crontab:
+                temp.write(current_crontab)
+                if not current_crontab.endswith("\n"):
+                    temp.write("\n")
+
+            # Add the new job with comments
+            temp.write(f"{job_id}\n")
+            temp.write(f"{cron_cmd}\n")
+            temp_path = temp.name
+
+        # Install the new crontab
+        subprocess.run(["crontab", temp_path], check=True)
+
+        # Remove the temporary file
+        os.unlink(temp_path)
 
         print(f"Successfully added cron job to download wishlist items {frequency}:")
         print(f"Schedule: {schedule}")
-        print(f"Command: {toolcrate_path} sldl --input {wishlist_path}")
+        print(f"Command: {toolcrate_path} sldl --links-file {wishlist_path}")
         print(f"Wishlist file: {wishlist_path}")
         print("Output will be logged to /tmp/toolcrate-download-wishlist.log")
-
         return True
 
-    except subprocess.CalledProcessError as e:
-        print(f"Error adding cron job: {e}")
+    except Exception as e:
+        logger.error(f"Error setting up cron job: {e}")
+        print(f"Error setting up cron job: {e}")
         return False
 
 
@@ -403,7 +414,6 @@ def list_scheduled_jobs():
 
 # For backward compatibility
 def remove_identify_tracks_cron(file_type):
-    """Remove identify tracks cron job for given file type."""
     return remove_scheduled_job(f"identify-tracks-{file_type}")
 
 
@@ -412,15 +422,12 @@ list_identify_tracks_crons = list_scheduled_jobs
 
 # Legacy compatibility (will be removed in future version)
 def remove_identify_tracks_wishlist():
-    """Remove identify tracks wishlist cron job."""
     return remove_scheduled_job("identify-tracks-wishlist")
 
 
 def remove_identify_tracks_djsets():
-    """Remove identify tracks djsets cron job."""
     return remove_scheduled_job("identify-tracks-djsets")
 
 
 def remove_download_wishlist_cron():
-    """Remove download wishlist cron job."""
     return remove_scheduled_job("download-wishlist")

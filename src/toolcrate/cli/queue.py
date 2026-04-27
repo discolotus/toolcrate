@@ -78,7 +78,7 @@ def add(ctx, link):
     except Exception as e:
         logger.error(f"Error adding link to queue: {e}")
         click.echo(f"❌ Error adding link to queue: {e}")
-        raise click.Abort() from None
+        raise click.Abort()
 
 
 @queue.command()
@@ -113,7 +113,7 @@ def list(ctx):
     except Exception as e:
         logger.error(f"Error listing queue: {e}")
         click.echo(f"❌ Error listing queue: {e}")
-        raise click.Abort() from None
+        raise click.Abort()
 
 
 @queue.command()
@@ -157,7 +157,7 @@ def clear(ctx):
     except Exception as e:
         logger.error(f"Error clearing queue: {e}")
         click.echo(f"❌ Error clearing queue: {e}")
-        raise click.Abort() from None
+        raise click.Abort()
 
 
 @queue.command()
@@ -199,7 +199,7 @@ def run(ctx):
     except Exception as e:
         logger.error(f"Error processing queue: {e}")
         click.echo(f"❌ Error processing queue: {e}")
-        raise click.Abort() from None
+        raise click.Abort()
 
 
 @queue.command()
@@ -247,7 +247,7 @@ def status(ctx):
                 with open(processor.lock_file_path) as f:
                     lock_info = f.read().strip()
                 click.echo(f"Lock info: {lock_info}")
-            except Exception:
+            except:
                 pass
 
         # Backup file info
@@ -266,13 +266,13 @@ def status(ctx):
                     ]
                 )
                 click.echo(f"Processed entries (backed up): {processed_count}")
-            except Exception:
+            except:
                 pass
 
     except Exception as e:
         logger.error(f"Error getting queue status: {e}")
         click.echo(f"❌ Error getting queue status: {e}")
-        raise click.Abort() from None
+        raise click.Abort()
 
 
 @queue.command()
@@ -299,7 +299,7 @@ def enable(ctx):
     except Exception as e:
         logger.error(f"Error enabling queue: {e}")
         click.echo(f"❌ Error enabling queue: {e}")
-        raise click.Abort() from None
+        raise click.Abort()
 
 
 @queue.command()
@@ -326,4 +326,4 @@ def disable(ctx):
     except Exception as e:
         logger.error(f"Error disabling queue: {e}")
         click.echo(f"❌ Error disabling queue: {e}")
-        raise click.Abort() from None
+        raise click.Abort()

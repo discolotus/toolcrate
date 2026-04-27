@@ -119,6 +119,7 @@ def generate_crontab_section(
 
     # Get project root for command paths
     project_root = config_manager.config_dir.parent
+    wrapper_script = "/Users/tleo/code/toolcrate/scripts/cron_wrapper.sh"
 
     for job in jobs:
         name = job.get("name", "unnamed")
@@ -131,13 +132,16 @@ def generate_crontab_section(
 
         if command == "wishlist":
             # Wishlist processing command
-            cmd = f"cd {project_root} && poetry run python -m toolcrate.wishlist.processor"
+            orig_cmd = f"poetry run python -m toolcrate.wishlist.processor"
         elif command == "queue":
             # Queue processing command
-            cmd = f"cd {project_root} && poetry run python -m toolcrate.queue.processor"
+            orig_cmd = f"poetry run python -m toolcrate.queue.processor"
         else:
             # Custom command
-            cmd = f"cd {project_root} && {command}"
+            orig_cmd = command
+
+        # Wrap the command with the cron_wrapper.sh script
+        cmd = f"cd {project_root} && {wrapper_script} {orig_cmd}"
 
         # Comment out the job if cron is disabled or job is disabled
         if not cron_enabled or not job_enabled:
@@ -949,13 +953,16 @@ def generate_cron_file(
 
         if command == "wishlist":
             # Wishlist processing command
-            cmd = f"cd {project_root} && poetry run python -m toolcrate.wishlist.processor"
+            orig_cmd = f"poetry run python -m toolcrate.wishlist.processor"
         elif command == "queue":
             # Queue processing command
-            cmd = f"cd {project_root} && poetry run python -m toolcrate.queue.processor"
+            orig_cmd = f"poetry run python -m toolcrate.queue.processor"
         else:
             # Custom command
-            cmd = f"cd {project_root} && {command}"
+            orig_cmd = command
+
+        # Wrap the command with the cron_wrapper.sh script
+        cmd = f"cd {project_root} && {wrapper_script} {orig_cmd}"
 
         lines.append(f"{schedule} {cmd}")
         lines.append("")

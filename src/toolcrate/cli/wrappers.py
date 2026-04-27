@@ -279,7 +279,7 @@ def read_config_file(config_file=None):
     """
     config = {
         "download-path": os.path.expanduser("~/Music/downloads/sldl"),
-        "wishlist": os.path.expanduser("~/Music/downloads/sldl/wishlist.txt"),
+        "wishlist": os.path.expanduser("~/.config/toolcrate/wishlist.txt"),
         "dj-sets": os.path.expanduser("~/Music/downloads/sldl/dj-sets.txt"),
     }
 

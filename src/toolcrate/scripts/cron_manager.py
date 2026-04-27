@@ -51,7 +51,7 @@ def read_config_file(config_file=None):
     """
     config = {
         "download-path": os.path.expanduser("~/Music/downloads/sldl"),
-        "wishlist": os.path.expanduser("~/Music/downloads/sldl/wishlist.txt"),
+        "wishlist": "/config/wishlist.txt",  # Use /config directory
         "dj-sets": os.path.expanduser("~/Music/downloads/sldl/dj-sets.txt"),
     }
 
@@ -228,45 +228,34 @@ def add_download_wishlist_cron(frequency="hourly"):
         # Assume it's a custom cron schedule
         schedule = frequency
 
-    # Create the full cron command
-    cron_cmd = f"{schedule} {toolcrate_path} sldl --links-file {wishlist_path} > /tmp/toolcrate-download-wishlist.log 2>&1"
+    # Get project root for command paths
+    project_root = os.path.abspath(os.path.join(os.path.dirname(__file__), '../../'))
+    wrapper_script = os.path.join(project_root, "scripts", "cron_wrapper.sh")
 
-    # Get current crontab
+    # Create the full cron command using the wrapper script
+    cron_cmd = f"{schedule} cd {project_root} && {wrapper_script} {toolcrate_path} sldl --input {wishlist_path} > /tmp/toolcrate-download-wishlist.log 2>&1"
+
+    # Add the job to crontab
     try:
-        result = subprocess.run(
-            ["crontab", "-l"], capture_output=True, text=True, check=False
-        )
+        # Get current crontab
+        current_crontab = subprocess.check_output(["crontab", "-l"], text=True)
 
-        current_crontab = result.stdout if result.returncode == 0 else ""
+        # Add new job
+        new_crontab = current_crontab.strip() + "\n\n" + job_id + "\n" + cron_cmd + "\n"
 
-        # Create a temporary file with the new crontab
-        with tempfile.NamedTemporaryFile(mode="w+", delete=False) as temp:
-            if current_crontab:
-                temp.write(current_crontab)
-                if not current_crontab.endswith("\n"):
-                    temp.write("\n")
-
-            # Add the new job with comments
-            temp.write(f"{job_id}\n")
-            temp.write(f"{cron_cmd}\n")
-            temp_path = temp.name
-
-        # Install the new crontab
-        subprocess.run(["crontab", temp_path], check=True)
-
-        # Remove the temporary file
-        os.unlink(temp_path)
+        # Write new crontab
+        subprocess.run(["crontab", "-"], input=new_crontab, text=True, check=True)
 
         print(f"Successfully added cron job to download wishlist items {frequency}:")
         print(f"Schedule: {schedule}")
-        print(f"Command: {toolcrate_path} sldl --links-file {wishlist_path}")
+        print(f"Command: {toolcrate_path} sldl --input {wishlist_path}")
         print(f"Wishlist file: {wishlist_path}")
         print("Output will be logged to /tmp/toolcrate-download-wishlist.log")
+
         return True
 
-    except Exception as e:
-        logger.error(f"Error setting up cron job: {e}")
-        print(f"Error setting up cron job: {e}")
+    except subprocess.CalledProcessError as e:
+        print(f"Error adding cron job: {e}")
         return False
 
 

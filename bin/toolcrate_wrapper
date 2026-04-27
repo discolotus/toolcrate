@@ -1,6 +1,6 @@
 #!/bin/bash
 # Wrapper script for toolcrate
 
-# Activate virtual environment and run the command
-source "/Users/tleo/Music/git-projects/toolcrate/.venv/bin/activate"
-"/Users/tleo/Music/git-projects/toolcrate/.venv/bin/toolcrate" "$@"
+TOOLCRATE_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+
+exec uv run --project "${TOOLCRATE_DIR}" --extra shazam toolcrate "$@"

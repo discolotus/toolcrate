@@ -13,25 +13,25 @@ A unified tool suite for music management and processing. ToolCrate integrates m
 
 ```bash
 # Install from PyPI
-pip install toolcrate
+uv tool install toolcrate
 
 # Development installation
 git clone https://github.com/username/toolcrate.git
 cd toolcrate
-pip install -e .
+uv sync --extra shazam
 ```
 
 ### External Tools Setup
 
-ToolCrate integrates several external tools that are set up automatically during installation. The following tools are included:
+ToolCrate integrates several external tools that are set up by the development installer. The following tools are included:
 
 - **slsk-batchdl (sldl)**: Soulseek batch download tool
 
 If you need to manually set up these tools, you can run:
 
 ```bash
-# Run the setup script
-./setup_tools.sh
+# Run the installer
+./install.sh
 ```
 
 For macOS ARM64 (Apple Silicon) users, the installation will automatically:
@@ -42,17 +42,18 @@ For macOS ARM64 (Apple Silicon) users, the installation will automatically:
 
 ```bash
 # Main interface
-toolcrate --help
+uv run --extra shazam toolcrate --help
 
 # Direct access to integrated tools
-slsk-tool search "artist - title"
-shazam-tool identify sample.mp3
-mdl-tool get-metadata track.mp3
+uv run --extra shazam slsk-tool search "artist - title"
+uv run --extra shazam shazam-tool identify sample.mp3
+uv run --extra shazam mdl-tool get-metadata track.mp3
 ```
 
 ## Requirements
 
 - Python 3.8+
+- uv
 - External dependencies:
   - For building from source: .NET SDK 6.0+
   - For downloading from Soulseek: valid Soulseek account credentials

@@ -1,5 +1,5 @@
 #!/bin/bash
-# Script to install toolcrate with a Python virtual environment
+# Script to install toolcrate with uv
 
 # Set up colors for output
 GREEN='\033[0;32m'
@@ -12,15 +12,10 @@ echo -e "${BLUE}Setting up toolcrate...${NC}"
 # Get the absolute path of the current directory
 TOOLCRATE_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 
-# Create Python virtual environment in .venv directory
-if [ ! -d ".venv" ]; then
-    echo -e "${GREEN}Creating Python virtual environment in .venv...${NC}"
-    python3 -m venv .venv
-    source .venv/bin/activate
-    pip install --upgrade pip
-else
-    echo -e "${GREEN}Virtual environment already exists, activating...${NC}"
-    source .venv/bin/activate
+if ! command -v uv &> /dev/null; then
+    echo -e "${YELLOW}uv is required but was not found.${NC}"
+    echo -e "${YELLOW}Install it from https://docs.astral.sh/uv/getting-started/installation/ and re-run this script.${NC}"
+    exit 1
 fi
 
 # Create src directory if it doesn't exist
@@ -69,13 +64,7 @@ fi
 
 # Install required dependencies
 echo -e "${GREEN}Installing toolcrate package and dependencies...${NC}"
-
-# Use pip to install in development mode
-pip install -e .
-
-# Install Shazam-Tool dependencies
-echo -e "${GREEN}Installing Shazam-Tool dependencies...${NC}"
-pip install shazamio pydub yt-dlp ShazamApi
+uv sync --extra shazam
 
 echo -e "${GREEN}Setting up global access to toolcrate...${NC}"
 
@@ -92,9 +81,7 @@ cat > "$HOME/.local/bin/toolcrate" << EOF
 #!/bin/bash
 # Global entrypoint for toolcrate
 
-# Activate virtual environment and run the command
-source "${TOOLCRATE_DIR}/.venv/bin/activate"
-"${TOOLCRATE_DIR}/.venv/bin/toolcrate" "\$@"
+exec uv run --project "${TOOLCRATE_DIR}" --extra shazam toolcrate "\$@"
 EOF
 
 # Make the script executable
@@ -168,9 +155,7 @@ if [ "$WRAPPER_WORKS" = false ]; then
 #!/bin/bash
 # Wrapper script for toolcrate
 
-# Activate virtual environment and run the command
-source "${TOOLCRATE_DIR}/.venv/bin/activate"
-"${TOOLCRATE_DIR}/.venv/bin/toolcrate" "\$@"
+exec uv run --project "${TOOLCRATE_DIR}" --extra shazam toolcrate "\$@"
 EOF
         
         # Make the script executable
@@ -202,7 +187,7 @@ else
 fi
 
 echo -e "${BLUE}Installation complete!${NC}"
-echo -e "${GREEN}To activate the virtual environment, run:${NC}"
-echo -e "    source .venv/bin/activate"
+echo -e "${GREEN}To run commands inside the project environment, use:${NC}"
+echo -e "    uv run --extra shazam toolcrate --help"
 echo -e "${GREEN}You can now use toolcrate from anywhere by typing:${NC}"
-echo -e "    toolcrate --help" 
+echo -e "    toolcrate --help"

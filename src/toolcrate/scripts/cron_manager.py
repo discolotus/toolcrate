@@ -11,23 +11,22 @@ from pathlib import Path
 # Set up logging
 logging.basicConfig(
     level=logging.INFO,
-    format='%(asctime)s - %(levelname)s - %(message)s',
-    datefmt='%Y-%m-%d %H:%M:%S'
+    format="%(asctime)s - %(levelname)s - %(message)s",
+    datefmt="%Y-%m-%d %H:%M:%S",
 )
 logger = logging.getLogger(__name__)
+
 
 def find_command_path(command):
     """Find the full path to a command executable."""
     return shutil.which(command)
 
+
 def check_crontab_for_job(job_identifier):
     """Check if a job with the given identifier already exists in crontab."""
     try:
         result = subprocess.run(
-            ["crontab", "-l"],
-            capture_output=True,
-            text=True,
-            check=False
+            ["crontab", "-l"], capture_output=True, text=True, check=False
         )
 
         if result.returncode != 0:
@@ -39,6 +38,7 @@ def check_crontab_for_job(job_identifier):
     except Exception as e:
         logger.error(f"Error checking crontab: {e}")
         return False
+
 
 def read_config_file(config_file=None):
     """Read configuration from a config file.
@@ -75,17 +75,17 @@ def read_config_file(config_file=None):
             for line in f:
                 line = line.strip()
                 # Skip comments and empty lines
-                if not line or line.startswith('#'):
+                if not line or line.startswith("#"):
                     continue
 
                 # Parse key-value pairs
-                if '=' in line:
-                    key, value = line.split('=', 1)
+                if "=" in line:
+                    key, value = line.split("=", 1)
                     key = key.strip()
                     value = value.strip()
 
                     # Expand user paths (~/...)
-                    if key in ["download-path", "wishlist", "dj-sets"] and '~' in value:
+                    if key in ["download-path", "wishlist", "dj-sets"] and "~" in value:
                         value = os.path.expanduser(value)
 
                     config[key] = value
@@ -93,6 +93,7 @@ def read_config_file(config_file=None):
         logger.debug("Config file not found, using defaults")
 
     return config
+
 
 def add_identify_tracks_cron(file_type, frequency="hourly"):
     """Add a cron job to run identify-tracks with the specified file type and frequency.
@@ -109,13 +110,17 @@ def add_identify_tracks_cron(file_type, frequency="hourly"):
 
     # Check if the job already exists
     if check_crontab_for_job(job_id):
-        print(f"A cron job for identify-{file_type} already exists. Remove it first if you want to change it.")
+        print(
+            f"A cron job for identify-{file_type} already exists. Remove it first if you want to change it."
+        )
         return False
 
     # Find the full path to the toolcrate command
     toolcrate_path = find_command_path("toolcrate")
     if not toolcrate_path:
-        print("Error: toolcrate command not found in PATH. Make sure it's installed correctly.")
+        print(
+            "Error: toolcrate command not found in PATH. Make sure it's installed correctly."
+        )
         return False
 
     # Create the cron schedule based on frequency
@@ -135,20 +140,17 @@ def add_identify_tracks_cron(file_type, frequency="hourly"):
     # Get current crontab
     try:
         result = subprocess.run(
-            ["crontab", "-l"],
-            capture_output=True,
-            text=True,
-            check=False
+            ["crontab", "-l"], capture_output=True, text=True, check=False
         )
 
         current_crontab = result.stdout if result.returncode == 0 else ""
 
         # Create a temporary file with the new crontab
-        with tempfile.NamedTemporaryFile(mode='w+', delete=False) as temp:
+        with tempfile.NamedTemporaryFile(mode="w+", delete=False) as temp:
             if current_crontab:
                 temp.write(current_crontab)
-                if not current_crontab.endswith('\n'):
-                    temp.write('\n')
+                if not current_crontab.endswith("\n"):
+                    temp.write("\n")
 
             # Add the new job with comments
             temp.write(f"{job_id}\n")
@@ -156,17 +158,18 @@ def add_identify_tracks_cron(file_type, frequency="hourly"):
             temp_path = temp.name
 
         # Install the new crontab
-        subprocess.run(
-            ["crontab", temp_path],
-            check=True
-        )
+        subprocess.run(["crontab", temp_path], check=True)
 
         # Remove the temporary file
         os.unlink(temp_path)
 
-        print(f"Successfully added cron job to run identify-tracks for {file_type} {frequency}:")
+        print(
+            f"Successfully added cron job to run identify-tracks for {file_type} {frequency}:"
+        )
         print(f"Schedule: {schedule}")
-        print(f"Command: {toolcrate_path} identify-tracks --file-type {file_type} download")
+        print(
+            f"Command: {toolcrate_path} identify-tracks --file-type {file_type} download"
+        )
         print("Output will be logged to /tmp/toolcrate-identify-{file_type}.log")
         return True
 
@@ -174,6 +177,7 @@ def add_identify_tracks_cron(file_type, frequency="hourly"):
         logger.error(f"Error setting up cron job: {e}")
         print(f"Error setting up cron job: {e}")
         return False
+
 
 def add_download_wishlist_cron(frequency="hourly"):
     """Add a cron job to run sldl with the wishlist file.
@@ -189,13 +193,17 @@ def add_download_wishlist_cron(frequency="hourly"):
 
     # Check if the job already exists
     if check_crontab_for_job(job_id):
-        print("A cron job for download-wishlist already exists. Remove it first if you want to change it.")
+        print(
+            "A cron job for download-wishlist already exists. Remove it first if you want to change it."
+        )
         return False
 
     # Find the full path to the toolcrate command
     toolcrate_path = find_command_path("toolcrate")
     if not toolcrate_path:
-        print("Error: toolcrate command not found in PATH. Make sure it's installed correctly.")
+        print(
+            "Error: toolcrate command not found in PATH. Make sure it's installed correctly."
+        )
         return False
 
     # Get the wishlist file path from config
@@ -203,11 +211,15 @@ def add_download_wishlist_cron(frequency="hourly"):
     wishlist_path = config["wishlist"]
 
     if not os.path.exists(wishlist_path):
-        print(f"Warning: Wishlist file not found at {wishlist_path}. The cron job will be added anyway.")
+        print(
+            f"Warning: Wishlist file not found at {wishlist_path}. The cron job will be added anyway."
+        )
 
     # Create the cron schedule based on frequency
     if frequency == "hourly":
-        schedule = "30 * * * *"  # Run at minute 30 of every hour (offset from identify-tracks)
+        schedule = (
+            "30 * * * *"  # Run at minute 30 of every hour (offset from identify-tracks)
+        )
     elif frequency == "daily":
         schedule = "0 2 * * *"  # Run at 2 AM every day
     elif frequency == "weekly":
@@ -222,20 +234,17 @@ def add_download_wishlist_cron(frequency="hourly"):
     # Get current crontab
     try:
         result = subprocess.run(
-            ["crontab", "-l"],
-            capture_output=True,
-            text=True,
-            check=False
+            ["crontab", "-l"], capture_output=True, text=True, check=False
         )
 
         current_crontab = result.stdout if result.returncode == 0 else ""
 
         # Create a temporary file with the new crontab
-        with tempfile.NamedTemporaryFile(mode='w+', delete=False) as temp:
+        with tempfile.NamedTemporaryFile(mode="w+", delete=False) as temp:
             if current_crontab:
                 temp.write(current_crontab)
-                if not current_crontab.endswith('\n'):
-                    temp.write('\n')
+                if not current_crontab.endswith("\n"):
+                    temp.write("\n")
 
             # Add the new job with comments
             temp.write(f"{job_id}\n")
@@ -243,10 +252,7 @@ def add_download_wishlist_cron(frequency="hourly"):
             temp_path = temp.name
 
         # Install the new crontab
-        subprocess.run(
-            ["crontab", temp_path],
-            check=True
-        )
+        subprocess.run(["crontab", temp_path], check=True)
 
         # Remove the temporary file
         os.unlink(temp_path)
@@ -262,6 +268,7 @@ def add_download_wishlist_cron(frequency="hourly"):
         logger.error(f"Error setting up cron job: {e}")
         print(f"Error setting up cron job: {e}")
         return False
+
 
 def remove_scheduled_job(job_type):
     """Remove a cron job for the specified type.
@@ -298,16 +305,13 @@ def remove_scheduled_job(job_type):
     # Get current crontab
     try:
         result = subprocess.run(
-            ["crontab", "-l"],
-            capture_output=True,
-            text=True,
-            check=True
+            ["crontab", "-l"], capture_output=True, text=True, check=True
         )
 
         current_crontab = result.stdout
 
         # Create a temporary file with the modified crontab
-        with tempfile.NamedTemporaryFile(mode='w+', delete=False) as temp:
+        with tempfile.NamedTemporaryFile(mode="w+", delete=False) as temp:
             # Skip the job we want to remove and the line after it
             lines = current_crontab.splitlines()
             i = 0
@@ -317,16 +321,13 @@ def remove_scheduled_job(job_type):
                     i += 2
                     continue
 
-                temp.write(lines[i] + '\n')
+                temp.write(lines[i] + "\n")
                 i += 1
 
             temp_path = temp.name
 
         # Install the new crontab
-        subprocess.run(
-            ["crontab", temp_path],
-            check=True
-        )
+        subprocess.run(["crontab", temp_path], check=True)
 
         # Remove the temporary file
         os.unlink(temp_path)
@@ -339,6 +340,7 @@ def remove_scheduled_job(job_type):
         print(f"Error removing cron job: {e}")
         return False
 
+
 def list_scheduled_jobs():
     """List all toolcrate scheduled jobs.
 
@@ -347,10 +349,7 @@ def list_scheduled_jobs():
     """
     try:
         result = subprocess.run(
-            ["crontab", "-l"],
-            capture_output=True,
-            text=True,
-            check=False
+            ["crontab", "-l"], capture_output=True, text=True, check=False
         )
 
         if result.returncode != 0:
@@ -412,14 +411,23 @@ def list_scheduled_jobs():
         print(f"Error listing cron jobs: {e}")
         return False
 
+
 # For backward compatibility
 def remove_identify_tracks_cron(file_type):
     return remove_scheduled_job(f"identify-tracks-{file_type}")
+
+
 list_identify_tracks_crons = list_scheduled_jobs
+
+
 # Legacy compatibility (will be removed in future version)
 def remove_identify_tracks_wishlist():
     return remove_scheduled_job("identify-tracks-wishlist")
+
+
 def remove_identify_tracks_djsets():
     return remove_scheduled_job("identify-tracks-djsets")
+
+
 def remove_download_wishlist_cron():
     return remove_scheduled_job("download-wishlist")

@@ -2,6 +2,8 @@
 
 .PHONY: help test test-all test-python test-shell test-unit test-integration test-coverage test-quick clean install setup dev-install install-global install-pipx install-docker format lint check init-config config config-validate config-generate-sldl config-generate-wishlist-sldl config-generate-docker config-check-mounts config-show wishlist-test wishlist-run wishlist-run-verbose wishlist-logs wishlist-status test-docker test-docker-build test-docker-run test-docker-shell test-docker-clean test-docker-pull test-docker-registry test-docker-smart
 
+DOCKER_COMPOSE ?= $(shell if docker compose version >/dev/null 2>&1; then echo "docker compose"; elif command -v docker-compose >/dev/null 2>&1; then echo "docker-compose"; else echo "docker compose"; fi)
+
 # Default target
 help:
 	@echo "ToolCrate Commands (Poetry-based)"
@@ -298,12 +300,12 @@ build-docker-optimized:
 # Build development environment
 build-docker-dev:
 	@echo "Building Docker development environment..."
-	docker-compose -f docker-compose.dev.yml build
+	$(DOCKER_COMPOSE) -f docker-compose.dev.yml build
 
 # Start development environment
 dev-up:
 	@echo "Starting development environment..."
-	docker-compose -f docker-compose.dev.yml up -d
+	$(DOCKER_COMPOSE) -f docker-compose.dev.yml up -d
 	@echo "✅ Development environment started!"
 	@echo "💡 Access the container: make dev-shell"
 	@echo "💡 View logs: make dev-logs"
@@ -311,17 +313,17 @@ dev-up:
 # Stop development environment
 dev-down:
 	@echo "Stopping development environment..."
-	docker-compose -f docker-compose.dev.yml down
+	$(DOCKER_COMPOSE) -f docker-compose.dev.yml down
 
 # Access development container shell
 dev-shell:
 	@echo "Accessing development container shell..."
-	docker-compose -f docker-compose.dev.yml exec toolcrate-dev bash
+	$(DOCKER_COMPOSE) -f docker-compose.dev.yml exec toolcrate-dev bash
 
 # View development logs
 dev-logs:
 	@echo "Viewing development logs..."
-	docker-compose -f docker-compose.dev.yml logs -f
+	$(DOCKER_COMPOSE) -f docker-compose.dev.yml logs -f
 
 # Run health check on running container
 docker-health-check:
@@ -331,7 +333,7 @@ docker-health-check:
 # Run all tests in Docker container
 test-docker:
 	@echo "Running all tests in Docker container..."
-	docker-compose -f docker-compose.test.yml up --build --abort-on-container-exit toolcrate-test
+	$(DOCKER_COMPOSE) -f docker-compose.test.yml up --build --abort-on-container-exit toolcrate-test
 
 # Run specific test type in Docker (usage: make test-docker-run TEST=python)
 test-docker-run:
@@ -341,17 +343,17 @@ test-docker-run:
 		exit 1; \
 	fi
 	@echo "Running $(TEST) tests in Docker container..."
-	docker-compose -f docker-compose.test.yml run --rm toolcrate-test /workspace/scripts/test-in-docker.sh $(TEST)
+	$(DOCKER_COMPOSE) -f docker-compose.test.yml run --rm toolcrate-test /workspace/scripts/test-in-docker.sh $(TEST)
 
 # Open interactive shell in Docker testing container
 test-docker-shell:
 	@echo "Opening shell in Docker testing container..."
-	docker-compose -f docker-compose.test.yml run --rm toolcrate-test bash
+	$(DOCKER_COMPOSE) -f docker-compose.test.yml run --rm toolcrate-test bash
 
 # Clean Docker testing artifacts
 test-docker-clean:
 	@echo "Cleaning Docker testing artifacts..."
-	docker-compose -f docker-compose.test.yml down -v --remove-orphans
+	$(DOCKER_COMPOSE) -f docker-compose.test.yml down -v --remove-orphans
 	docker rmi toolcrate:test 2>/dev/null || true
 	docker rmi ghcr.io/discolotus/toolcrate/toolcrate-test:latest 2>/dev/null || true
 	docker volume prune -f
@@ -370,7 +372,7 @@ test-docker-registry:
 		echo "Using registry image..."; \
 		sed -i.bak 's|image: toolcrate:test|image: ghcr.io/discolotus/toolcrate/toolcrate-test:latest|g' docker-compose.test.yml; \
 		sed -i.bak 's|build:|# build:|g' docker-compose.test.yml; \
-		docker-compose -f docker-compose.test.yml up --abort-on-container-exit toolcrate-test; \
+		$(DOCKER_COMPOSE) -f docker-compose.test.yml up --abort-on-container-exit toolcrate-test; \
 		mv docker-compose.test.yml.bak docker-compose.test.yml; \
 	else \
 		echo "Registry image not found, falling back to local build..."; \
@@ -385,7 +387,7 @@ test-docker-smart:
 # Run tests with Docker-in-Docker (more isolated)
 test-docker-dind:
 	@echo "Running tests with Docker-in-Docker..."
-	docker-compose -f docker-compose.test.yml up --build --abort-on-container-exit
+	$(DOCKER_COMPOSE) -f docker-compose.test.yml up --build --abort-on-container-exit
 
 # Examples for Docker testing
 test-docker-examples:
@@ -409,5 +411,4 @@ test-docker-examples:
 	@echo ""
 	@echo "# Clean up:"
 	@echo "make test-docker-clean"
-
 

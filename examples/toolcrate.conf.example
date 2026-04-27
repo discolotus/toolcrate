@@ -6,7 +6,7 @@
 download-path = ~/Music/downloads/sldl
 
 # Path to wishlist file (music you want to download)
-wishlist = ~/Music/downloads/sldl/wishlist.txt
+wishlist = ~/.config/toolcrate/wishlist.txt
 
 # Path to DJ sets file (DJ sets you want to download)
 dj-sets = ~/Music/downloads/sldl/dj-sets.txt

@@ -4,9 +4,7 @@ import os
 import subprocess
 import sys
 from pathlib import Path
-from unittest.mock import Mock, call, patch
-
-import pytest
+from unittest.mock import Mock, patch
 
 from toolcrate.cli.wrappers import (
     check_dependency,

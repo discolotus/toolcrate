@@ -174,7 +174,9 @@ def _install_from_release(version: str) -> Path:
     finally:
         tmp_zip.unlink(missing_ok=True)
 
-    binary_path.chmod(binary_path.stat().st_mode | stat.S_IXUSR | stat.S_IXGRP | stat.S_IXOTH)
+    binary_path.chmod(
+        binary_path.stat().st_mode | stat.S_IXUSR | stat.S_IXGRP | stat.S_IXOTH
+    )
     _strip_macos_quarantine(binary_path)
 
     _version_file().write_text(version)
@@ -217,11 +219,15 @@ def _build_from_source(project_root: Path) -> Path:
     logger.info(f"Building sldl from source ({rid}) — this may take a minute")
     result = subprocess.run(
         [
-            "dotnet", "publish",
-            "-c", "Release",
-            "-r", rid,
+            "dotnet",
+            "publish",
+            "-c",
+            "Release",
+            "-r",
+            rid,
             "--self-contained",
-            "-o", str(out_dir),
+            "-o",
+            str(out_dir),
         ],
         cwd=str(src_dir),
     )
@@ -232,7 +238,9 @@ def _build_from_source(project_root: Path) -> Path:
     if not binary_path.exists():
         raise BinaryError(f"Build succeeded but {binary_path} is missing")
 
-    binary_path.chmod(binary_path.stat().st_mode | stat.S_IXUSR | stat.S_IXGRP | stat.S_IXOTH)
+    binary_path.chmod(
+        binary_path.stat().st_mode | stat.S_IXUSR | stat.S_IXGRP | stat.S_IXOTH
+    )
     _version_file().write_text("source-build")
     logger.info(f"Built sldl at {binary_path}")
     return binary_path

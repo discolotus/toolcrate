@@ -23,12 +23,12 @@ def queue(ctx):
     This is separate from the wishlist system which downloads to the library.
     """
     # Initialize config manager if not already done
-    if 'config_manager' not in ctx.obj:
-        ctx.obj['config_manager'] = ConfigManager()
+    if "config_manager" not in ctx.obj:
+        ctx.obj["config_manager"] = ConfigManager()
 
 
 @queue.command()
-@click.argument('link')
+@click.argument("link")
 @click.pass_context
 def add(ctx, link):
     """Add a link to the download queue.
@@ -40,27 +40,31 @@ def add(ctx, link):
         toolcrate queue add "https://youtube.com/playlist?list=..."
         toolcrate queue add "Artist - Song Title"
     """
-    config_manager = ctx.obj['config_manager']
+    config_manager = ctx.obj["config_manager"]
 
     try:
         config_manager.load_config()
-        queue_config = config_manager.config.get('queue', {})
+        queue_config = config_manager.config.get("queue", {})
 
         # Get queue file path
-        queue_file_path = Path(config_manager.config_dir) / queue_config.get('file_path', 'download-queue.txt').replace('config/', '')
+        queue_file_path = Path(config_manager.config_dir) / queue_config.get(
+            "file_path", "download-queue.txt"
+        ).replace("config/", "")
 
         # Ensure queue file exists
         queue_file_path.parent.mkdir(parents=True, exist_ok=True)
         if not queue_file_path.exists():
             # Create with header comment
-            with open(queue_file_path, 'w', encoding='utf-8') as f:
+            with open(queue_file_path, "w", encoding="utf-8") as f:
                 f.write("# Download Queue\n")
                 f.write("# Add playlist URLs, album URLs, or search terms below\n")
-                f.write("# Each line will be processed and then removed from this file\n")
+                f.write(
+                    "# Each line will be processed and then removed from this file\n"
+                )
                 f.write("# Lines starting with # are comments and will be ignored\n\n")
 
         # Add the link to the queue
-        with open(queue_file_path, 'a', encoding='utf-8') as f:
+        with open(queue_file_path, "a", encoding="utf-8") as f:
             timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
             f.write(f"# Added {timestamp}\n")
             f.write(f"{link}\n\n")
@@ -81,7 +85,7 @@ def add(ctx, link):
 @click.pass_context
 def list(ctx):
     """List current entries in the download queue."""
-    config_manager = ctx.obj['config_manager']
+    config_manager = ctx.obj["config_manager"]
 
     try:
         config_manager.load_config()
@@ -116,7 +120,7 @@ def list(ctx):
 @click.pass_context
 def clear(ctx):
     """Clear all entries from the download queue."""
-    config_manager = ctx.obj['config_manager']
+    config_manager = ctx.obj["config_manager"]
 
     try:
         config_manager.load_config()
@@ -129,7 +133,9 @@ def clear(ctx):
             return
 
         # Confirm before clearing
-        click.echo(f"⚠️  This will remove {len(entries)} entries from the download queue:")
+        click.echo(
+            f"⚠️  This will remove {len(entries)} entries from the download queue:"
+        )
         for i, entry in enumerate(entries[:5], 1):  # Show first 5
             click.echo(f"  {i}. {entry}")
         if len(entries) > 5:
@@ -140,7 +146,7 @@ def clear(ctx):
             return
 
         # Clear the queue file (keep header comments)
-        with open(processor.queue_file_path, 'w', encoding='utf-8') as f:
+        with open(processor.queue_file_path, "w", encoding="utf-8") as f:
             f.write("# Download Queue\n")
             f.write("# Add playlist URLs, album URLs, or search terms below\n")
             f.write("# Each line will be processed and then removed from this file\n")
@@ -162,7 +168,7 @@ def run(ctx):
     This runs the queue processor once to process all current entries.
     Entries are downloaded to the downloads directory and removed from the queue.
     """
-    config_manager = ctx.obj['config_manager']
+    config_manager = ctx.obj["config_manager"]
 
     try:
         click.echo("🚀 Processing download queue...")
@@ -173,21 +179,21 @@ def run(ctx):
         click.echo()
         click.echo(f"Queue Processing Results: {results['status']}")
 
-        if results['status'] == 'completed':
+        if results["status"] == "completed":
             click.echo(f"✅ Processed: {results['processed']}/{results['total']}")
             click.echo(f"❌ Failed: {results['failed']}/{results['total']}")
 
-            if results['failed'] > 0:
+            if results["failed"] > 0:
                 click.echo()
                 click.echo("Failed entries:")
-                for result in results['results']:
-                    if not result['success']:
+                for result in results["results"]:
+                    if not result["success"]:
                         click.echo(f"  - {result['entry']}")
-        elif results['status'] == 'empty':
+        elif results["status"] == "empty":
             click.echo("📭 No entries found in download queue")
-        elif results['status'] == 'disabled':
+        elif results["status"] == "disabled":
             click.echo("❌ Queue processing is disabled in configuration")
-        elif results['status'] == 'locked':
+        elif results["status"] == "locked":
             click.echo("🔒 Queue processing is already running")
 
     except Exception as e:
@@ -200,21 +206,23 @@ def run(ctx):
 @click.pass_context
 def status(ctx):
     """Show queue status and configuration."""
-    config_manager = ctx.obj['config_manager']
+    config_manager = ctx.obj["config_manager"]
 
     try:
         config_manager.load_config()
         processor = QueueProcessor(config_manager)
-        queue_config = config_manager.config.get('queue', {})
+        queue_config = config_manager.config.get("queue", {})
 
         click.echo("📊 Download Queue Status")
         click.echo("=" * 40)
 
         # Queue configuration
-        enabled = queue_config.get('enabled', True)
+        enabled = queue_config.get("enabled", True)
         click.echo(f"Status: {'✅ Enabled' if enabled else '❌ Disabled'}")
         click.echo(f"Queue file: {processor.queue_file_path}")
-        click.echo(f"Download directory: {queue_config.get('download_dir', '/data/downloads')}")
+        click.echo(
+            f"Download directory: {queue_config.get('download_dir', '/data/downloads')}"
+        )
 
         # Check if queue file exists and count entries
         if processor.queue_file_path.exists():
@@ -243,11 +251,20 @@ def status(ctx):
                 pass
 
         # Backup file info
-        if queue_config.get('backup_processed', True) and processor.backup_file_path.exists():
+        if (
+            queue_config.get("backup_processed", True)
+            and processor.backup_file_path.exists()
+        ):
             try:
                 with open(processor.backup_file_path) as f:
                     backup_lines = f.readlines()
-                processed_count = len([line for line in backup_lines if line.strip() and not line.startswith('#')])
+                processed_count = len(
+                    [
+                        line
+                        for line in backup_lines
+                        if line.strip() and not line.startswith("#")
+                    ]
+                )
                 click.echo(f"Processed entries (backed up): {processed_count}")
             except:
                 pass
@@ -262,19 +279,19 @@ def status(ctx):
 @click.pass_context
 def enable(ctx):
     """Enable queue processing."""
-    config_manager = ctx.obj['config_manager']
+    config_manager = ctx.obj["config_manager"]
 
     try:
         config_manager.load_config()
         config = config_manager.config
 
-        if 'queue' not in config:
-            config['queue'] = {}
+        if "queue" not in config:
+            config["queue"] = {}
 
-        config['queue']['enabled'] = True
+        config["queue"]["enabled"] = True
 
         # Update configuration
-        config_manager.update_cron_section(config.get('cron', {}))
+        config_manager.update_cron_section(config.get("cron", {}))
 
         click.echo("✅ Queue processing enabled")
         click.echo("To schedule automatic processing: toolcrate schedule add-queue")
@@ -289,19 +306,19 @@ def enable(ctx):
 @click.pass_context
 def disable(ctx):
     """Disable queue processing."""
-    config_manager = ctx.obj['config_manager']
+    config_manager = ctx.obj["config_manager"]
 
     try:
         config_manager.load_config()
         config = config_manager.config
 
-        if 'queue' not in config:
-            config['queue'] = {}
+        if "queue" not in config:
+            config["queue"] = {}
 
-        config['queue']['enabled'] = False
+        config["queue"]["enabled"] = False
 
         # Update configuration
-        config_manager.update_cron_section(config.get('cron', {}))
+        config_manager.update_cron_section(config.get("cron", {}))
 
         click.echo("✅ Queue processing disabled")
         click.echo("Scheduled queue processing will be skipped until re-enabled")

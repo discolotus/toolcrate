@@ -96,7 +96,9 @@ class TestWrapperUtils(unittest.TestCase):
 
         # Setup the setup.py check
         mock_file_dir.__truediv__.return_value.exists.return_value = False
-        mock_parent1.__truediv__.return_value.exists.return_value = True  # Parent1 has setup.py
+        mock_parent1.__truediv__.return_value.exists.return_value = (
+            True  # Parent1 has setup.py
+        )
 
         # Call the function
         result = get_project_root()

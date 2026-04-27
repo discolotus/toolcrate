@@ -1,9 +1,5 @@
 """Tests for ToolCrate package metadata and structure."""
 
-from pathlib import Path
-
-import pytest
-
 
 def test_package_version():
     """Test that package version is accessible."""

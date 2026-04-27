@@ -2,7 +2,7 @@
 # Multi-stage build for testing and development
 # Supports both self-contained testing and development with volume mounts
 
-FROM python:3.11-slim as base
+FROM python:3.11-slim AS base
 
 # Set environment variables
 ENV PYTHONUNBUFFERED=1
@@ -37,8 +37,8 @@ RUN apt-get update && apt-get install -y \
 
 # Install Docker CE
 RUN mkdir -p /etc/apt/keyrings \
-    && curl -fsSL https://download.docker.com/linux/ubuntu/gpg | gpg --dearmor -o /etc/apt/keyrings/docker.gpg \
-    && echo "deb [arch=$(dpkg --print-architecture) signed-by=/etc/apt/keyrings/docker.gpg] https://download.docker.com/linux/ubuntu $(. /etc/os-release && echo "$VERSION_CODENAME") stable" | tee /etc/apt/sources.list.d/docker.list > /dev/null \
+    && curl -fsSL https://download.docker.com/linux/debian/gpg | gpg --dearmor -o /etc/apt/keyrings/docker.gpg \
+    && echo "deb [arch=$(dpkg --print-architecture) signed-by=/etc/apt/keyrings/docker.gpg] https://download.docker.com/linux/debian $(. /etc/os-release && echo "$VERSION_CODENAME") stable" | tee /etc/apt/sources.list.d/docker.list > /dev/null \
     && apt-get update \
     && apt-get install -y docker-ce docker-ce-cli containerd.io docker-buildx-plugin docker-compose-plugin \
     && rm -rf /var/lib/apt/lists/*
@@ -61,14 +61,15 @@ COPY src/ ./src/
 COPY tests/ ./tests/
 COPY scripts/ ./scripts/
 COPY docs/ ./docs/
-COPY config/ ./config/
+# Create empty config directory (actual config is excluded by .dockerignore)
+RUN mkdir -p ./config
 COPY Makefile ./
 COPY configure_toolcrate.sh ./
 
-# Copy optional files if they exist
-COPY install*.sh ./
+# Copy install scripts if they exist
+COPY install.sh install_global.sh ./
 
-# Make scripts executable (only if they exist)
+# Make scripts executable
 RUN find . -name "*.sh" -type f -exec chmod +x {} \;
 
 # Install the project in development mode
@@ -84,13 +85,13 @@ RUN mkdir -p /workspace/data/downloads /workspace/data/library /workspace/logs
 RUN service cron start
 
 # Testing stage - runs all tests
-FROM base as testing
+FROM base AS testing
 
 # Set the default command to run tests
 CMD ["python", "-m", "pytest", "tests/", "-v"]
 
 # Development stage - for interactive development
-FROM base as development
+FROM base AS development
 
 # Install additional development tools
 RUN pip install debugpy ipython

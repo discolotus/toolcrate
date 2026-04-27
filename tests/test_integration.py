@@ -3,7 +3,7 @@
 import subprocess
 import sys
 from pathlib import Path
-from unittest.mock import Mock, patch
+from unittest.mock import patch
 
 import pytest
 
@@ -92,7 +92,6 @@ class TestEndToEndWorkflows:
         """Test complete workflow of toolcrate info command."""
         with patch("click.echo") as mock_echo:
             from click.testing import CliRunner
-
             from toolcrate.cli.main import main
 
             runner = CliRunner()
@@ -192,7 +191,7 @@ class TestEndToEndWorkflows:
 
         with (
             patch("shutil.which", return_value=None),
-            patch("toolcrate.cli.wrappers.mdl_utils", side_effect=ImportError),
+            patch.dict("sys.modules", {"mdl_utils": None}),
             patch("toolcrate.cli.wrappers.check_docker_image", return_value=False),
         ):
 
@@ -223,7 +222,6 @@ class TestPackageIntegration:
     def test_cli_integration(self):
         """Test CLI integration between main and wrappers."""
         from click.testing import CliRunner
-
         from toolcrate.cli.main import main
 
         runner = CliRunner()
@@ -321,7 +319,7 @@ class TestExternalToolIntegration:
         with (
             patch("sys.argv", ["mdl-tool"]),
             patch("shutil.which", return_value=None),
-            patch("toolcrate.cli.wrappers.mdl_utils", side_effect=ImportError),
+            patch.dict("sys.modules", {"mdl_utils": None}),
             patch("toolcrate.cli.wrappers.check_docker_image", return_value=False),
             patch("click.echo"),
             patch("sys.exit"),

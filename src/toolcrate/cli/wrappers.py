@@ -48,7 +48,9 @@ def check_docker_container_running(container_prefix):
             text=True,
             check=True,
         )
-        container_names = result.stdout.strip().split('\n') if result.stdout.strip() else []
+        container_names = (
+            result.stdout.strip().split("\n") if result.stdout.strip() else []
+        )
         # Check if any container name starts with the prefix
         return any(name.startswith(container_prefix) for name in container_names)
     except (subprocess.CalledProcessError, FileNotFoundError):
@@ -61,7 +63,9 @@ def ensure_slsk_container_running(root_dir):
     slsk_dir = root_dir / "src" / "slsk-batchdl"
 
     try:
-        logger.info(f"Starting slsk-batchdl container using docker compose in {slsk_dir}")
+        logger.info(
+            f"Starting slsk-batchdl container using docker compose in {slsk_dir}"
+        )
 
         # Change directory and run docker compose
         current_dir = os.getcwd()
@@ -96,7 +100,9 @@ def get_project_root():
     # First, try to find the project root by looking for setup.py or pyproject.toml
     search_dir = current_dir
     while search_dir != search_dir.parent:
-        if (search_dir / "setup.py").exists() or (search_dir / "pyproject.toml").exists():
+        if (search_dir / "setup.py").exists() or (
+            search_dir / "pyproject.toml"
+        ).exists():
             return search_dir
         search_dir = search_dir.parent
 
@@ -110,9 +116,9 @@ def get_project_root():
     # Try to find toolcrate data directory in common locations
     possible_roots = [
         Path.home() / ".toolcrate",  # User's home directory
-        Path.home() / "toolcrate",   # User's home directory (alternative)
-        Path("/opt/toolcrate"),      # System-wide installation
-        Path("/usr/local/toolcrate"), # System-wide installation (alternative)
+        Path.home() / "toolcrate",  # User's home directory (alternative)
+        Path("/opt/toolcrate"),  # System-wide installation
+        Path("/usr/local/toolcrate"),  # System-wide installation (alternative)
     ]
 
     for root in possible_roots:
@@ -145,17 +151,10 @@ def recreate_slsk_container(root_dir):
         os.chdir(slsk_dir)
 
         # Stop and remove existing containers
-        subprocess.run(
-            ["docker", "compose", "down"],
-            check=False,
-            capture_output=True
-        )
+        subprocess.run(["docker", "compose", "down"], check=False, capture_output=True)
 
         # Start the container
-        subprocess.run(
-            ["docker", "compose", "up", "-d"],
-            check=True
-        )
+        subprocess.run(["docker", "compose", "up", "-d"], check=True)
 
         # Restore original directory
         os.chdir(current_dir)
@@ -168,12 +167,12 @@ def recreate_slsk_container(root_dir):
 def sanitize_filename(name):
     """Sanitize a string to be used as a filename or directory name."""
     # Replace any non-alphanumeric characters with underscores, except for common safe characters
-    name = unicodedata.normalize('NFKD', name).encode('ASCII', 'ignore').decode('ASCII')
-    name = re.sub(r'[^\w\s.-]', '_', name)
+    name = unicodedata.normalize("NFKD", name).encode("ASCII", "ignore").decode("ASCII")
+    name = re.sub(r"[^\w\s.-]", "_", name)
     # Replace multiple spaces/underscores with a single one
-    name = re.sub(r'[\s_]+', '_', name)
+    name = re.sub(r"[\s_]+", "_", name)
     # Remove leading/trailing underscores
-    name = name.strip('_')
+    name = name.strip("_")
     return name
 
 
@@ -193,10 +192,10 @@ def get_spotify_playlist_name(playlist_url):
         if response.status_code == 200:
             # Try multiple regex patterns to extract playlist name
             patterns = [
-                r'<title>(.*?)(\s*[-–]\s*)|</title>',  # Standard title format
-                r'<h1[^>]*>(.*?)</h1>',                # H1 tag that might contain the name
+                r"<title>(.*?)(\s*[-–]\s*)|</title>",  # Standard title format
+                r"<h1[^>]*>(.*?)</h1>",  # H1 tag that might contain the name
                 r'data-testid="playlist-name"[^>]*>(.*?)</[^>]*>',  # Modern Spotify data attribute
-                r'property="og:title"\s+content="([^"]+)"'  # Open Graph title
+                r'property="og:title"\s+content="([^"]+)"',  # Open Graph title
             ]
 
             for pattern in patterns:
@@ -207,15 +206,20 @@ def get_spotify_playlist_name(playlist_url):
                     return sanitize_filename(playlist_name)
 
             # Additional fallback - look for JSON data in the page
-            json_data_match = re.search(r'Spotify\.Entity\s*=\s*({.*?});', response.text, re.DOTALL)
+            json_data_match = re.search(
+                r"Spotify\.Entity\s*=\s*({.*?});", response.text, re.DOTALL
+            )
             if json_data_match:
                 import json
+
                 try:
                     json_str = json_data_match.group(1)
                     data = json.loads(json_str)
-                    if 'name' in data:
-                        playlist_name = data['name']
-                        logger.info(f"Found Spotify playlist name from JSON: {playlist_name}")
+                    if "name" in data:
+                        playlist_name = data["name"]
+                        logger.info(
+                            f"Found Spotify playlist name from JSON: {playlist_name}"
+                        )
                         return sanitize_filename(playlist_name)
                 except json.JSONDecodeError:
                     pass
@@ -253,7 +257,9 @@ def get_youtube_playlist_name(playlist_url):
         logger.warning(f"Error getting YouTube playlist name: {e}")
 
     # If we couldn't get the name, fall back to using the ID
-    logger.warning(f"Could not get YouTube playlist name, using ID instead: {playlist_id}")
+    logger.warning(
+        f"Could not get YouTube playlist name, using ID instead: {playlist_id}"
+    )
     return f"youtube-{playlist_id}"
 
 
@@ -281,17 +287,17 @@ def read_config_file(config_file=None):
             for line in f:
                 line = line.strip()
                 # Skip comments and empty lines
-                if not line or line.startswith('#'):
+                if not line or line.startswith("#"):
                     continue
 
                 # Parse key-value pairs
-                if '=' in line:
-                    key, value = line.split('=', 1)
+                if "=" in line:
+                    key, value = line.split("=", 1)
                     key = key.strip()
                     value = value.strip()
 
                     # Expand user paths (~/...)
-                    if key in ["download-path", "wishlist", "dj-sets"] and '~' in value:
+                    if key in ["download-path", "wishlist", "dj-sets"] and "~" in value:
                         value = os.path.expanduser(value)
 
                     config[key] = value
@@ -592,7 +598,9 @@ def run_sldl_docker_command(params, args, build=False):
 
     # Check if docker-compose is available
     if not check_dependency("docker-compose") and not check_dependency("docker"):
-        click.echo("Error: Neither docker-compose nor docker with compose plugin is available.")
+        click.echo(
+            "Error: Neither docker-compose nor docker with compose plugin is available."
+        )
         click.echo("Please install Docker Compose to use the sldl command.")
         sys.exit(1)
 
@@ -613,10 +621,25 @@ def run_sldl_docker_command(params, args, build=False):
             # Check if we should use 'docker compose' instead of 'docker-compose'
             if check_dependency("docker-compose"):
                 down_cmd = ["docker-compose", "-f", str(compose_file), "down"]
-                up_cmd = ["docker-compose", "-f", str(compose_file), "up", "--build", "-d"]
+                up_cmd = [
+                    "docker-compose",
+                    "-f",
+                    str(compose_file),
+                    "up",
+                    "--build",
+                    "-d",
+                ]
             else:
                 down_cmd = ["docker", "compose", "-f", str(compose_file), "down"]
-                up_cmd = ["docker", "compose", "-f", str(compose_file), "up", "--build", "-d"]
+                up_cmd = [
+                    "docker",
+                    "compose",
+                    "-f",
+                    str(compose_file),
+                    "up",
+                    "--build",
+                    "-d",
+                ]
 
             # Stop containers
             click.echo("🛑 Stopping existing containers...")
@@ -651,12 +674,14 @@ def run_sldl_docker_command(params, args, build=False):
         container_names = []
         if result.stdout.strip():
             # Get all container names that contain 'sldl'
-            for line in result.stdout.strip().split('\n'):
-                if 'sldl' in line:
+            for line in result.stdout.strip().split("\n"):
+                if "sldl" in line:
                     container_names.append(line.strip())
 
             if len(container_names) > 1:
-                click.echo(f"Warning: Found multiple containers with 'sldl' in name: {', '.join(container_names)}")
+                click.echo(
+                    f"Warning: Found multiple containers with 'sldl' in name: {', '.join(container_names)}"
+                )
                 click.echo(f"Using the first one: {container_names[0]}")
                 container_name = container_names[0]
             elif len(container_names) == 1:
@@ -668,11 +693,26 @@ def run_sldl_docker_command(params, args, build=False):
             click.echo("Starting the container with docker-compose...")
 
             # Try to start the container
-            compose_cmd = ["docker-compose", "-f", str(compose_file), "up", "-d", "sldl"]
+            compose_cmd = [
+                "docker-compose",
+                "-f",
+                str(compose_file),
+                "up",
+                "-d",
+                "sldl",
+            ]
 
             # Check if we should use 'docker compose' instead of 'docker-compose'
             if not check_dependency("docker-compose"):
-                compose_cmd = ["docker", "compose", "-f", str(compose_file), "up", "-d", "sldl"]
+                compose_cmd = [
+                    "docker",
+                    "compose",
+                    "-f",
+                    str(compose_file),
+                    "up",
+                    "-d",
+                    "sldl",
+                ]
 
             start_result = subprocess.run(compose_cmd, capture_output=True, text=True)
 
@@ -692,12 +732,14 @@ def run_sldl_docker_command(params, args, build=False):
             )
             if result.stdout.strip():
                 container_names = []
-                for line in result.stdout.strip().split('\n'):
-                    if 'sldl' in line:
+                for line in result.stdout.strip().split("\n"):
+                    if "sldl" in line:
                         container_names.append(line.strip())
 
                 if len(container_names) > 1:
-                    click.echo(f"Warning: Found multiple containers with 'sldl' in name: {', '.join(container_names)}")
+                    click.echo(
+                        f"Warning: Found multiple containers with 'sldl' in name: {', '.join(container_names)}"
+                    )
                     click.echo(f"Using the first one: {container_names[0]}")
                     container_name = container_names[0]
                 elif len(container_names) == 1:
@@ -723,17 +765,23 @@ def run_sldl_docker_command(params, args, build=False):
     # Build the docker exec command
     if not args:
         # If no arguments provided, enter interactive shell
-        docker_cmd = [
-            "docker", "exec", "-it", container_name, "/bin/bash"
-        ]
+        docker_cmd = ["docker", "exec", "-it", container_name, "/bin/bash"]
         logger.info(f"Entering interactive shell in {container_name} container")
     else:
         # The slsk-batchdl container should have the binary available as 'sldl' or 'slsk-batchdl'
         # Always include the config file path for docker execution
         docker_cmd = [
-            "docker", "exec", "-it", container_name, "sldl", "-c", "/config/sldl.conf"
+            "docker",
+            "exec",
+            "-it",
+            container_name,
+            "sldl",
+            "-c",
+            "/config/sldl.conf",
         ] + args
-        logger.info(f"Executing command in {container_name} container: {' '.join(['-c', '/config/sldl.conf'] + args)}")
+        logger.info(
+            f"Executing command in {container_name} container: {' '.join(['-c', '/config/sldl.conf'] + args)}"
+        )
 
     # Execute the command in the container
     try:

@@ -6,6 +6,7 @@ from yt_dlp import YoutubeDL
 
 logger = logging.getLogger(__name__)
 
+
 class AudioDownloader:
     """High-quality audio downloader for YouTube and SoundCloud."""
 
@@ -33,17 +34,17 @@ class AudioDownloader:
         """
         try:
             ydl_opts = {
-                'quiet': True,
-                'no_warnings': True,
-                'extract_flat': True,
+                "quiet": True,
+                "no_warnings": True,
+                "extract_flat": True,
             }
             with YoutubeDL(ydl_opts) as ydl:
                 info = ydl.extract_info(url, download=False)
-                if 'entries' in info:  # It's a playlist
-                    playlist_name = info.get('title', 'Unknown Playlist')
+                if "entries" in info:  # It's a playlist
+                    playlist_name = info.get("title", "Unknown Playlist")
                     return playlist_name, True
                 else:  # Single track
-                    return info.get('title', 'Unknown Track'), False
+                    return info.get("title", "Unknown Track"), False
         except Exception as e:
             logger.error(f"Failed to get playlist info: {e}")
             return "Unknown", False
@@ -62,7 +63,9 @@ class AudioDownloader:
         playlist_name, is_playlist = self._get_playlist_info(url, platform)
         if is_playlist:
             # Create a sanitized playlist name for the directory
-            safe_name = "".join(c for c in playlist_name if c.isalnum() or c in (' ', '-', '_')).strip()
+            safe_name = "".join(
+                c for c in playlist_name if c.isalnum() or c in (" ", "-", "_")
+            ).strip()
             return self.base_output_path / safe_name
         else:
             return self.base_output_path
@@ -83,15 +86,17 @@ class AudioDownloader:
             Dictionary of yt-dlp options
         """
         return {
-            'format': 'bestaudio/best',
-            'postprocessors': [{
-                'key': 'FFmpegExtractAudio',
-                'preferredcodec': 'mp3',
-                'preferredquality': self.quality,
-            }],
-            'outtmpl': str(output_path / '%(title)s.%(ext)s'),
-            'quiet': False,
-            'no_warnings': False,
+            "format": "bestaudio/best",
+            "postprocessors": [
+                {
+                    "key": "FFmpegExtractAudio",
+                    "preferredcodec": "mp3",
+                    "preferredquality": self.quality,
+                }
+            ],
+            "outtmpl": str(output_path / "%(title)s.%(ext)s"),
+            "quiet": False,
+            "no_warnings": False,
         }
 
     def download_youtube(self, url: str) -> Path | None:
@@ -106,18 +111,22 @@ class AudioDownloader:
         """
         logger.info(f"🎥 Downloading from YouTube: {url}")
         try:
-            output_path = self._get_output_path(url, 'youtube')
+            output_path = self._get_output_path(url, "youtube")
             self._ensure_output_directory(output_path)
 
-            ydl_opts = self._get_ydl_opts('youtube', output_path)
+            ydl_opts = self._get_ydl_opts("youtube", output_path)
             with YoutubeDL(ydl_opts) as ydl:
                 info = ydl.extract_info(url, download=True)
-                if 'entries' in info:  # Playlist
-                    num_tracks = len([entry for entry in info['entries'] if entry is not None])
-                    logger.info(f"✅ Successfully downloaded playlist with {num_tracks} tracks")
+                if "entries" in info:  # Playlist
+                    num_tracks = len(
+                        [entry for entry in info["entries"] if entry is not None]
+                    )
+                    logger.info(
+                        f"✅ Successfully downloaded playlist with {num_tracks} tracks"
+                    )
                     return output_path
                 else:  # Single video
-                    title = info.get('title', 'Unknown Title')
+                    title = info.get("title", "Unknown Title")
                     logger.info(f"✅ Successfully downloaded: {title}")
                     return output_path / f"{title}.mp3"
         except Exception as e:
@@ -136,18 +145,22 @@ class AudioDownloader:
         """
         logger.info(f"🎵 Downloading from SoundCloud: {url}")
         try:
-            output_path = self._get_output_path(url, 'soundcloud')
+            output_path = self._get_output_path(url, "soundcloud")
             self._ensure_output_directory(output_path)
 
-            ydl_opts = self._get_ydl_opts('soundcloud', output_path)
+            ydl_opts = self._get_ydl_opts("soundcloud", output_path)
             with YoutubeDL(ydl_opts) as ydl:
                 info = ydl.extract_info(url, download=True)
-                if 'entries' in info:  # Playlist
-                    num_tracks = len([entry for entry in info['entries'] if entry is not None])
-                    logger.info(f"✅ Successfully downloaded playlist with {num_tracks} tracks")
+                if "entries" in info:  # Playlist
+                    num_tracks = len(
+                        [entry for entry in info["entries"] if entry is not None]
+                    )
+                    logger.info(
+                        f"✅ Successfully downloaded playlist with {num_tracks} tracks"
+                    )
                     return output_path
                 else:  # Single track
-                    title = info.get('title', 'Unknown Title')
+                    title = info.get("title", "Unknown Title")
                     logger.info(f"✅ Successfully downloaded: {title}")
                     return output_path / f"{title}.mp3"
         except Exception as e:
@@ -165,10 +178,12 @@ class AudioDownloader:
             Path to downloaded file(s) or None if download failed
         """
         url_lower = url.lower()
-        if 'youtube.com' in url_lower or 'youtu.be' in url_lower:
+        if "youtube.com" in url_lower or "youtu.be" in url_lower:
             return self.download_youtube(url)
-        elif 'soundcloud.com' in url_lower:
+        elif "soundcloud.com" in url_lower:
             return self.download_soundcloud(url)
         else:
-            logger.error("❌ Unsupported URL format. Please provide a YouTube or SoundCloud link.")
+            logger.error(
+                "❌ Unsupported URL format. Please provide a YouTube or SoundCloud link."
+            )
             return None

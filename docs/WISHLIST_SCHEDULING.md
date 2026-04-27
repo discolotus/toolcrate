@@ -5,7 +5,7 @@ ToolCrate supports automated wishlist downloading with customizable scheduling. 
 ## Overview
 
 The wishlist system consists of:
-- **Wishlist File**: `config/wishlist.txt` - A simple text file with URLs/search terms
+- **Wishlist File**: `/config/wishlist.txt` - A simple text file with URLs/search terms
 - **Wishlist Configuration**: Special settings in `toolcrate.yaml` for wishlist downloads
 - **Schedule Management**: CLI commands to manage cron jobs for automated processing
 - **Quality-Focused Downloads**: Downloads go to `data/library` with enhanced quality settings
@@ -14,7 +14,7 @@ The wishlist system consists of:
 
 ### 1. Add Items to Wishlist
 
-Edit `config/wishlist.txt` and add playlist URLs or search terms:
+Edit `/config/wishlist.txt` and add playlist URLs or search terms:
 
 ```
 # Spotify playlists
@@ -62,7 +62,7 @@ The wishlist system uses special configuration in `toolcrate.yaml`:
 ```yaml
 wishlist:
   enabled: true
-  file_path: "config/wishlist.txt"
+  file_path: "/config/wishlist.txt"  # Always use /config directory
   download_dir: "/path/to/data/library"          # Downloads go to library, not downloads
   index_in_playlist_folder: true                 # Index files stored in each playlist folder
   check_existing_for_better_quality: true       # Re-check existing files for upgrades
@@ -101,8 +101,7 @@ toolcrate schedule weekly -d 1 -h 9         # Weekly on Monday at 9:00 AM
 toolcrate schedule monthly -d 15            # Monthly on 15th at 2:00 AM
 
 # Custom names and descriptions
-toolcrate schedule daily -n "morning_sync" -d "Morning wishlist sync"
-toolcrate schedule hourly -n "frequent" -d "Frequent updates"
+toolcrate schedule add -s "0 2 * * *" -n "daily_wishlist" -d "Daily wishlist download"
 ```
 
 ### Manual Scheduling (Advanced)
@@ -209,7 +208,7 @@ make config-generate-wishlist-sldl
 
 ### Common Issues
 
-1. **No entries processed**: Check that `config/wishlist.txt` has non-comment lines
+1. **No entries processed**: Check that `/config/wishlist.txt` has non-comment lines
 2. **Docker errors**: Ensure Docker is running and `sldl` container exists
 3. **Permission errors**: Check file permissions on config directory
 4. **Cron not running**: Verify cron installation with `crontab -l`
@@ -299,7 +298,7 @@ You can create multiple wishlist configurations by modifying `toolcrate.yaml`:
 
 ```yaml
 wishlist:
-  file_path: "config/priority-wishlist.txt"
+  file_path: "/config/priority-wishlist.txt"
   # ... other settings
 ```
 

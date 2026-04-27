@@ -1,12 +1,9 @@
 """Tests for setup and build functionality."""
 
-import os
 import subprocess
 import sys
 from pathlib import Path
-from unittest.mock import Mock, call, patch
-
-import pytest
+from unittest.mock import Mock, patch
 
 
 class TestSetupPy:

@@ -12,10 +12,11 @@ from pathlib import Path
 # Set up logging
 logging.basicConfig(
     level=logging.INFO,
-    format='%(asctime)s - %(levelname)s - %(message)s',
-    datefmt='%Y-%m-%d %H:%M:%S'
+    format="%(asctime)s - %(levelname)s - %(message)s",
+    datefmt="%Y-%m-%d %H:%M:%S",
 )
 logger = logging.getLogger(__name__)
+
 
 def get_project_root():
     """Get the project root directory."""
@@ -29,7 +30,10 @@ def get_project_root():
         current_dir = current_dir.parent
 
     # Fallback to package directory
-    return Path(os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))))
+    return Path(
+        os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+    )
+
 
 def read_config_file(config_file=None):
     """Read configuration from a config file.
@@ -55,17 +59,17 @@ def read_config_file(config_file=None):
             for line in f:
                 line = line.strip()
                 # Skip comments and empty lines
-                if not line or line.startswith('#'):
+                if not line or line.startswith("#"):
                     continue
 
                 # Parse key-value pairs
-                if '=' in line:
-                    key, value = line.split('=', 1)
+                if "=" in line:
+                    key, value = line.split("=", 1)
                     key = key.strip()
                     value = value.strip()
 
                     # Expand user paths (~/...)
-                    if key in ["download-path", "wishlist", "dj-sets"] and '~' in value:
+                    if key in ["download-path", "wishlist", "dj-sets"] and "~" in value:
                         value = os.path.expanduser(value)
 
                     config[key] = value
@@ -73,6 +77,7 @@ def read_config_file(config_file=None):
         logger.warning(f"Config file {config_file} not found, using defaults")
 
     return config
+
 
 def process_file(args):
     """Process each line in the specified file with shazam-tool."""
@@ -102,7 +107,9 @@ def process_file(args):
 
     # Configure file handler for logging
     file_handler = logging.FileHandler(log_file)
-    file_handler.setFormatter(logging.Formatter('%(asctime)s - %(levelname)s - %(message)s'))
+    file_handler.setFormatter(
+        logging.Formatter("%(asctime)s - %(levelname)s - %(message)s")
+    )
     logger.addHandler(file_handler)
 
     logger.info(f"Processing {file_type_name} from {file_path}")
@@ -110,7 +117,11 @@ def process_file(args):
 
     # Read the file
     with open(file_path) as f:
-        lines = [line.strip() for line in f if line.strip() and not line.strip().startswith('#')]
+        lines = [
+            line.strip()
+            for line in f
+            if line.strip() and not line.strip().startswith("#")
+        ]
 
     logger.info(f"Found {len(lines)} items in {file_type_name}")
 
@@ -143,7 +154,7 @@ def process_file(args):
                 result = subprocess.run(
                     cmd,
                     text=True,
-                    check=False  # Don't raise exception on non-zero exit
+                    check=False,  # Don't raise exception on non-zero exit
                 )
                 # Log the return code
                 logger.info(f"Command exited with code: {result.returncode}")
@@ -153,7 +164,7 @@ def process_file(args):
                     cmd,
                     capture_output=True,
                     text=True,
-                    check=False  # Don't raise exception on non-zero exit
+                    check=False,  # Don't raise exception on non-zero exit
                 )
                 # Log detailed output
                 logger.debug(f"Command output: {result.stdout}")
@@ -163,7 +174,7 @@ def process_file(args):
                 success_count += 1
             else:
                 logger.error(f"Failed to process: {item}")
-                if not show_output and hasattr(result, 'stderr'):
+                if not show_output and hasattr(result, "stderr"):
                     logger.error(f"Error: {result.stderr}")
                 failed_count += 1
 
@@ -178,27 +189,48 @@ def process_file(args):
             failed_count += 1
 
     # Print summary
-    logger.info(f"Processing complete: {success_count} succeeded, {failed_count} failed")
+    logger.info(
+        f"Processing complete: {success_count} succeeded, {failed_count} failed"
+    )
     print(f"\nProcessing complete: {success_count} succeeded, {failed_count} failed")
     print(f"Log file: {log_file}")
 
     return 0
 
+
 def main():
     """Main entry point for the script."""
-    parser = argparse.ArgumentParser(description="Process wishlist or DJ sets file with shazam-tool")
-    parser.add_argument("--file-type", choices=["wishlist", "dj-sets"], default="wishlist",
-                       help="Which file to process (default: wishlist)")
-    parser.add_argument("command", nargs="?", default="download",
-                       help="Shazam-tool command to run (default: download)")
-    parser.add_argument("--delay", type=int, default=5,
-                       help="Delay in seconds between processing items (default: 5)")
-    parser.add_argument("extra_args", nargs="*",
-                       help="Additional arguments to pass to the shazam-tool command")
+    parser = argparse.ArgumentParser(
+        description="Process wishlist or DJ sets file with shazam-tool"
+    )
+    parser.add_argument(
+        "--file-type",
+        choices=["wishlist", "dj-sets"],
+        default="wishlist",
+        help="Which file to process (default: wishlist)",
+    )
+    parser.add_argument(
+        "command",
+        nargs="?",
+        default="download",
+        help="Shazam-tool command to run (default: download)",
+    )
+    parser.add_argument(
+        "--delay",
+        type=int,
+        default=5,
+        help="Delay in seconds between processing items (default: 5)",
+    )
+    parser.add_argument(
+        "extra_args",
+        nargs="*",
+        help="Additional arguments to pass to the shazam-tool command",
+    )
 
     args = parser.parse_args()
 
     return process_file(args)
+
 
 if __name__ == "__main__":
     sys.exit(main())

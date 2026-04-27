@@ -1,17 +1,14 @@
 [build-system]
-requires = ["setuptools>=61", "wheel"]
-build-backend = "setuptools.build_meta"
+requires = ["hatchling"]
+build-backend = "hatchling.build"
 
 [project]
 name = "toolcrate"
 version = "0.1.0"
 description = "A unified tool suite for music management and processing"
 readme = "README.md"
-requires-python = ">=3.10,<4.0"
 license = { text = "GPL-3.0" }
-authors = [
-    {name = "User", email = "user@example.com"},
-]
+authors = [{ name = "User", email = "user@example.com" }]
 keywords = ["music", "soulseek", "shazam", "download", "batch"]
 classifiers = [
     "Development Status :: 3 - Alpha",
@@ -24,6 +21,7 @@ classifiers = [
     "Programming Language :: Python :: 3.12",
     "Topic :: Multimedia :: Sound/Audio",
 ]
+requires-python = ">=3.10"
 dependencies = [
     "click>=8.1.3",
     "pydantic>=2.0.0",
@@ -33,30 +31,9 @@ dependencies = [
     "yt-dlp>=2024.1.1",
 ]
 
-[project.optional-dependencies]
-shazam = [
-    "shazamio",
-    "pydub",
-    "ShazamApi",
-]
-
 [project.urls]
 Homepage = "https://github.com/discolotus/toolcrate"
 Repository = "https://github.com/discolotus/toolcrate"
-
-[dependency-groups]
-dev = [
-    "pytest>=8.0.0",
-    "pytest-asyncio>=0.23.0",
-    "pytest-cov>=4.1.0",
-    "coverage>=7.0.0",
-    "black>=24.0.0",
-    "isort>=5.12.0",
-    "mypy>=1.8.0",
-    "ruff>=0.2.0",
-    "pre-commit>=3.6.0",
-    "setuptools>=80.9.0",
-]
 
 [project.scripts]
 toolcrate = "toolcrate.cli.main:main"
@@ -66,24 +43,20 @@ mdl-tool = "toolcrate.cli.wrappers:run_mdl"
 toolcrate-identify-wishlist = "toolcrate.scripts.process_wishlist:main"
 toolcrate-identify-djsets = "toolcrate.scripts.process_wishlist:main"
 
-[tool.setuptools]
-py-modules = []
-include-package-data = true
-
-[tool.setuptools.packages.find]
-where = ["src"]
-include = ["toolcrate*"]
-
-[tool.setuptools.package-data]
-toolcrate = [
-    "../config/*.yaml",
-    "../config/*.yml",
-    "../config/*.conf",
-    "../config/README.md",
-    "../docs/*.md",
+[dependency-groups]
+dev = [
+    "pytest>=8.0.0",
+    "pytest-asyncio>=0.23.0",
+    "pytest-cov>=4.1.0",
+    "coverage>=7.0.0",
+    "ruff>=0.2.0",
+    "mypy>=1.8.0",
+    "pre-commit>=3.6.0",
 ]
 
-# Testing configuration
+[tool.hatch.build.targets.wheel]
+packages = ["src/toolcrate"]
+
 [tool.pytest.ini_options]
 minversion = "6.0"
 addopts = [
@@ -105,7 +78,6 @@ markers = [
     "unit: marks tests as unit tests",
 ]
 
-# Coverage configuration
 [tool.coverage.run]
 source = ["src"]
 omit = [
@@ -130,38 +102,6 @@ exclude_lines = [
     "@(abc\\.)?abstractmethod",
 ]
 
-# Code formatting
-[tool.black]
-line-length = 88
-target-version = ["py310", "py311", "py312"]
-include = '\.pyi?$'
-extend-exclude = '''
-/(
-  # directories
-  \.eggs
-  | \.git
-  | \.hg
-  | \.mypy_cache
-  | \.tox
-  | \.venv
-  | build
-  | dist
-  | src/slsk-batchdl
-  | src/Shazam-Tool
-)/
-'''
-
-[tool.isort]
-profile = "black"
-line_length = 88
-multi_line_output = 3
-include_trailing_comma = true
-force_grid_wrap = 0
-use_parentheses = true
-ensure_newline_before_comments = true
-skip_glob = ["src/slsk-batchdl/*", "src/Shazam-Tool/*"]
-
-# Type checking
 [tool.mypy]
 python_version = "3.10"
 warn_return_any = true
@@ -183,7 +123,6 @@ exclude = [
     "dist/",
 ]
 
-# Linting with Ruff
 [tool.ruff]
 target-version = "py310"
 line-length = 88
@@ -222,13 +161,13 @@ select = [
     "UP", # pyupgrade
 ]
 ignore = [
-    "E501",  # line too long, handled by black
+    "E501",  # line too long, handled by ruff format
     "B008",  # do not perform function calls in argument defaults
-    "B904",  # raise-without-from-inside-except (pre-existing throughout codebase)
+    "B904",  # raise-without-from-inside-except
     "C901",  # too complex
-    "E722",  # bare-except (pre-existing throughout codebase)
+    "E722",  # bare-except
 ]
 
 [tool.ruff.lint.per-file-ignores]
-"tests/*" = ["S101"]  # Allow assert statements in tests
-"src/**/__init__.py" = ["F401"]  # Re-exports in __init__ files
+"tests/*" = ["S101"]
+"src/**/__init__.py" = ["F401"]

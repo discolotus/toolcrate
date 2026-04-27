@@ -70,26 +70,22 @@ tmp/
 temp/
 .tmp/
 
-# Docker compose files (don't include in build context)
+# Docker files (don't include in build context)
 docker-compose*.yml
 .dockerignore
-# Note: Dockerfile and Dockerfile.test are needed for builds
 
 # Data directories (can be large)
 data/downloads/
 data/library/
 downloads/
 
-# Config files with sensitive data - exclude entire config directory
+# Config files with sensitive data
 config/
-# But also specifically exclude generated config files
 config/*.conf
 
-# Documentation (needed for test builds)
-# docs/ - commented out to allow test builds
+# Documentation (not needed in image)
 *.md
 !README.md
-!docs/README.md
 
-# Poetry cache
-.poetry/
+# uv cache
+.uv/

@@ -5,13 +5,15 @@
 # Get the absolute path to the repository root
 REPO_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 
+# Check if we're in a development environment with a local venv
 if [ -f "$REPO_ROOT/.venv/bin/toolcrate" ]; then
+    echo "Using development environment..."
     "$REPO_ROOT/.venv/bin/toolcrate" "$@"
-elif command -v uv >/dev/null 2>&1 && [ -f "$REPO_ROOT/pyproject.toml" ]; then
-    exec uv run --project "$REPO_ROOT" --extra shazam toolcrate "$@"
 elif command -v toolcrate >/dev/null 2>&1; then
+    echo "Using system-installed toolcrate..."
     toolcrate "$@"
 else
-    echo "Error: toolcrate not found. Install it with: uv sync --extra shazam" >&2
+    echo "Error: toolcrate not found. Please install it or set up the development environment."
+    echo "To set up development environment: uv sync"
     exit 1
 fi

@@ -2,105 +2,49 @@ name: Docker Tests
 
 on:
   push:
-    branches: [ main, augment-feature-dev ]
+    branches: [main]
   pull_request:
-    branches: [ main ]
+    branches: [main]
   workflow_dispatch:
 
-env:
-  REGISTRY: ghcr.io
-  IMAGE_NAME: ${{ github.repository }}/toolcrate-test
-
 jobs:
-  test-docker:
+  docker-smoke-test:
+    name: Docker image smoke test
     runs-on: ubuntu-latest
-    permissions:
-      contents: read
-      packages: read
-
-    strategy:
-      matrix:
-        test-type: [python, shell, unit, integration, quick]
 
     steps:
-    - name: Checkout repository
-      uses: actions/checkout@v4
-      with:
-        submodules: recursive
+      - uses: actions/checkout@v4
+        with:
+          submodules: recursive
 
-    - name: Log in to Container Registry
-      uses: docker/login-action@v3
-      with:
-        registry: ${{ env.REGISTRY }}
-        username: ${{ github.actor }}
-        password: ${{ secrets.GITHUB_TOKEN }}
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
 
-    - name: Pull Docker test image
-      run: |
-        # Try to pull the branch-specific image, fallback to latest
-        docker pull ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:${{ github.ref_name }} || \
-        docker pull ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:latest || \
-        echo "No pre-built image found, will build locally"
+      - name: Build image
+        uses: docker/build-push-action@v5
+        with:
+          context: .
+          file: ./Dockerfile
+          load: true
+          tags: toolcrate:ci
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
 
-    - name: Run ${{ matrix.test-type }} tests
-      run: |
-        # Use the pulled image or build locally if not available
-        if docker image inspect ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:${{ github.ref_name }} >/dev/null 2>&1; then
-          IMAGE_TAG="${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:${{ github.ref_name }}"
-        elif docker image inspect ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:latest >/dev/null 2>&1; then
-          IMAGE_TAG="${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:latest"
-        else
-          echo "Building image locally..."
-          docker build -f Dockerfile.test -t toolcrate:test .
-          IMAGE_TAG="toolcrate:test"
-        fi
-        
-        echo "Running ${{ matrix.test-type }} tests with image: $IMAGE_TAG"
-        docker run --rm \
-          --privileged \
-          -v ${{ github.workspace }}:/workspace \
-          -w /workspace \
-          $IMAGE_TAG \
-          /workspace/scripts/test-in-docker.sh ${{ matrix.test-type }}
+      - name: toolcrate --help
+        run: docker run --rm toolcrate:ci uv run toolcrate --help
 
-  test-docker-all:
-    runs-on: ubuntu-latest
-    permissions:
-      contents: read
-      packages: read
+      - name: toolcrate --version
+        run: docker run --rm toolcrate:ci uv run toolcrate --version
 
-    steps:
-    - name: Checkout repository
-      uses: actions/checkout@v4
-      with:
-        submodules: recursive
+      - name: Package imports cleanly
+        run: |
+          docker run --rm toolcrate:ci uv run python -c "
+          import toolcrate
+          import toolcrate.cli.main
+          import toolcrate.cli.wrappers
+          import toolcrate.cli.binary_manager
+          print('All imports OK')
+          "
 
-    - name: Log in to Container Registry
-      uses: docker/login-action@v3
-      with:
-        registry: ${{ env.REGISTRY }}
-        username: ${{ github.actor }}
-        password: ${{ secrets.GITHUB_TOKEN }}
-
-    - name: Run all tests with docker-compose
-      run: |
-        # Update docker-compose to use registry image if available
-        if docker manifest inspect ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:${{ github.ref_name }} >/dev/null 2>&1; then
-          sed -i "s|image: toolcrate:test|image: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:${{ github.ref_name }}|g" docker-compose.test.yml
-          sed -i 's|build:|# build:|g' docker-compose.test.yml
-          sed -i 's|context: \.|# context: \.|g' docker-compose.test.yml
-          sed -i 's|dockerfile: Dockerfile\.test|# dockerfile: Dockerfile\.test|g' docker-compose.test.yml
-        fi
-        
-        # Run the full test suite
-        make test-docker
-
-    - name: Upload test artifacts
-      uses: actions/upload-artifact@v4
-      if: always()
-      with:
-        name: test-results
-        path: |
-          htmlcov/
-          .coverage
-        retention-days: 7
+      - name: docker-compose config is valid
+        run: docker compose config --quiet

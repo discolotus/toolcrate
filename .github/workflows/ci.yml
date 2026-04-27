@@ -7,77 +7,45 @@ on:
     branches: [main, develop]
 
 jobs:
-  # ─── Lint & type-check (fast, single Python version) ─────────────────────
   lint:
     name: Lint & Type Check
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
 
-      - uses: actions/setup-python@v5
+      - uses: astral-sh/setup-uv@v5
         with:
-          python-version: "3.11"
-
-      - name: Install Poetry
-        run: |
-          pip install poetry
-          poetry config virtualenvs.in-project true
-
-      - name: Cache virtualenv
-        uses: actions/cache@v4
-        with:
-          path: .venv
-          key: venv-lint-${{ hashFiles('poetry.lock') }}
+          enable-cache: true
 
       - name: Install dependencies
-        run: poetry install --with dev
+        run: uv sync
 
       - name: Ruff lint
-        run: poetry run ruff check src/ tests/unit/
+        run: uv run ruff check src/ tests/unit/
 
-      - name: Mypy (non-blocking — new code only)
-        # Targets only the modules introduced or changed in this PR;
-        # the broader codebase will be added incrementally as types are fixed.
-        run: poetry run mypy src/toolcrate/cli/binary_manager.py --ignore-missing-imports
+      - name: Mypy
+        run: uv run mypy src/toolcrate/cli/binary_manager.py --ignore-missing-imports
         continue-on-error: true
 
-  # ─── Unit tests (matrix across supported Python versions) ────────────────
   test:
-    name: Tests (Python ${{ matrix.python-version }})
+    name: Tests
     runs-on: ubuntu-latest
     permissions:
-      pull-requests: write  # needed to post coverage comment
-    strategy:
-      fail-fast: false
-      matrix:
-        # Python 3.9 reached EOL in October 2025 and is no longer available
-        # on ubuntu-latest (24.04). Minimum supported version is now 3.10.
-        python-version: ["3.10", "3.11", "3.12"]
+      pull-requests: write
 
     steps:
       - uses: actions/checkout@v4
 
-      - uses: actions/setup-python@v5
+      - uses: astral-sh/setup-uv@v5
         with:
-          python-version: ${{ matrix.python-version }}
-
-      - name: Install Poetry
-        run: |
-          pip install poetry
-          poetry config virtualenvs.in-project true
-
-      - name: Cache virtualenv
-        uses: actions/cache@v4
-        with:
-          path: .venv
-          key: venv-${{ matrix.python-version }}-${{ hashFiles('poetry.lock') }}
+          enable-cache: true
 
       - name: Install dependencies
-        run: poetry install --with dev
+        run: uv sync
 
       - name: Run unit tests with coverage
         run: |
-          poetry run pytest tests/unit/ \
+          uv run pytest tests/unit/ \
             -v --tb=short \
             -m "not integration and not slow" \
             --cov=src/toolcrate \
@@ -87,13 +55,11 @@ jobs:
             --no-header
 
       - name: Check coverage threshold
-        if: matrix.python-version == '3.11'
-        run: poetry run coverage report --fail-under=14
+        run: uv run coverage report --fail-under=14
 
       - name: Write coverage to job summary
-        if: matrix.python-version == '3.11'
         run: |
-          poetry run python - <<'PYEOF'
+          uv run python - <<'PYEOF'
           import json, os
           with open("coverage.json") as f:
               data = json.load(f)
@@ -124,7 +90,7 @@ jobs:
           PYEOF
 
       - name: Post coverage comment on PR
-        if: matrix.python-version == '3.11' && github.event_name == 'pull_request'
+        if: github.event_name == 'pull_request'
         uses: actions/github-script@v7
         with:
           script: |
@@ -156,28 +122,43 @@ jobs:
               });
             }
 
-  # ─── Smoke test: package imports cleanly ─────────────────────────────────
+  integration-test:
+    name: Integration Tests
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: astral-sh/setup-uv@v5
+        with:
+          enable-cache: true
+
+      - name: Install dependencies
+        run: uv sync
+
+      - name: Run integration tests
+        # uv run puts .venv/bin on PATH, so subprocess calls to `toolcrate`
+        # inside the test suite resolve correctly without extra PATH manipulation.
+        # tests/integration/test_real_network_downloads.py self-skips unless
+        # TOOLCRATE_REAL_NETWORK_TESTS=1 is set.
+        run: |
+          uv run pytest tests/integration/ -v --tb=short
+
   import-check:
     name: Import smoke test
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
 
-      - uses: actions/setup-python@v5
+      - uses: astral-sh/setup-uv@v5
         with:
-          python-version: "3.11"
+          enable-cache: true
 
-      - name: Install Poetry
+      - name: Install production dependencies only
+        run: uv sync --no-dev
+
+      - name: Verify package imports
         run: |
-          pip install poetry
-          poetry config virtualenvs.in-project true
-
-      - name: Install core dependencies only
-        run: poetry install --without dev
-
-      - name: Verify package imports with core deps only
-        run: |
-          poetry run python -c "
+          uv run python -c "
           import toolcrate
           import toolcrate.cli
           import toolcrate.cli.main

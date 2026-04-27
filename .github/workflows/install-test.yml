@@ -1,0 +1,95 @@
+name: Platform Install Tests
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+
+jobs:
+  install-test:
+    name: ${{ matrix.name }}
+    runs-on: ${{ matrix.runner }}
+
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - name: "Linux x86_64"
+            runner: ubuntu-latest
+          - name: "Linux ARM64"
+            runner: ubuntu-24.04-arm
+          - name: "macOS ARM64 (Apple Silicon)"
+            runner: macos-latest
+          - name: "macOS x86_64 (Intel)"
+            runner: macos-13
+          - name: "Windows x86_64"
+            runner: windows-latest
+
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          submodules: recursive
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@v5
+        with:
+          enable-cache: true
+
+      - name: Install dependencies
+        run: uv sync
+
+      - name: toolcrate --help
+        run: uv run toolcrate --help
+
+      - name: toolcrate --version
+        run: uv run toolcrate --version
+
+      - name: toolcrate info
+        run: uv run toolcrate info
+        continue-on-error: true
+
+      - name: Package imports cleanly
+        run: |
+          uv run python -c "
+          import toolcrate
+          import toolcrate.cli.main
+          import toolcrate.cli.wrappers
+          import toolcrate.cli.binary_manager
+          print('All imports OK')
+          "
+
+      - name: Provision sldl binary
+        run: uv run toolcrate sldl --help
+        env:
+          TOOLCRATE_SLDL_VERSION: ""
+
+      - name: Verify sldl binary exists (Unix)
+        if: runner.os != 'Windows'
+        shell: bash
+        run: |
+          BINARY="$HOME/.local/share/toolcrate/bin/sldl"
+          if [ ! -f "$BINARY" ]; then
+            echo "ERROR: sldl binary not found at $BINARY"
+            exit 1
+          fi
+          if [ ! -x "$BINARY" ]; then
+            echo "ERROR: sldl binary at $BINARY is not executable"
+            exit 1
+          fi
+          echo "sldl binary OK: $BINARY"
+          "$BINARY" --version
+
+      - name: Verify sldl binary exists (Windows)
+        if: runner.os == 'Windows'
+        shell: pwsh
+        run: |
+          # _data_dir() uses Path.home() / ".local" / "share" / "toolcrate" on Windows
+          $binary = "$env:USERPROFILE\.local\share\toolcrate\bin\sldl.exe"
+          if (-not (Test-Path $binary)) {
+            Write-Error "sldl binary not found at $binary"
+            exit 1
+          }
+          Write-Host "sldl binary OK: $binary"
+          & $binary --version

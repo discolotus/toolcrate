@@ -26,24 +26,11 @@ skip_venv_check = (
 )
 
 if not skip_venv_check:
-    # Poetry runs in its own environment, so we check for both
-    in_venv = os.environ.get('VIRTUAL_ENV') or os.environ.get('POETRY_ACTIVE')
-    if not in_venv:
-        # Try to detect if we're running under Poetry
-        import subprocess
-        try:
-            result = subprocess.run(['poetry', 'env', 'info', '--path'],
-                                  capture_output=True, text=True, check=True)
-            if result.stdout.strip():
-                # We're likely running under Poetry
-                in_venv = True
-        except (subprocess.CalledProcessError, FileNotFoundError):
-            pass
-
+    in_venv = os.environ.get('VIRTUAL_ENV')
     if not in_venv:
         print("❌ Virtual environment not active!")
         print("Please use one of these methods:")
-        print("  poetry run python config_manager.py <command>")
+        print("  uv run python config_manager.py <command>")
         print("  source .venv/bin/activate && python config_manager.py <command>")
         print("  make config-<command>")
         sys.exit(1)
@@ -148,10 +135,27 @@ class ConfigManager:
             print("💡 Falling back to full config save...")
             self.save_config()
 
+    @staticmethod
+    def _resolve_path(path_value: str, docker_mode: bool) -> str:
+        """Return path_value unchanged (native) or converted to a container path (Docker)."""
+        if not docker_mode:
+            return path_value
+        # Docker: map host toolcrate paths to container mount points
+        if 'toolcrate/data' in path_value:
+            return '/data' + path_value.split('toolcrate/data')[1]
+        if 'toolcrate/logs' in path_value:
+            return '/data' + path_value.split('toolcrate/logs')[1]
+        if path_value.startswith('/data') or path_value.startswith('/config'):
+            return path_value
+        # Unknown host path — put it under /data using the last path component
+        return '/data/' + path_value.split('/')[-1]
+
     def generate_sldl_conf(self):
         """Generate sldl.conf from YAML configuration."""
         if not self.config:
             self.load_config()
+
+        docker_mode = bool(os.environ.get('TOOLCRATE_USE_DOCKER'))
 
         slsk_config = self.config.get('slsk_batchdl', {})
         spotify_config = self.config.get('spotify', {})
@@ -182,21 +186,9 @@ class ConfigManager:
 
             for yaml_key, conf_key in dir_mappings.items():
                 if slsk_config.get(yaml_key):
-                    # Convert host paths to container paths for Docker execution
                     path_value = slsk_config[yaml_key]
                     if isinstance(path_value, str):
-                        # Convert toolcrate paths to container paths
-                        if 'toolcrate/data' in path_value:
-                            # Replace toolcrate/data with /data
-                            container_path = '/data' + path_value.split('toolcrate/data')[1]
-                        elif 'toolcrate/logs' in path_value:
-                            # Replace toolcrate/logs with /data (logs go in data directory)
-                            container_path = '/data' + path_value.split('toolcrate/logs')[1]
-                        else:
-                            # Default: assume it should go in /data
-                            container_path = '/data/' + path_value.split('/')[-1]
-
-                        f.write(f"{conf_key} = {container_path}\n")
+                        f.write(f"{conf_key} = {self._resolve_path(path_value, docker_mode)}\n")
                     else:
                         f.write(f"{conf_key} = {path_value}\n")
             f.write("\n")
@@ -347,23 +339,15 @@ class ConfigManager:
                 f.write(f"password = {merged_config['password']}\n")
             f.write("\n")
 
-            # Directories - use wishlist-specific paths with container path conversion
-            download_dir = wishlist_config.get('download_dir', merged_config.get('parent_dir', '/data/library'))
-            # Convert host paths to container paths for Docker execution
+            docker_mode = bool(os.environ.get('TOOLCRATE_USE_DOCKER'))
+
+            # Directories
+            default_download = '/data/library' if docker_mode else str(Path.home() / 'Music' / 'library')
+            download_dir = wishlist_config.get('download_dir', merged_config.get('parent_dir', default_download))
             if isinstance(download_dir, str):
-                if download_dir.startswith('/data'):
-                    # Already a container path
-                    pass
-                elif 'toolcrate/data' in download_dir:
-                    download_dir = '/data' + download_dir.split('toolcrate/data')[1]
-                elif 'toolcrate/logs' in download_dir:
-                    download_dir = '/data' + download_dir.split('toolcrate/logs')[1]
-                else:
-                    # Default: use library subdirectory
-                    download_dir = '/data/library'
+                download_dir = self._resolve_path(download_dir, docker_mode)
             f.write(f"path = {download_dir}\n")
 
-            # Handle other directory paths with conversion
             dir_mappings = {
                 'skip_music_dir': 'skip-music-dir',
                 'm3u_file_path': 'playlist-path',
@@ -375,18 +359,7 @@ class ConfigManager:
                 if merged_config.get(yaml_key):
                     path_value = merged_config[yaml_key]
                     if isinstance(path_value, str):
-                        # Convert toolcrate paths to container paths
-                        if path_value.startswith('/data'):
-                            # Already a container path
-                            container_path = path_value
-                        elif 'toolcrate/data' in path_value:
-                            container_path = '/data' + path_value.split('toolcrate/data')[1]
-                        elif 'toolcrate/logs' in path_value:
-                            container_path = '/data' + path_value.split('toolcrate/logs')[1]
-                        else:
-                            # Default: use filename in /data
-                            container_path = '/data/' + path_value.split('/')[-1]
-                        f.write(f"{conf_key} = {container_path}\n")
+                        f.write(f"{conf_key} = {self._resolve_path(path_value, docker_mode)}\n")
                     else:
                         f.write(f"{conf_key} = {path_value}\n")
 
@@ -396,7 +369,10 @@ class ConfigManager:
                 pass
             else:
                 # Use global wishlist index
-                f.write("index-path = /data/wishlist-index.sldl\n")
+                index_path = '/data/wishlist-index.sldl' if docker_mode else str(
+                    Path.home() / '.local' / 'share' / 'toolcrate' / 'wishlist-index.sldl'
+                )
+                f.write(f"index-path = {index_path}\n")
             f.write("\n")
 
             # Audio quality preferences

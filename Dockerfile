@@ -1,79 +1,50 @@
 # ToolCrate Production Container
-# Lightweight container for running ToolCrate in production
 
 FROM python:3.11-slim
 
-# Set environment variables
 ENV PYTHONUNBUFFERED=1
 ENV PYTHONDONTWRITEBYTECODE=1
-ENV POETRY_HOME="/opt/poetry"
-ENV POETRY_CACHE_DIR=/tmp/poetry_cache
-ENV POETRY_VENV_IN_PROJECT=1
-ENV PATH="$POETRY_HOME/bin:$PATH"
+ENV PYTHONPATH=/app/src
 
-# Install system dependencies
 RUN apt-get update && apt-get install -y \
-    # Basic build tools
     build-essential \
     curl \
     git \
-    # Docker dependencies (if needed)
     ca-certificates \
-    gnupg \
-    lsb-release \
-    # Cron for scheduling
     cron \
-    # Additional tools
     make \
     bash \
     && rm -rf /var/lib/apt/lists/*
 
-# Install Poetry
-RUN curl -sSL https://install.python-poetry.org | python3 - \
-    && chmod +x $POETRY_HOME/bin/poetry
+# Install uv
+COPY --from=ghcr.io/astral-sh/uv:latest /uv /usr/local/bin/uv
 
-# Create working directory
 WORKDIR /app
 
-# Copy dependency files first for better Docker layer caching
-COPY pyproject.toml poetry.lock* README.md ./
+# Copy dependency files first for better layer caching
+COPY pyproject.toml uv.lock* README.md ./
 
-# Install only production dependencies
-RUN poetry install --only=main --no-root && rm -rf $POETRY_CACHE_DIR
+# Install production dependencies only
+RUN uv sync --frozen --no-dev --no-install-project 2>/dev/null || uv sync --no-dev --no-install-project
 
-# Copy the entire project source code
+# Copy source and scripts
 COPY src/ ./src/
-COPY Makefile ./
-COPY configure_toolcrate.sh ./
-
-# Copy optional files if they exist
-COPY install*.sh ./
-
-# Make scripts executable (only if they exist)
-RUN find . -name "*.sh" -type f -exec chmod +x {} \;
+COPY Makefile configure_toolcrate.sh ./
 
 # Install the project
-RUN poetry install --only=main
+RUN uv sync --frozen --no-dev 2>/dev/null || uv sync --no-dev
 
-# Install the package globally so 'toolcrate' command is available
-RUN pip install -e .
-
-# Create necessary directories (including empty config directory)
+# Create necessary directories
 RUN mkdir -p /app/data/downloads /app/data/library /app/logs /app/config
 
-# Create a non-root user for security
+# Create non-root user
 RUN useradd -m -u 1000 toolcrate && \
     chown -R toolcrate:toolcrate /app
-USER toolcrate
-
-# Set up cron service (cron will be started when container runs)
 USER root
 RUN touch /var/log/cron.log
 USER toolcrate
 
-# Set the default command
-CMD ["toolcrate", "--help"]
+CMD ["uv", "run", "toolcrate", "--help"]
 
-# Health check
 HEALTHCHECK --interval=30s --timeout=10s --start-period=5s --retries=3 \
-    CMD python3 -c "import toolcrate; print('ToolCrate is healthy')" || exit 1
+    CMD uv run python3 -c "import toolcrate; print('ok')" || exit 1

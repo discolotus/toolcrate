@@ -19,7 +19,7 @@ logger = logging.getLogger(__name__)
 def get_current_crontab() -> str:
     """Get the current user's crontab content."""
     try:
-        result = subprocess.run(['crontab', '-l'], capture_output=True, text=True)
+        result = subprocess.run(['crontab', '-l'], capture_output=True, text=True, check=False)
         if result.returncode == 0:
             return result.stdout
         else:
@@ -122,10 +122,10 @@ def generate_crontab_section(config_manager: ConfigManager, jobs: list[dict[str,
 
         if command == 'wishlist':
             # Wishlist processing command
-            cmd = f"cd {project_root} && poetry run python -m toolcrate.wishlist.processor"
+            cmd = f"cd {project_root} && uv run python -m toolcrate.wishlist.processor"
         elif command == 'queue':
             # Queue processing command
-            cmd = f"cd {project_root} && poetry run python -m toolcrate.queue.processor"
+            cmd = f"cd {project_root} && uv run python -m toolcrate.queue.processor"
         else:
             # Custom command
             cmd = f"cd {project_root} && {command}"
@@ -809,10 +809,10 @@ def generate_cron_file(config_manager: ConfigManager, jobs: builtins.list[dict[s
 
         if command == 'wishlist':
             # Wishlist processing command
-            cmd = f"cd {project_root} && poetry run python -m toolcrate.wishlist.processor"
+            cmd = f"cd {project_root} && uv run python -m toolcrate.wishlist.processor"
         elif command == 'queue':
             # Queue processing command
-            cmd = f"cd {project_root} && poetry run python -m toolcrate.queue.processor"
+            cmd = f"cd {project_root} && uv run python -m toolcrate.queue.processor"
         else:
             # Custom command
             cmd = f"cd {project_root} && {command}"

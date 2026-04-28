@@ -46,6 +46,8 @@ htmlcov/
 .cache
 nosetests.xml
 coverage.xml
+coverage.json
+coverage-summary.md
 *.cover
 .hypothesis/
 .pytest_cache/
@@ -187,3 +189,31 @@ dist/
 downloads/
 data/
 recognised-lists/
+# External tools and binaries
+src/bin/
+src/slsk-batchdl/
+src/Shazam-Tool/
+
+# Virtual environment
+.venv/
+**/toolcrate.yaml
+
+# uv cache
+.uv/
+
+config/sldl-wishlist.conf
+config/wishlist.txt
+config/crontabs/
+**index.sldl
+**.mp3
+**.flac
+**.wav
+**.alac
+**.m4a
+**.opus
+**.ogg
+**.aac
+**.incomplete
+
+
+config/download-queue.txt

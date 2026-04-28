@@ -1,0 +1,169 @@
+name: CI
+
+on:
+  push:
+    branches: [main, develop]
+  pull_request:
+    branches: [main, develop]
+
+jobs:
+  lint:
+    name: Lint & Type Check
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: astral-sh/setup-uv@v5
+        with:
+          enable-cache: true
+
+      - name: Install dependencies
+        run: uv sync
+
+      - name: Ruff lint
+        run: uv run ruff check src/ tests/unit/
+
+      - name: Mypy
+        run: uv run mypy src/toolcrate/cli/binary_manager.py --ignore-missing-imports
+        continue-on-error: true
+
+  test:
+    name: Tests
+    runs-on: ubuntu-latest
+    permissions:
+      pull-requests: write
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: astral-sh/setup-uv@v5
+        with:
+          enable-cache: true
+
+      - name: Install dependencies
+        run: uv sync
+
+      - name: Run unit tests with coverage
+        run: |
+          uv run pytest tests/unit/ \
+            -v --tb=short \
+            -m "not integration and not slow" \
+            --cov=src/toolcrate \
+            --cov-report=term-missing \
+            --cov-report=xml \
+            --cov-report=json \
+            --no-header
+
+      - name: Check coverage threshold
+        run: uv run coverage report --fail-under=14
+
+      - name: Write coverage to job summary
+        run: |
+          uv run python - <<'PYEOF'
+          import json, os
+          with open("coverage.json") as f:
+              data = json.load(f)
+          tot = data["totals"]
+          pct = tot["percent_covered"]
+          covered = tot["covered_lines"]
+          total = tot["num_statements"]
+
+          rows = []
+          for fname, fdata in sorted(data["files"].items()):
+              s = fdata["summary"]
+              short = fname.replace("src/toolcrate/", "")
+              rows.append(f"| `{short}` | {s['num_statements']} | {s['missing_lines']} | {s['percent_covered']:.0f}% |")
+
+          lines = [
+              f"## Coverage: {pct:.1f}%",
+              f"**{covered} / {total}** statements covered",
+              "",
+              "| File | Stmts | Miss | Cover |",
+              "|------|------:|-----:|------:|",
+          ] + rows
+
+          md = "\n".join(lines)
+          with open("coverage-summary.md", "w") as f:
+              f.write(md)
+          with open(os.environ["GITHUB_STEP_SUMMARY"], "a") as f:
+              f.write(md + "\n")
+          PYEOF
+
+      - name: Post coverage comment on PR
+        if: github.event_name == 'pull_request'
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const fs = require('fs');
+            const body = fs.readFileSync('coverage-summary.md', 'utf8');
+            const marker = '<!-- toolcrate-coverage -->';
+            const fullBody = `${marker}\n${body}`;
+
+            const { data: comments } = await github.rest.issues.listComments({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: context.issue.number,
+            });
+
+            const existing = comments.find(c => c.body.includes(marker));
+            if (existing) {
+              await github.rest.issues.updateComment({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                comment_id: existing.id,
+                body: fullBody,
+              });
+            } else {
+              await github.rest.issues.createComment({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                issue_number: context.issue.number,
+                body: fullBody,
+              });
+            }
+
+  integration-test:
+    name: Integration Tests
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: astral-sh/setup-uv@v5
+        with:
+          enable-cache: true
+
+      - name: Install dependencies
+        run: uv sync
+
+      - name: Run integration tests
+        # uv run puts .venv/bin on PATH, so subprocess calls to `toolcrate`
+        # inside the test suite resolve correctly without extra PATH manipulation.
+        # tests/integration/test_real_network_downloads.py self-skips unless
+        # TOOLCRATE_REAL_NETWORK_TESTS=1 is set.
+        run: |
+          uv run pytest tests/integration/ -v --tb=short
+
+  import-check:
+    name: Import smoke test
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: astral-sh/setup-uv@v5
+        with:
+          enable-cache: true
+
+      - name: Install production dependencies only
+        run: uv sync --no-dev
+
+      - name: Verify package imports
+        run: |
+          uv run python -c "
+          import toolcrate
+          import toolcrate.cli
+          import toolcrate.cli.main
+          import toolcrate.cli.wrappers
+          import toolcrate.cli.binary_manager
+          from toolcrate.cli.main import main, info, download
+          print('All core imports OK')
+          "

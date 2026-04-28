@@ -1,33 +1,33 @@
-import os
 import logging
-from typing import Optional, Dict, Any, Tuple
-from yt_dlp import YoutubeDL
 from pathlib import Path
+from typing import Any
+
+from yt_dlp import YoutubeDL
 
 logger = logging.getLogger(__name__)
 
 class AudioDownloader:
     """High-quality audio downloader for YouTube and SoundCloud."""
-    
+
     def __init__(self, output_path: str = "downloads", quality: str = "320"):
         """
         Initialize the audio downloader.
-        
+
         Args:
             output_path: Base directory to save downloaded files
             quality: Audio quality in kbps (default: "320")
         """
         self.base_output_path = Path(output_path).expanduser()
         self.quality = quality
-        
-    def _get_playlist_info(self, url: str, platform: str) -> Tuple[str, bool]:
+
+    def _get_playlist_info(self, url: str, platform: str) -> tuple[str, bool]:
         """
         Extract playlist name and check if URL is a playlist.
-        
+
         Args:
             url: URL to check
             platform: Either "youtube" or "soundcloud"
-            
+
         Returns:
             Tuple of (playlist_name, is_playlist)
         """
@@ -47,15 +47,15 @@ class AudioDownloader:
         except Exception as e:
             logger.error(f"Failed to get playlist info: {e}")
             return "Unknown", False
-            
+
     def _get_output_path(self, url: str, platform: str) -> Path:
         """
         Determine the output path based on whether it's a playlist or single track.
-        
+
         Args:
             url: URL to download
             platform: Either "youtube" or "soundcloud"
-            
+
         Returns:
             Path object for the output directory
         """
@@ -66,19 +66,19 @@ class AudioDownloader:
             return self.base_output_path / safe_name
         else:
             return self.base_output_path
-            
+
     def _ensure_output_directory(self, path: Path) -> None:
         """Create output directory if it doesn't exist."""
         path.mkdir(parents=True, exist_ok=True)
-        
-    def _get_ydl_opts(self, platform: str, output_path: Path) -> Dict[str, Any]:
+
+    def _get_ydl_opts(self, platform: str, output_path: Path) -> dict[str, Any]:
         """
         Get yt-dlp options for downloading.
-        
+
         Args:
             platform: Either "youtube" or "soundcloud"
             output_path: Path to save files
-            
+
         Returns:
             Dictionary of yt-dlp options
         """
@@ -93,14 +93,14 @@ class AudioDownloader:
             'quiet': False,
             'no_warnings': False,
         }
-    
-    def download_youtube(self, url: str) -> Optional[Path]:
+
+    def download_youtube(self, url: str) -> Path | None:
         """
         Download audio from YouTube URL.
-        
+
         Args:
             url: YouTube video or playlist URL
-            
+
         Returns:
             Path to downloaded file(s) or None if download failed
         """
@@ -108,7 +108,7 @@ class AudioDownloader:
         try:
             output_path = self._get_output_path(url, 'youtube')
             self._ensure_output_directory(output_path)
-            
+
             ydl_opts = self._get_ydl_opts('youtube', output_path)
             with YoutubeDL(ydl_opts) as ydl:
                 info = ydl.extract_info(url, download=True)
@@ -123,14 +123,14 @@ class AudioDownloader:
         except Exception as e:
             logger.error(f"❌ Failed to download from YouTube {url}: {e}")
             return None
-            
-    def download_soundcloud(self, url: str) -> Optional[Path]:
+
+    def download_soundcloud(self, url: str) -> Path | None:
         """
         Download audio from SoundCloud URL.
-        
+
         Args:
             url: SoundCloud track or playlist URL
-            
+
         Returns:
             Path to downloaded file(s) or None if download failed
         """
@@ -138,7 +138,7 @@ class AudioDownloader:
         try:
             output_path = self._get_output_path(url, 'soundcloud')
             self._ensure_output_directory(output_path)
-            
+
             ydl_opts = self._get_ydl_opts('soundcloud', output_path)
             with YoutubeDL(ydl_opts) as ydl:
                 info = ydl.extract_info(url, download=True)
@@ -153,14 +153,14 @@ class AudioDownloader:
         except Exception as e:
             logger.error(f"❌ Failed to download from SoundCloud {url}: {e}")
             return None
-            
-    def download(self, url: str) -> Optional[Path]:
+
+    def download(self, url: str) -> Path | None:
         """
         Download audio from YouTube or SoundCloud URL.
-        
+
         Args:
             url: URL to download from
-            
+
         Returns:
             Path to downloaded file(s) or None if download failed
         """
@@ -171,4 +171,4 @@ class AudioDownloader:
             return self.download_soundcloud(url)
         else:
             logger.error("❌ Unsupported URL format. Please provide a YouTube or SoundCloud link.")
-            return None 
+            return None

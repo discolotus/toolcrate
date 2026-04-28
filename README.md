@@ -5,120 +5,131 @@ A unified tool suite for music management and processing. ToolCrate integrates m
 ## Features
 
 - **Music Recognition**: Powered by Shazam-Tool for identifying songs from audio files
-- **Batch Downloading**: Soulseek integration for downloading music collections
+- **Batch Downloading**: Soulseek integration via slsk-batchdl for downloading music collections
 - **Unified CLI**: Single command-line interface for all tools
-- **Configuration Management**: Centralized configuration with example templates
-- **Cross-Platform**: Works on Linux, macOS, and Windows
+- **Configuration Management**: Centralized YAML configuration with example templates
+- **Wishlist & Queue**: Automated scheduled downloading with cron support
+
+## Requirements
+
+- Python 3.10+
+- [uv](https://docs.astral.sh/uv/) (package manager)
+- FFmpeg (for audio processing)
+- Docker (optional, for containerized sldl)
+- Valid Soulseek account for downloading
 
 ## Installation
 
-### From PyPI (Recommended)
-
 ```bash
-pip install toolcrate
-```
-
-### Development Installation
-
-**Important**: This repository uses git submodules for external tools. Make sure to clone with submodules included:
-
-#### Method 1: Clone with submodules (Recommended)
-```bash
-git clone --recurse-submodules https://github.com/yourusername/toolcrate.git
+# Clone with submodules
+git clone --recurse-submodules https://github.com/discolotus/toolcrate.git
 cd toolcrate
-poetry install
+
+# Install with uv
+uv sync
+
+# Run
+uv run toolcrate --help
 ```
 
-#### Method 2: Clone and initialize submodules separately
+### Install uv
+
 ```bash
-git clone https://github.com/yourusername/toolcrate.git
-cd toolcrate
-git submodule update --init --recursive
-poetry install
+curl -LsSf https://astral.sh/uv/install.sh | sh
 ```
-
-#### Method 3: Quick setup with automated script
-```bash
-git clone --recurse-submodules https://github.com/yourusername/toolcrate.git
-cd toolcrate
-./scripts/setup-dev.sh
-```
-
-> **Note**: The external tools (slsk-batchdl and Shazam-Tool) are included as git submodules. Without proper submodule initialization, the integrated tools will not function correctly.
 
 ## Configuration
 
-ToolCrate uses configuration files to manage credentials and settings. Example configuration files are provided in the `examples/` directory.
+Copy the example configuration files and edit them with your credentials:
 
-### Initial Setup
+```bash
+mkdir -p ~/.config/toolcrate
+cp examples/sldl.conf.example ~/.config/toolcrate/sldl.conf
+cp examples/toolcrate.conf.example ~/.config/toolcrate/toolcrate.conf
+```
 
-1. **Copy example configuration files:**
-   ```bash
-   # Create config directory
-   mkdir -p ~/.config/toolcrate
-   
-   # Copy and edit configuration files
-   cp examples/sldl.conf.example ~/.config/toolcrate/sldl.conf
-   cp examples/toolcrate.conf.example ~/.config/toolcrate/toolcrate.conf
-   ```
+Or run the interactive setup:
 
-2. **Edit configuration files:**
-   - `~/.config/toolcrate/sldl.conf`: Add your Soulseek credentials
-   - `~/.config/toolcrate/toolcrate.conf`: Configure download paths and preferences
+```bash
+make init-config
+```
 
 ### Configuration File Locations
 
-ToolCrate looks for configuration files in the following order:
+ToolCrate looks for configuration files in this order:
+
 1. `~/.config/toolcrate/` (Linux/macOS) or `%APPDATA%/toolcrate/` (Windows)
 2. Current working directory
 3. Project root directory
 
 ## Usage
 
-### Main Interface
-
 ```bash
 # Show available commands
-toolcrate --help
+uv run toolcrate --help
 
-# Show version information
-toolcrate --version
+# Show version
+uv run toolcrate --version
 ```
 
 ### Soulseek Downloads (sldl)
 
 ```bash
-# Search and download a song
-toolcrate sldl "Artist - Song Title"
-
-# Download from a Spotify playlist
-toolcrate sldl "https://open.spotify.com/playlist/your_playlist_id"
-
-# Download an album interactively
-toolcrate sldl "Artist - Album Name" -at
-
-# Process multiple links from a file
-toolcrate sldl --links-file urls.txt
+uv run toolcrate sldl "Artist - Song Title"
+uv run toolcrate sldl "https://open.spotify.com/playlist/your_playlist_id"
+uv run toolcrate sldl --links-file urls.txt
 ```
 
 ### Music Recognition (Shazam)
 
 ```bash
-# Identify a song from an audio file
-toolcrate shazam identify audio_file.mp3
-
-# Process a video file for music recognition
-toolcrate shazam video video_file.mp4
+uv run toolcrate shazam identify audio_file.mp3
+uv run toolcrate shazam video video_file.mp4
 ```
 
-### Direct Tool Access
-
-You can also access the integrated tools directly:
+### Wishlist & Scheduled Downloads
 
 ```bash
-slsk-tool search "artist - title"
-shazam-tool identify sample.mp3
+# Add items to config/wishlist.txt, then schedule:
+uv run toolcrate schedule daily       # Daily at 2 AM
+uv run toolcrate schedule hourly      # Every hour
+uv run toolcrate schedule enable
+uv run toolcrate schedule install
+
+# Monitor
+uv run toolcrate wishlist-run logs
+uv run toolcrate wishlist-run status
 ```
+
+### Download Queue
+
+```bash
+uv run toolcrate queue add "https://open.spotify.com/playlist/..."
+uv run toolcrate queue list
+uv run toolcrate queue run
+```
+
+See [docs/WISHLIST_SCHEDULING.md](docs/WISHLIST_SCHEDULING.md) and [docs/DOWNLOAD_QUEUE.md](docs/DOWNLOAD_QUEUE.md) for details.
+
+## Managed Tools
+
+ToolCrate can install and verify local command shims for the integrated tools:
+
+```bash
+uv run toolcrate tools status
+uv run toolcrate tools install
+uv run toolcrate tools verify
+```
+
+Install only one managed tool:
+
+```bash
+uv run toolcrate tools install --tool sldl
+uv run toolcrate tools install --tool shazam-tool
+uv run toolcrate tools install --tool mdl-tool
+```
+
+Managed tools are written under the ToolCrate data directory, usually `~/.local/share/toolcrate/bin`.
 
 ## Development
 
@@ -132,91 +143,69 @@ toolcrate/
 ├── scripts/                # Utility scripts
 ├── tests/                  # Test suite
 ├── examples/               # Configuration examples
+├── docs/                   # Documentation
+├── Dockerfile              # Container image
+├── docker-compose.yml      # Docker Compose config
 └── pyproject.toml          # Project configuration
 ```
 
-### Running Tests
+### Setup
 
 ```bash
-# Using Poetry (recommended)
-poetry run pytest
+uv sync                     # Install all dependencies (including dev)
+uv run pre-commit install   # Install git hooks
+```
 
-# Using the test script
-./scripts/run_tests.sh
+### Testing
 
-# Run specific test types
-poetry run pytest tests/unit/
-poetry run pytest tests/integration/
+```bash
+make test                   # Run all tests
+make test-python            # Python tests only
+make test-unit              # Unit tests
+make test-coverage          # Tests with coverage report
+make test-docker            # Run tests in Docker
+uv run pytest tests/test_tool_integrations.py
 ```
 
 ### Code Quality
 
 ```bash
-# Format code
-poetry run black src/ tests/
-
-# Sort imports
-poetry run isort src/ tests/
-
-# Type checking
-poetry run mypy src/
+make format                 # Format with ruff
+make lint                   # Lint with ruff + mypy
+make check                  # Format + lint
 ```
-
-## Requirements
-
-- **Python**: 3.8+ (3.11+ recommended)
-- **External Tools**:
-  - FFmpeg (for audio processing)
-  - Docker (optional, for containerized sldl)
-- **Credentials**:
-  - Valid Soulseek account for downloading
-  - Internet connection for Shazam recognition
-
-## Troubleshooting
-
-### Configuration Issues
-
-If you encounter configuration-related errors:
-
-1. Check that configuration files exist in the expected locations
-2. Verify that credentials are correctly set in `sldl.conf`
-3. Ensure file permissions allow reading the configuration files
-
-### Tool-Specific Issues
-
-- **sldl**: Check Docker installation and Soulseek credentials
-- **Shazam**: Verify FFmpeg installation and audio file formats
-- **General**: Check Python version compatibility
 
 ### Submodule Issues
 
-If you're missing the external tools or getting import errors:
+```bash
+git submodule update --init --recursive   # Initialize submodules
+git submodule update --remote --merge     # Update to latest
+git submodule status                      # Check status
+```
+
+## Docker
 
 ```bash
-# Reinitialize submodules
-git submodule update --init --recursive
+# Build image
+docker build -t toolcrate .
 
-# Force update submodules to latest commits
-git submodule update --remote --merge
-
-# Check submodule status
-git submodule status
+# Run with docker-compose
+docker-compose up
 ```
 
 ## Contributing
 
 1. Fork the repository
 2. Create a feature branch
-3. Make your changes
-4. Add tests for new functionality
-5. Run the test suite
-6. Submit a pull request
+3. Make your changes with tests
+4. Run `make check` and `make test`
+5. Submit a pull request
 
 ## License
 
-This project is licensed under the GNU General Public License v3.0 - see the [LICENSE](LICENSE) file for details.
+GNU General Public License v3.0 — see [LICENSE](LICENSE) for details.
 
 ## Acknowledgments
 
-- [slsk-batchdl](https://github.com/fiso64/slsk-batchdl) - Soulseek batch download tool
-- [Shazam-Tool](https://github.com/in0vik/Shazam-Tool) - Music recognition tool
+- [slsk-batchdl](https://github.com/fiso64/slsk-batchdl) — Soulseek batch download tool
+- [Shazam-Tool](https://github.com/in0vik/Shazam-Tool) — Music recognition tool

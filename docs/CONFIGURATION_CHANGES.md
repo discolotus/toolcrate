@@ -1,0 +1,168 @@
+# ToolCrate Configuration Changes Summary
+
+## Changes Made
+
+### 1. Updated Default Values
+- **Minimum bitrate**: Changed from `200` to `320` kbps (higher quality default)
+- **Maximum sample rate**: Changed from `48000` to `192000` Hz (support for high-resolution audio)
+
+### 2. Streamlined User Experience
+Reduced the number of interactive prompts by setting sensible defaults for advanced settings:
+
+#### Settings Now Set to Defaults (Not Prompted)
+- **Length tolerance**: `3` seconds
+- **Strict title matching**: `true` (enabled)
+- **Strict album matching**: `true` (enabled)
+- **Search timeout**: `6000` ms
+- **Listen port**: `49998`
+- **Max stale time**: `30000` ms
+- **Max retries per track**: `30`
+- **Unknown error retries**: `2`
+- **Fast search delay**: `300` ms
+- **Fast search minimum upload speed**: `1.0` MB/s
+- **Write index file**: `true` (enabled)
+- **Remove tracks from source**: `false` (disabled)
+- **Desperate search**: `false` (disabled)
+
+#### API Settings (Not Prompted)
+- **Spotify Client ID**: Empty (can be configured later)
+- **Spotify Client Secret**: Empty (can be configured later)
+- **YouTube API Key**: Empty (can be configured later)
+
+### 3. Enhanced Documentation
+Added comprehensive comments throughout the configuration files explaining what each setting does.
+
+## Key Settings Explained
+
+### Audio Quality Settings
+
+#### `min_bitrate` (320 kbps)
+- **Purpose**: Sets the minimum acceptable audio quality
+- **Impact**: Higher values ensure better quality but may reduce available matches
+- **Default**: 320 kbps (high quality MP3 standard)
+
+#### `max_sample_rate` (192000 Hz)
+- **Purpose**: Maximum sample rate for high-resolution audio
+- **Impact**: Supports audiophile-quality downloads
+- **Default**: 192 kHz (supports most high-res formats)
+
+#### `strict_title` and `strict_album` (true)
+- **Purpose**: Require exact matching of track/album names
+- **Impact**: Reduces false positives but may miss slight variations
+- **Default**: Enabled for accuracy
+
+### Download Behavior Settings
+
+#### `skip_existing` (true)
+- **Purpose**: Don't re-download files that already exist locally
+- **Impact**: Saves time and bandwidth, prevents duplicates
+- **How it works**: Checks the `skip_music_dir` for existing files before downloading
+
+#### `remove_tracks_from_source` (false)
+- **Purpose**: Whether to remove tracks from playlists after successful download
+- **Impact**: When enabled, downloaded tracks are removed from the source playlist
+- **Default**: Disabled to preserve original playlists
+- **Use case**: Enable for "download queue" playlists that should be cleared after processing
+
+#### `write_index` (true)
+- **Purpose**: Maintain a history file of all downloads
+- **Impact**: Tracks what has been downloaded to avoid re-downloading
+- **File location**: `data/index.sldl`
+
+#### `desperate_search` (false)
+- **Purpose**: Use relaxed matching when strict search fails
+- **Impact**: May find more matches but with lower accuracy
+- **Default**: Disabled to maintain quality standards
+
+### Search Performance Settings
+
+#### `fast_search` (user prompted)
+- **Purpose**: Optimize search speed by prioritizing users with good upload speeds
+- **Impact**: Faster downloads but may miss some sources
+- **Trade-off**: Speed vs. completeness
+
+#### `search_timeout` (6000 ms)
+- **Purpose**: How long to wait for search results
+- **Impact**: Longer timeouts find more sources but slow down the process
+- **Default**: 6 seconds (balanced approach)
+
+#### `max_stale_time` (30000 ms)
+- **Purpose**: Maximum time to wait for stalled downloads
+- **Impact**: Prevents hanging on slow/dead connections
+- **Default**: 30 seconds
+
+#### `concurrent_processes` (user prompted, default 2)
+- **Purpose**: Number of simultaneous downloads
+- **Impact**: More processes = faster overall speed but higher resource usage
+- **Recommendation**: 2-4 for most systems
+
+### Advanced Settings
+
+#### `interactive_mode` (user prompted, default false)
+- **Purpose**: Prompt user to select from multiple matches for each track
+- **Impact**: Gives full control but requires manual intervention
+- **Use case**: When you want to manually verify each download
+
+#### `length_tolerance` (3 seconds)
+- **Purpose**: Acceptable difference in track length when matching
+- **Impact**: Allows for slight variations in track length
+- **Default**: 3 seconds (accommodates intro/outro differences)
+
+## Configuration File Structure
+
+### Main Configuration (`config/toolcrate.yaml`)
+- **Comprehensive YAML format** with detailed comments
+- **All settings documented** with explanations
+- **Profile support** for different use cases
+- **API integration** configuration
+
+### Generated Configuration (`config/sldl.conf`)
+- **slsk-batchdl compatible format** with inline comments
+- **Automatically generated** from YAML configuration
+- **Detailed explanations** for each setting
+- **Profile definitions** included
+
+## Usage Recommendations
+
+### For Most Users
+- Use the default configuration generated by `make config`
+- Only modify `min_bitrate` if you need different quality standards
+- Enable `fast_search` for faster downloads
+- Keep `interactive_mode` disabled for automated downloads
+
+### For Audiophiles
+- Use the `lossless` profile: `slsk-tool --profile lossless <search>`
+- Consider increasing `min_bitrate` to 1000+ for lossless formats
+- Enable `strict_title` and `strict_album` (already default)
+
+### For Quick Downloads
+- Use the `quick` profile: `slsk-tool --profile quick <search>`
+- Enable `fast_search` and `desperate_search`
+- Lower `min_bitrate` to 128 for faster results
+
+### For Manual Control
+- Use the `interactive` profile: `slsk-tool --profile interactive <search>`
+- Enable `interactive_mode` for manual selection
+- Increase `max_stale_time` to avoid timeouts during manual selection
+
+## API Configuration (Optional)
+
+### Spotify API
+- **Purpose**: Enhanced playlist and track lookup
+- **Setup**: Get credentials from https://developer.spotify.com/dashboard
+- **Configuration**: Edit `config/toolcrate.yaml` after initial setup
+
+### YouTube API
+- **Purpose**: Video and playlist processing
+- **Setup**: Get API key from https://console.developers.google.com
+- **Configuration**: Edit `config/toolcrate.yaml` after initial setup
+
+## Migration Notes
+
+If upgrading from a previous configuration:
+1. **Backup existing config**: Copy your current `config/` directory
+2. **Run new configuration**: `make config` to generate updated files
+3. **Review changes**: Compare with your backed-up configuration
+4. **Test thoroughly**: Validate with `make config-validate`
+
+The new configuration maintains compatibility while providing better defaults and more comprehensive documentation.

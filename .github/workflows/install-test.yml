@@ -37,6 +37,12 @@ jobs:
         with:
           enable-cache: true
 
+      - name: Install .NET SDK (macOS source-build fallback)
+        if: runner.os == 'macOS'
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '8.0.x'
+
       - name: Install dependencies
         run: uv sync
 
@@ -61,7 +67,7 @@ jobs:
           "
 
       - name: Provision sldl binary
-        run: uv run toolcrate sldl --help
+        run: uv run toolcrate sldl-upgrade
         env:
           TOOLCRATE_SLDL_VERSION: ""
 

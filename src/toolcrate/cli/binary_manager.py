@@ -7,8 +7,8 @@ cannot be executed (e.g. macOS Gatekeeper quarantine on unsigned binaries).
 
 from __future__ import annotations
 
-import io
 import importlib.util
+import io
 import json
 import os
 import platform
@@ -21,7 +21,6 @@ import urllib.request
 import zipfile
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Optional
 
 from loguru import logger
 
@@ -45,7 +44,7 @@ class ToolStatus:
     name: str
     command: str
     managed_path: Path
-    system_path: Optional[str]
+    system_path: str | None
     installed: bool
     note: str = ""
 
@@ -54,9 +53,9 @@ class ToolStatus:
 class ToolCheckResult:
     name: str
     command: str
-    executable: Optional[str]
+    executable: str | None
     ok: bool
-    returncode: Optional[int]
+    returncode: int | None
     output: str
     error: str = ""
 
@@ -97,14 +96,14 @@ def managed_executable(command: str) -> Path:
     return managed_bin_dir() / f"{command}{suffix}"
 
 
-def find_managed(command: str) -> Optional[Path]:
+def find_managed(command: str) -> Path | None:
     path = managed_executable(command)
     if path.exists() and os.access(path, os.X_OK):
         return path
     return None
 
 
-def find_executable(command: str) -> Optional[str]:
+def find_executable(command: str) -> str | None:
     managed = find_managed(command)
     if managed:
         return str(managed)
@@ -408,7 +407,7 @@ def verify_command_for_tool(command: str) -> list[str]:
     return ["--help"]
 
 
-def executable_for_status(status: ToolStatus) -> Optional[str]:
+def executable_for_status(status: ToolStatus) -> str | None:
     if status.command in {"shazam-tool", "mdl-tool"}:
         managed = find_managed(status.command)
         return str(managed) if managed else None

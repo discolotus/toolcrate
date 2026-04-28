@@ -5,9 +5,14 @@ This module handles processing of download-queue.txt file, executing downloads
 for each link and removing processed entries from the queue.
 """
 
-import fcntl
 import logging
 import subprocess
+import sys
+
+if sys.platform == "win32":
+    fcntl = None
+else:
+    import fcntl
 from datetime import datetime
 from pathlib import Path
 from typing import Any
@@ -45,6 +50,9 @@ class QueueProcessor:
         Returns:
             File handle if lock acquired, None if lock could not be acquired
         """
+        if fcntl is None:
+            logger.warning("Queue processing not supported on Windows (requires fcntl)")
+            return None
         try:
             lock_file = open(self.lock_file_path, 'w')
             fcntl.flock(lock_file.fileno(), fcntl.LOCK_EX | fcntl.LOCK_NB)
@@ -62,7 +70,7 @@ class QueueProcessor:
         Args:
             lock_file: File handle from acquire_lock()
         """
-        if lock_file:
+        if lock_file and fcntl is not None:
             try:
                 fcntl.flock(lock_file.fileno(), fcntl.LOCK_UN)
                 lock_file.close()

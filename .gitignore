@@ -217,3 +217,5 @@ config/crontabs/
 
 
 config/download-queue.txt
+
+.superpowers/

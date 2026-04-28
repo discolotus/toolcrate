@@ -111,6 +111,26 @@ uv run toolcrate queue run
 
 See [docs/WISHLIST_SCHEDULING.md](docs/WISHLIST_SCHEDULING.md) and [docs/DOWNLOAD_QUEUE.md](docs/DOWNLOAD_QUEUE.md) for details.
 
+## Managed Tools
+
+ToolCrate can install and verify local command shims for the integrated tools:
+
+```bash
+uv run toolcrate tools status
+uv run toolcrate tools install
+uv run toolcrate tools verify
+```
+
+Install only one managed tool:
+
+```bash
+uv run toolcrate tools install --tool sldl
+uv run toolcrate tools install --tool shazam-tool
+uv run toolcrate tools install --tool mdl-tool
+```
+
+Managed tools are written under the ToolCrate data directory, usually `~/.local/share/toolcrate/bin`.
+
 ## Development
 
 ### Project Structure
@@ -144,6 +164,7 @@ make test-python            # Python tests only
 make test-unit              # Unit tests
 make test-coverage          # Tests with coverage report
 make test-docker            # Run tests in Docker
+uv run pytest tests/test_tool_integrations.py
 ```
 
 ### Code Quality

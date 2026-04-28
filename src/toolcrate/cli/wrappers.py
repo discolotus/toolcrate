@@ -48,7 +48,9 @@ def check_docker_container_running(container_prefix):
             text=True,
             check=True,
         )
-        container_names = result.stdout.strip().split('\n') if result.stdout.strip() else []
+        container_names = (
+            result.stdout.strip().split("\n") if result.stdout.strip() else []
+        )
         # Check if any container name starts with the prefix
         return any(name.startswith(container_prefix) for name in container_names)
     except (subprocess.CalledProcessError, FileNotFoundError):
@@ -61,7 +63,9 @@ def ensure_slsk_container_running(root_dir):
     slsk_dir = root_dir / "src" / "slsk-batchdl"
 
     try:
-        logger.info(f"Starting slsk-batchdl container using docker compose in {slsk_dir}")
+        logger.info(
+            f"Starting slsk-batchdl container using docker compose in {slsk_dir}"
+        )
 
         # Change directory and run docker compose
         current_dir = os.getcwd()
@@ -96,7 +100,9 @@ def get_project_root():
     # First, try to find the project root by looking for setup.py or pyproject.toml
     search_dir = current_dir
     while search_dir != search_dir.parent:
-        if (search_dir / "setup.py").exists() or (search_dir / "pyproject.toml").exists():
+        if (search_dir / "setup.py").exists() or (
+            search_dir / "pyproject.toml"
+        ).exists():
             return search_dir
         search_dir = search_dir.parent
 
@@ -110,9 +116,9 @@ def get_project_root():
     # Try to find toolcrate data directory in common locations
     possible_roots = [
         Path.home() / ".toolcrate",  # User's home directory
-        Path.home() / "toolcrate",   # User's home directory (alternative)
-        Path("/opt/toolcrate"),      # System-wide installation
-        Path("/usr/local/toolcrate"), # System-wide installation (alternative)
+        Path.home() / "toolcrate",  # User's home directory (alternative)
+        Path("/opt/toolcrate"),  # System-wide installation
+        Path("/usr/local/toolcrate"),  # System-wide installation (alternative)
     ]
 
     for root in possible_roots:
@@ -145,17 +151,10 @@ def recreate_slsk_container(root_dir):
         os.chdir(slsk_dir)
 
         # Stop and remove existing containers
-        subprocess.run(
-            ["docker", "compose", "down"],
-            check=False,
-            capture_output=True
-        )
+        subprocess.run(["docker", "compose", "down"], check=False, capture_output=True)
 
         # Start the container
-        subprocess.run(
-            ["docker", "compose", "up", "-d"],
-            check=True
-        )
+        subprocess.run(["docker", "compose", "up", "-d"], check=True)
 
         # Restore original directory
         os.chdir(current_dir)
@@ -168,12 +167,12 @@ def recreate_slsk_container(root_dir):
 def sanitize_filename(name):
     """Sanitize a string to be used as a filename or directory name."""
     # Replace any non-alphanumeric characters with underscores, except for common safe characters
-    name = unicodedata.normalize('NFKD', name).encode('ASCII', 'ignore').decode('ASCII')
-    name = re.sub(r'[^\w\s.-]', '_', name)
+    name = unicodedata.normalize("NFKD", name).encode("ASCII", "ignore").decode("ASCII")
+    name = re.sub(r"[^\w\s.-]", "_", name)
     # Replace multiple spaces/underscores with a single one
-    name = re.sub(r'[\s_]+', '_', name)
+    name = re.sub(r"[\s_]+", "_", name)
     # Remove leading/trailing underscores
-    name = name.strip('_')
+    name = name.strip("_")
     return name
 
 
@@ -193,10 +192,10 @@ def get_spotify_playlist_name(playlist_url):
         if response.status_code == 200:
             # Try multiple regex patterns to extract playlist name
             patterns = [
-                r'<title>(.*?)(\s*[-–]\s*)|</title>',  # Standard title format
-                r'<h1[^>]*>(.*?)</h1>',                # H1 tag that might contain the name
+                r"<title>(.*?)(\s*[-–]\s*)|</title>",  # Standard title format
+                r"<h1[^>]*>(.*?)</h1>",  # H1 tag that might contain the name
                 r'data-testid="playlist-name"[^>]*>(.*?)</[^>]*>',  # Modern Spotify data attribute
-                r'property="og:title"\s+content="([^"]+)"'  # Open Graph title
+                r'property="og:title"\s+content="([^"]+)"',  # Open Graph title
             ]
 
             for pattern in patterns:
@@ -207,15 +206,20 @@ def get_spotify_playlist_name(playlist_url):
                     return sanitize_filename(playlist_name)
 
             # Additional fallback - look for JSON data in the page
-            json_data_match = re.search(r'Spotify\.Entity\s*=\s*({.*?});', response.text, re.DOTALL)
+            json_data_match = re.search(
+                r"Spotify\.Entity\s*=\s*({.*?});", response.text, re.DOTALL
+            )
             if json_data_match:
                 import json
+
                 try:
                     json_str = json_data_match.group(1)
                     data = json.loads(json_str)
-                    if 'name' in data:
-                        playlist_name = data['name']
-                        logger.info(f"Found Spotify playlist name from JSON: {playlist_name}")
+                    if "name" in data:
+                        playlist_name = data["name"]
+                        logger.info(
+                            f"Found Spotify playlist name from JSON: {playlist_name}"
+                        )
                         return sanitize_filename(playlist_name)
                 except json.JSONDecodeError:
                     pass
@@ -253,7 +257,9 @@ def get_youtube_playlist_name(playlist_url):
         logger.warning(f"Error getting YouTube playlist name: {e}")
 
     # If we couldn't get the name, fall back to using the ID
-    logger.warning(f"Could not get YouTube playlist name, using ID instead: {playlist_id}")
+    logger.warning(
+        f"Could not get YouTube playlist name, using ID instead: {playlist_id}"
+    )
     return f"youtube-{playlist_id}"
 
 
@@ -281,17 +287,17 @@ def read_config_file(config_file=None):
             for line in f:
                 line = line.strip()
                 # Skip comments and empty lines
-                if not line or line.startswith('#'):
+                if not line or line.startswith("#"):
                     continue
 
                 # Parse key-value pairs
-                if '=' in line:
-                    key, value = line.split('=', 1)
+                if "=" in line:
+                    key, value = line.split("=", 1)
                     key = key.strip()
                     value = value.strip()
 
                     # Expand user paths (~/...)
-                    if key in ["download-path", "wishlist", "dj-sets"] and '~' in value:
+                    if key in ["download-path", "wishlist", "dj-sets"] and "~" in value:
                         value = os.path.expanduser(value)
 
                     config[key] = value
@@ -309,209 +315,45 @@ def run_slsk(download_path=None, links_file=None, open_shell=False):
         links_file: Path to a text file containing links to process one by one
         open_shell: If True, opens a shell in the container instead of running sldl
     """
+    from .binary_manager import BinaryError, ensure_sldl_binary
+
     args = sys.argv[1:]
-    root_dir = get_project_root()
+    try:
+        binary = ensure_sldl_binary(project_root=get_project_root())
+    except BinaryError as exc:
+        click.echo(f"Error: could not provision sldl binary: {exc}", err=True)
+        sys.exit(1)
 
-    # Check for local binary in src directory first
-    local_binary_paths = [
-        root_dir / "src" / "bin" / "sldl",  # Pre-built binary path
-        root_dir
-        / "src"
-        / "slsk-batchdl"
-        / "bin"
-        / "osx-arm64"
-        / "sldl",  # Self-built binary path (macOS ARM64)
-    ]
-
-    for path in local_binary_paths:
-        if path.exists() and os.access(path, os.X_OK):
-            logger.info(f"Using local sldl binary from {path}")
-            os.execv(str(path), ["sldl"] + args)
-            return
-
-    # Check for native binary in PATH
-    if check_dependency("sldl"):
-        logger.info("Using sldl binary from PATH")
-        os.execvp("sldl", ["sldl"] + args)
-        return
-
-    # Check for slsk-batchdl binary in PATH
-    if check_dependency("slsk-batchdl"):
-        logger.info("Using slsk-batchdl binary from PATH")
-        os.execvp("slsk-batchdl", ["slsk-batchdl"] + args)
-        return
-
-    # Check for Docker image
-    if check_docker_image("slsk-batchdl"):
-        logger.info("Using Docker image for slsk-batchdl")
-        download_dir = os.path.expanduser("~/Music/downloads")
-        os.makedirs(download_dir, exist_ok=True)
-
-        cmd = [
-            "docker",
-            "run",
-            "--rm",
-            "-it",
-            "-v",
-            f"{download_dir}:/downloads",
-            "slsk-batchdl",
-        ] + args
-
-        os.execvp("docker", cmd)
-        return
-
-    # Try to build from source as a last resort
-    src_dir = root_dir / "src" / "slsk-batchdl"
-    if src_dir.exists():
-        try:
-            logger.info("Attempting to build sldl from source")
-            # Check if dotnet is available
-            subprocess.run(["which", "dotnet"], check=True, capture_output=True)
-
-            # Create output directory
-            bin_dir = root_dir / "src" / "bin"
-            os.makedirs(bin_dir, exist_ok=True)
-
-            # Determine platform
-            if sys.platform == "darwin":
-                if os.uname().machine == "arm64":
-                    runtime = "osx-arm64"
-                else:
-                    runtime = "osx-x64"
-            elif sys.platform == "linux":
-                runtime = "linux-x64"
-            elif sys.platform == "win32":
-                runtime = "win-x64"
-            else:
-                runtime = "linux-x64"  # Default fallback
-
-            logger.info(f"Building for runtime: {runtime}")
-
-            # Build the project
-            subprocess.run(
-                f"cd {src_dir} && dotnet publish -c Release -r {runtime} --self-contained -o {bin_dir}",
-                shell=True,
-                check=True,
-            )
-
-            # Make binary executable
-            binary_path = bin_dir / "sldl"
-            if binary_path.exists():
-                os.chmod(binary_path, 0o755)
-                logger.info(f"Built sldl at {binary_path}")
-                os.execv(str(binary_path), ["sldl"] + args)
-                return
-
-        except (subprocess.CalledProcessError, FileNotFoundError):
-            logger.warning("Failed to build sldl from source")
-
-    # Not found
-    click.echo("Error: slsk-batchdl not found. Please install it or its Docker image.")
-    sys.exit(1)
+    os.execv(str(binary), [binary.name, *args])
 
 
 def run_shazam():
     """Run the Shazam tool."""
     args = sys.argv[1:]
-    root_dir = get_project_root()
+    from .binary_manager import find_managed
 
-    # Check for local Python script in src directory first
-    shazam_script = root_dir / "src" / "Shazam-Tool" / "shazam.py"
+    executable = find_managed("shazam-tool")
+    if executable:
+        os.execv(str(executable), ["shazam-tool", *args])
 
-    if shazam_script.exists():
-        logger.info(f"Using Shazam-Tool from {shazam_script}")
-        # Prepare command to run the Python script
-        cmd = [sys.executable, str(shazam_script)] + args
-
-        # Execute the script in a subprocess
-        try:
-            subprocess.run(cmd, check=True)
-            return
-        except subprocess.CalledProcessError:
-            logger.warning("Failed to run Shazam-Tool script")
-
-    # Check for shell script
-    shazam_shell = root_dir / "src" / "Shazam-Tool" / "run_shazam.sh"
-    if shazam_shell.exists():
-        logger.info(f"Using Shazam-Tool shell script from {shazam_shell}")
-        try:
-            os.chmod(shazam_shell, 0o755)  # Ensure it's executable
-            subprocess.run([str(shazam_shell)] + args, check=True)
-            return
-        except subprocess.CalledProcessError:
-            logger.warning("Failed to run Shazam-Tool shell script")
-
-    # Check for native binary in PATH
-    if check_dependency("shazam-tool"):
-        logger.info("Using shazam-tool binary from PATH")
-        os.execvp("shazam-tool", ["shazam-tool"] + args)
-        return
-
-    # Check for Docker image
-    if check_docker_image("shazam-tool"):
-        logger.info("Using Docker image for shazam-tool")
-        music_dir = os.path.expanduser("~/Music")
-
-        cmd = [
-            "docker",
-            "run",
-            "--rm",
-            "-it",
-            "-v",
-            f"{music_dir}:/music",
-            "shazam-tool",
-        ] + args
-
-        os.execvp("docker", cmd)
-        return
-
-    # Not found
     click.echo(
-        "Error: shazam-tool not found. Please run setup_tools.sh to install dependencies."
+        "Error: shazam-tool is not installed. Run `toolcrate tools install --tool shazam-tool`."
     )
     sys.exit(1)
 
 
 def run_mdl():
     """Run the music metadata utility."""
-    # Check for native binary first
-    if check_dependency("mdl-utils"):
-        logger.info("Using native mdl-utils binary")
-        args = sys.argv[1:]
-        os.execvp("mdl-utils", ["mdl-utils"] + args)
-        return
+    from .binary_manager import find_managed
 
-    # Check for Python module
-    try:
-        from mdl_utils import cli
+    args = sys.argv[1:]
+    executable = find_managed("mdl-tool")
+    if executable:
+        os.execv(str(executable), ["mdl-tool", *args])
 
-        logger.info("Using mdl-utils Python module")
-        cli.main()
-        return
-    except ImportError:
-        pass
-
-    # Check for Docker image
-    if check_docker_image("mdl-utils"):
-        logger.info("Using Docker image for mdl-utils")
-        args = sys.argv[1:]
-        music_dir = os.path.expanduser("~/Music")
-
-        cmd = [
-            "docker",
-            "run",
-            "--rm",
-            "-it",
-            "-v",
-            f"{music_dir}:/music",
-            "mdl-utils",
-        ] + args
-
-        os.execvp("docker", cmd)
-        return
-
-    # Not found
-    click.echo("Error: mdl-utils not found. Please install it or its Docker image.")
+    click.echo(
+        "Error: mdl-tool is not installed. Run `toolcrate tools install --tool mdl-tool`."
+    )
     sys.exit(1)
 
 
@@ -592,7 +434,9 @@ def run_sldl_docker_command(params, args, build=False):
 
     # Check if docker-compose is available
     if not check_dependency("docker-compose") and not check_dependency("docker"):
-        click.echo("Error: Neither docker-compose nor docker with compose plugin is available.")
+        click.echo(
+            "Error: Neither docker-compose nor docker with compose plugin is available."
+        )
         click.echo("Please install Docker Compose to use the sldl command.")
         sys.exit(1)
 
@@ -613,10 +457,25 @@ def run_sldl_docker_command(params, args, build=False):
             # Check if we should use 'docker compose' instead of 'docker-compose'
             if check_dependency("docker-compose"):
                 down_cmd = ["docker-compose", "-f", str(compose_file), "down"]
-                up_cmd = ["docker-compose", "-f", str(compose_file), "up", "--build", "-d"]
+                up_cmd = [
+                    "docker-compose",
+                    "-f",
+                    str(compose_file),
+                    "up",
+                    "--build",
+                    "-d",
+                ]
             else:
                 down_cmd = ["docker", "compose", "-f", str(compose_file), "down"]
-                up_cmd = ["docker", "compose", "-f", str(compose_file), "up", "--build", "-d"]
+                up_cmd = [
+                    "docker",
+                    "compose",
+                    "-f",
+                    str(compose_file),
+                    "up",
+                    "--build",
+                    "-d",
+                ]
 
             # Stop containers
             click.echo("🛑 Stopping existing containers...")
@@ -651,12 +510,14 @@ def run_sldl_docker_command(params, args, build=False):
         container_names = []
         if result.stdout.strip():
             # Get all container names that contain 'sldl'
-            for line in result.stdout.strip().split('\n'):
-                if 'sldl' in line:
+            for line in result.stdout.strip().split("\n"):
+                if "sldl" in line:
                     container_names.append(line.strip())
 
             if len(container_names) > 1:
-                click.echo(f"Warning: Found multiple containers with 'sldl' in name: {', '.join(container_names)}")
+                click.echo(
+                    f"Warning: Found multiple containers with 'sldl' in name: {', '.join(container_names)}"
+                )
                 click.echo(f"Using the first one: {container_names[0]}")
                 container_name = container_names[0]
             elif len(container_names) == 1:
@@ -668,11 +529,26 @@ def run_sldl_docker_command(params, args, build=False):
             click.echo("Starting the container with docker-compose...")
 
             # Try to start the container
-            compose_cmd = ["docker-compose", "-f", str(compose_file), "up", "-d", "sldl"]
+            compose_cmd = [
+                "docker-compose",
+                "-f",
+                str(compose_file),
+                "up",
+                "-d",
+                "sldl",
+            ]
 
             # Check if we should use 'docker compose' instead of 'docker-compose'
             if not check_dependency("docker-compose"):
-                compose_cmd = ["docker", "compose", "-f", str(compose_file), "up", "-d", "sldl"]
+                compose_cmd = [
+                    "docker",
+                    "compose",
+                    "-f",
+                    str(compose_file),
+                    "up",
+                    "-d",
+                    "sldl",
+                ]
 
             start_result = subprocess.run(compose_cmd, capture_output=True, text=True)
 
@@ -692,12 +568,14 @@ def run_sldl_docker_command(params, args, build=False):
             )
             if result.stdout.strip():
                 container_names = []
-                for line in result.stdout.strip().split('\n'):
-                    if 'sldl' in line:
+                for line in result.stdout.strip().split("\n"):
+                    if "sldl" in line:
                         container_names.append(line.strip())
 
                 if len(container_names) > 1:
-                    click.echo(f"Warning: Found multiple containers with 'sldl' in name: {', '.join(container_names)}")
+                    click.echo(
+                        f"Warning: Found multiple containers with 'sldl' in name: {', '.join(container_names)}"
+                    )
                     click.echo(f"Using the first one: {container_names[0]}")
                     container_name = container_names[0]
                 elif len(container_names) == 1:
@@ -723,17 +601,23 @@ def run_sldl_docker_command(params, args, build=False):
     # Build the docker exec command
     if not args:
         # If no arguments provided, enter interactive shell
-        docker_cmd = [
-            "docker", "exec", "-it", container_name, "/bin/bash"
-        ]
+        docker_cmd = ["docker", "exec", "-it", container_name, "/bin/bash"]
         logger.info(f"Entering interactive shell in {container_name} container")
     else:
         # The slsk-batchdl container should have the binary available as 'sldl' or 'slsk-batchdl'
         # Always include the config file path for docker execution
         docker_cmd = [
-            "docker", "exec", "-it", container_name, "sldl", "-c", "/config/sldl.conf"
+            "docker",
+            "exec",
+            "-it",
+            container_name,
+            "sldl",
+            "-c",
+            "/config/sldl.conf",
         ] + args
-        logger.info(f"Executing command in {container_name} container: {' '.join(['-c', '/config/sldl.conf'] + args)}")
+        logger.info(
+            f"Executing command in {container_name} container: {' '.join(['-c', '/config/sldl.conf'] + args)}"
+        )
 
     # Execute the command in the container
     try:

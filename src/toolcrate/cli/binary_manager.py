@@ -8,6 +8,7 @@ cannot be executed (e.g. macOS Gatekeeper quarantine on unsigned binaries).
 from __future__ import annotations
 
 import io
+import importlib.util
 import json
 import os
 import platform
@@ -18,7 +19,9 @@ import sys
 import urllib.error
 import urllib.request
 import zipfile
+from dataclasses import dataclass
 from pathlib import Path
+from typing import Optional
 
 from loguru import logger
 
@@ -30,14 +33,42 @@ GITHUB_DOWNLOAD = f"https://github.com/{UPSTREAM_REPO}/releases/download"
 ENV_VERSION = "TOOLCRATE_SLDL_VERSION"
 # Environment variable to force rebuild-from-source path
 ENV_BUILD_FROM_SOURCE = "TOOLCRATE_SLDL_BUILD_FROM_SOURCE"
+APP_DIR_ENV = "TOOLCRATE_HOME"
 
 
 class BinaryError(RuntimeError):
     """Raised when the sldl binary cannot be provisioned."""
 
 
+@dataclass(frozen=True)
+class ToolStatus:
+    name: str
+    command: str
+    managed_path: Path
+    system_path: Optional[str]
+    installed: bool
+    note: str = ""
+
+
+@dataclass(frozen=True)
+class ToolCheckResult:
+    name: str
+    command: str
+    executable: Optional[str]
+    ok: bool
+    returncode: Optional[int]
+    output: str
+    error: str = ""
+
+
 def _data_dir() -> Path:
     """Return the toolcrate data directory (~/.local/share/toolcrate)."""
+    override = os.environ.get(APP_DIR_ENV)
+    if override:
+        path = Path(override).expanduser()
+        path.mkdir(parents=True, exist_ok=True)
+        return path
+
     xdg = os.environ.get("XDG_DATA_HOME")
     base = Path(xdg) if xdg else Path.home() / ".local" / "share"
     path = base / "toolcrate"
@@ -52,6 +83,47 @@ def _binary_name() -> str:
 def get_binary_path() -> Path:
     """Return the on-disk path where the sldl binary should live."""
     return _data_dir() / "bin" / _binary_name()
+
+
+def managed_bin_dir() -> Path:
+    """Return the directory containing ToolCrate-managed command shims."""
+    path = _data_dir() / "bin"
+    path.mkdir(parents=True, exist_ok=True)
+    return path
+
+
+def managed_executable(command: str) -> Path:
+    suffix = ".cmd" if sys.platform == "win32" else ""
+    return managed_bin_dir() / f"{command}{suffix}"
+
+
+def find_managed(command: str) -> Optional[Path]:
+    path = managed_executable(command)
+    if path.exists() and os.access(path, os.X_OK):
+        return path
+    return None
+
+
+def find_executable(command: str) -> Optional[str]:
+    managed = find_managed(command)
+    if managed:
+        return str(managed)
+    return shutil.which(command)
+
+
+def python_module_available(module_name: str) -> bool:
+    try:
+        return importlib.util.find_spec(module_name) is not None
+    except ModuleNotFoundError:
+        return False
+
+
+def project_root() -> Path:
+    current_dir = Path(__file__).resolve()
+    for parent in current_dir.parents:
+        if (parent / "pyproject.toml").exists():
+            return parent
+    return current_dir.parents[3]
 
 
 def _version_file() -> Path:
@@ -174,7 +246,9 @@ def _install_from_release(version: str) -> Path:
     finally:
         tmp_zip.unlink(missing_ok=True)
 
-    binary_path.chmod(binary_path.stat().st_mode | stat.S_IXUSR | stat.S_IXGRP | stat.S_IXOTH)
+    binary_path.chmod(
+        binary_path.stat().st_mode | stat.S_IXUSR | stat.S_IXGRP | stat.S_IXOTH
+    )
     _strip_macos_quarantine(binary_path)
 
     _version_file().write_text(version)
@@ -217,11 +291,15 @@ def _build_from_source(project_root: Path) -> Path:
     logger.info(f"Building sldl from source ({rid}) — this may take a minute")
     result = subprocess.run(
         [
-            "dotnet", "publish",
-            "-c", "Release",
-            "-r", rid,
+            "dotnet",
+            "publish",
+            "-c",
+            "Release",
+            "-r",
+            rid,
             "--self-contained",
-            "-o", str(out_dir),
+            "-o",
+            str(out_dir),
         ],
         cwd=str(src_dir),
     )
@@ -232,7 +310,9 @@ def _build_from_source(project_root: Path) -> Path:
     if not binary_path.exists():
         raise BinaryError(f"Build succeeded but {binary_path} is missing")
 
-    binary_path.chmod(binary_path.stat().st_mode | stat.S_IXUSR | stat.S_IXGRP | stat.S_IXOTH)
+    binary_path.chmod(
+        binary_path.stat().st_mode | stat.S_IXUSR | stat.S_IXGRP | stat.S_IXOTH
+    )
     _version_file().write_text("source-build")
     logger.info(f"Built sldl at {binary_path}")
     return binary_path
@@ -279,3 +359,175 @@ def ensure_sldl_binary(
             "provided for the source-build fallback."
         )
     return _build_from_source(project_root)
+
+
+def tool_statuses() -> list[ToolStatus]:
+    sldl_path = get_binary_path()
+    commands = [
+        (
+            "slsk-batchdl",
+            "sldl",
+            sldl_path,
+            shutil.which("sldl"),
+            "managed sldl or system sldl",
+        ),
+        (
+            "shazam-tool",
+            "shazam-tool",
+            managed_executable("shazam-tool"),
+            None,
+            "managed shim only",
+        ),
+        (
+            "mdl-tool",
+            "mdl-tool",
+            managed_executable("mdl-tool"),
+            shutil.which("mdl-utils"),
+            "managed shim; mdl-utils or built-in metadata fallback",
+        ),
+    ]
+    statuses = []
+    for name, command, managed, system, note in commands:
+        statuses.append(
+            ToolStatus(
+                name=name,
+                command=command,
+                managed_path=managed,
+                system_path=system,
+                installed=(managed.exists() and os.access(managed, os.X_OK))
+                or system is not None,
+                note=note,
+            )
+        )
+    return statuses
+
+
+def verify_command_for_tool(command: str) -> list[str]:
+    if command == "sldl":
+        return ["--version"]
+    return ["--help"]
+
+
+def executable_for_status(status: ToolStatus) -> Optional[str]:
+    if status.command in {"shazam-tool", "mdl-tool"}:
+        managed = find_managed(status.command)
+        return str(managed) if managed else None
+    if status.managed_path.exists() and os.access(status.managed_path, os.X_OK):
+        return str(status.managed_path)
+    return shutil.which(status.command)
+
+
+def verify_tools(timeout: int = 10) -> list[ToolCheckResult]:
+    results = []
+    for status in tool_statuses():
+        executable = executable_for_status(status)
+        if executable is None:
+            results.append(
+                ToolCheckResult(
+                    name=status.name,
+                    command=status.command,
+                    executable=None,
+                    ok=False,
+                    returncode=None,
+                    output="",
+                    error="not installed",
+                )
+            )
+            continue
+
+        try:
+            completed = subprocess.run(
+                [executable, *verify_command_for_tool(status.command)],
+                capture_output=True,
+                text=True,
+                timeout=timeout,
+                check=False,
+            )
+        except Exception as exc:  # noqa: BLE001 - converted to check result.
+            results.append(
+                ToolCheckResult(
+                    name=status.name,
+                    command=status.command,
+                    executable=executable,
+                    ok=False,
+                    returncode=None,
+                    output="",
+                    error=str(exc),
+                )
+            )
+            continue
+
+        output = "\n".join(
+            part.strip()
+            for part in [completed.stdout, completed.stderr]
+            if part and part.strip()
+        )
+        results.append(
+            ToolCheckResult(
+                name=status.name,
+                command=status.command,
+                executable=executable,
+                ok=completed.returncode == 0,
+                returncode=completed.returncode,
+                output=output,
+            )
+        )
+    return results
+
+
+def write_script(path: Path, body: str) -> Path:
+    path.parent.mkdir(parents=True, exist_ok=True)
+    path.write_text(body, encoding="utf-8")
+    path.chmod(path.stat().st_mode | stat.S_IXUSR | stat.S_IXGRP | stat.S_IXOTH)
+    return path
+
+
+def shlex_quote(value: str) -> str:
+    return "'" + value.replace("'", "'\"'\"'") + "'"
+
+
+def install_sldl() -> Path:
+    return ensure_sldl_binary(project_root=project_root())
+
+
+def install_shazam_tool() -> Path:
+    root = project_root()
+    shazam_script = root / "src" / "Shazam-Tool" / "shazam.py"
+    if not shazam_script.exists():
+        raise BinaryError(
+            "Could not find src/Shazam-Tool/shazam.py. Initialize the Shazam-Tool submodule first."
+        )
+
+    script = f"""#!/usr/bin/env bash
+set -euo pipefail
+exec {shlex_quote(sys.executable)} {shlex_quote(str(shazam_script))} "$@"
+"""
+    return write_script(managed_executable("shazam-tool"), script)
+
+
+def install_mdl_tool() -> Path:
+    existing = shutil.which("mdl-utils")
+    if existing:
+        script = f"""#!/usr/bin/env bash
+set -euo pipefail
+exec {shlex_quote(existing)} "$@"
+"""
+    elif python_module_available("mdl_utils.cli"):
+        script = f"""#!/usr/bin/env bash
+set -euo pipefail
+exec {shlex_quote(sys.executable)} -m mdl_utils.cli "$@"
+"""
+    else:
+        script = f"""#!/usr/bin/env bash
+set -euo pipefail
+exec {shlex_quote(sys.executable)} -m toolcrate.cli.mdl "$@"
+"""
+    return write_script(managed_executable("mdl-tool"), script)
+
+
+def install_all() -> dict[str, Path]:
+    return {
+        "sldl": install_sldl(),
+        "shazam-tool": install_shazam_tool(),
+        "mdl-tool": install_mdl_tool(),
+    }

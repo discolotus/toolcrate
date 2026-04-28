@@ -1,20 +1,43 @@
-"""Install and locate ToolCrate-managed command line tools."""
+"""Manage the sldl (slsk-batchdl) binary: download or build from source.
+
+Resolves the latest upstream release on first run, caches the resolved version,
+and falls back to building from the git submodule if the downloaded binary
+cannot be executed (e.g. macOS Gatekeeper quarantine on unsigned binaries).
+"""
 
 from __future__ import annotations
 
-import os
+import io
 import importlib.util
+import json
+import os
+import platform
 import shutil
 import stat
 import subprocess
 import sys
+import urllib.error
 import urllib.request
 import zipfile
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Dict, List, Optional
+from typing import Optional
 
+from loguru import logger
+
+UPSTREAM_REPO = "fiso64/slsk-batchdl"
+GITHUB_API_LATEST = f"https://api.github.com/repos/{UPSTREAM_REPO}/releases/latest"
+GITHUB_DOWNLOAD = f"https://github.com/{UPSTREAM_REPO}/releases/download"
+
+# Environment variable to override the pinned version (e.g. to test a specific tag)
+ENV_VERSION = "TOOLCRATE_SLDL_VERSION"
+# Environment variable to force rebuild-from-source path
+ENV_BUILD_FROM_SOURCE = "TOOLCRATE_SLDL_BUILD_FROM_SOURCE"
 APP_DIR_ENV = "TOOLCRATE_HOME"
+
+
+class BinaryError(RuntimeError):
+    """Raised when the sldl binary cannot be provisioned."""
 
 
 @dataclass(frozen=True)
@@ -38,47 +61,40 @@ class ToolCheckResult:
     error: str = ""
 
 
-def project_root() -> Path:
-    current_dir = Path(__file__).resolve()
-    for parent in current_dir.parents:
-        if (parent / "pyproject.toml").exists() or (parent / "setup.py").exists():
-            return parent
-    return current_dir.parents[3]
-
-
-def toolcrate_home() -> Path:
+def _data_dir() -> Path:
+    """Return the toolcrate data directory (~/.local/share/toolcrate)."""
     override = os.environ.get(APP_DIR_ENV)
     if override:
-        return Path(override).expanduser()
+        path = Path(override).expanduser()
+        path.mkdir(parents=True, exist_ok=True)
+        return path
 
-    if sys.platform == "darwin":
-        return Path.home() / "Library" / "Application Support" / "toolcrate"
-    if sys.platform == "win32":
-        base = os.environ.get("LOCALAPPDATA", str(Path.home() / "AppData" / "Local"))
-        return Path(base) / "toolcrate"
-    return (
-        Path(os.environ.get("XDG_DATA_HOME", Path.home() / ".local" / "share"))
-        / "toolcrate"
-    )
+    xdg = os.environ.get("XDG_DATA_HOME")
+    base = Path(xdg) if xdg else Path.home() / ".local" / "share"
+    path = base / "toolcrate"
+    path.mkdir(parents=True, exist_ok=True)
+    return path
+
+
+def _binary_name() -> str:
+    return "sldl.exe" if sys.platform == "win32" else "sldl"
+
+
+def get_binary_path() -> Path:
+    """Return the on-disk path where the sldl binary should live."""
+    return _data_dir() / "bin" / _binary_name()
 
 
 def managed_bin_dir() -> Path:
-    return toolcrate_home() / "bin"
-
-
-def managed_tools_dir() -> Path:
-    return toolcrate_home() / "tools"
+    """Return the directory containing ToolCrate-managed command shims."""
+    path = _data_dir() / "bin"
+    path.mkdir(parents=True, exist_ok=True)
+    return path
 
 
 def managed_executable(command: str) -> Path:
     suffix = ".cmd" if sys.platform == "win32" else ""
     return managed_bin_dir() / f"{command}{suffix}"
-
-
-def make_executable(path: Path) -> None:
-    if sys.platform != "win32":
-        mode = path.stat().st_mode
-        path.chmod(mode | stat.S_IXUSR | stat.S_IXGRP | stat.S_IXOTH)
 
 
 def find_managed(command: str) -> Optional[Path]:
@@ -102,20 +118,276 @@ def python_module_available(module_name: str) -> bool:
         return False
 
 
-def tool_statuses() -> List[ToolStatus]:
+def project_root() -> Path:
+    current_dir = Path(__file__).resolve()
+    for parent in current_dir.parents:
+        if (parent / "pyproject.toml").exists():
+            return parent
+    return current_dir.parents[3]
+
+
+def _version_file() -> Path:
+    return _data_dir() / "bin" / "sldl.version"
+
+
+def get_platform_asset_name(version: str) -> str:
+    """Return the upstream release asset filename for this host.
+
+    Upstream publishes assets like `sldl_linux-x64.zip`, `sldl_osx-arm64.zip`,
+    `sldl_win-x64.zip`. Version tags look like `v2.4.7` but asset names don't
+    embed the version.
+    """
+    del version  # unused; asset names are version-independent upstream
+    system = sys.platform
+    machine = platform.machine().lower()
+
+    if system == "darwin":
+        rid = "osx-arm64" if machine in ("arm64", "aarch64") else "osx-x64"
+    elif system == "linux":
+        rid = "linux-arm64" if machine in ("arm64", "aarch64") else "linux-x64"
+    elif system == "win32":
+        rid = "win-x64"
+    else:
+        raise BinaryError(f"Unsupported platform: {system}/{machine}")
+
+    return f"sldl_{rid}.zip"
+
+
+def resolve_latest_version(timeout: float = 10.0) -> str:
+    """Query GitHub for the latest release tag of slsk-batchdl."""
+    override = os.environ.get(ENV_VERSION)
+    if override:
+        logger.info(f"Using pinned sldl version from {ENV_VERSION}: {override}")
+        return override
+
+    req = urllib.request.Request(
+        GITHUB_API_LATEST,
+        headers={"Accept": "application/vnd.github+json", "User-Agent": "toolcrate"},
+    )
+    try:
+        with urllib.request.urlopen(req, timeout=timeout) as resp:
+            payload = json.loads(resp.read().decode("utf-8"))
+    except (urllib.error.URLError, TimeoutError) as e:
+        raise BinaryError(f"Could not resolve latest sldl version: {e}") from e
+
+    tag = payload.get("tag_name")
+    if not tag:
+        raise BinaryError("GitHub release response missing tag_name")
+    return tag
+
+
+def _download(url: str, dest: Path, timeout: float = 120.0) -> None:
+    logger.info(f"Downloading {url}")
+    req = urllib.request.Request(url, headers={"User-Agent": "toolcrate"})
+    try:
+        with urllib.request.urlopen(req, timeout=timeout) as resp:
+            dest.write_bytes(resp.read())
+    except (urllib.error.URLError, TimeoutError) as e:
+        raise BinaryError(f"Failed to download {url}: {e}") from e
+
+
+def _strip_macos_quarantine(path: Path) -> None:
+    """Remove the com.apple.quarantine xattr so Gatekeeper won't block execution.
+
+    Downloaded binaries get quarantined by macOS. Stripping the attribute is the
+    standard workaround for unsigned tools when building from source isn't
+    viable. This is a no-op on non-macOS platforms.
+    """
+    if sys.platform != "darwin":
+        return
+    if not shutil.which("xattr"):
+        logger.warning("xattr not found; cannot strip macOS quarantine flag")
+        return
+    try:
+        subprocess.run(
+            ["xattr", "-dr", "com.apple.quarantine", str(path)],
+            check=False,
+            capture_output=True,
+        )
+        logger.info(f"Stripped com.apple.quarantine from {path}")
+    except Exception as e:  # pragma: no cover - best-effort
+        logger.warning(f"Could not strip quarantine on {path}: {e}")
+
+
+def _verify_executable(path: Path) -> bool:
+    """Return True if the binary can produce a version string."""
+    try:
+        result = subprocess.run(
+            [str(path), "--version"],
+            capture_output=True,
+            text=True,
+            timeout=15,
+        )
+        return result.returncode == 0
+    except (OSError, subprocess.TimeoutExpired) as e:
+        logger.warning(f"Binary {path} failed to execute: {e}")
+        return False
+
+
+def _install_from_release(version: str) -> Path:
+    binary_path = get_binary_path()
+    binary_path.parent.mkdir(parents=True, exist_ok=True)
+
+    asset = get_platform_asset_name(version)
+    url = f"{GITHUB_DOWNLOAD}/{version}/{asset}"
+
+    tmp_zip = binary_path.parent / asset
+    _download(url, tmp_zip)
+
+    try:
+        with zipfile.ZipFile(io.BytesIO(tmp_zip.read_bytes())) as zf:
+            # Find the sldl binary inside the archive
+            wanted = _binary_name()
+            members = [m for m in zf.namelist() if m.endswith(wanted)]
+            if not members:
+                raise BinaryError(f"{asset} did not contain {wanted}")
+            with zf.open(members[0]) as src, open(binary_path, "wb") as dst:
+                shutil.copyfileobj(src, dst)
+    finally:
+        tmp_zip.unlink(missing_ok=True)
+
+    binary_path.chmod(
+        binary_path.stat().st_mode | stat.S_IXUSR | stat.S_IXGRP | stat.S_IXOTH
+    )
+    _strip_macos_quarantine(binary_path)
+
+    _version_file().write_text(version)
+    logger.info(f"Installed sldl {version} at {binary_path}")
+    return binary_path
+
+
+def _build_from_source(project_root: Path) -> Path:
+    """Build sldl from the src/slsk-batchdl submodule using `dotnet publish`.
+
+    Used as a fallback when the downloaded binary is blocked (e.g. unsigned on
+    macOS) and on platforms/architectures without a prebuilt release.
+    """
+    src_dir = project_root / "src" / "slsk-batchdl"
+    if not src_dir.exists() or not any(src_dir.iterdir()):
+        raise BinaryError(
+            f"Submodule not initialized at {src_dir}. "
+            "Run: git submodule update --init --recursive"
+        )
+    if not shutil.which("dotnet"):
+        raise BinaryError(
+            "dotnet SDK not found. Install .NET 8 SDK to build sldl from source, "
+            "or set TOOLCRATE_SLDL_VERSION to a working prebuilt release."
+        )
+
+    system = sys.platform
+    machine = platform.machine().lower()
+    if system == "darwin":
+        rid = "osx-arm64" if machine in ("arm64", "aarch64") else "osx-x64"
+    elif system == "linux":
+        rid = "linux-arm64" if machine in ("arm64", "aarch64") else "linux-x64"
+    elif system == "win32":
+        rid = "win-x64"
+    else:
+        raise BinaryError(f"Unsupported platform: {system}/{machine}")
+
+    out_dir = _data_dir() / "bin"
+    out_dir.mkdir(parents=True, exist_ok=True)
+
+    logger.info(f"Building sldl from source ({rid}) — this may take a minute")
+    result = subprocess.run(
+        [
+            "dotnet",
+            "publish",
+            "-c",
+            "Release",
+            "-r",
+            rid,
+            "--self-contained",
+            "-o",
+            str(out_dir),
+        ],
+        cwd=str(src_dir),
+    )
+    if result.returncode != 0:
+        raise BinaryError(f"dotnet publish failed with exit code {result.returncode}")
+
+    binary_path = out_dir / _binary_name()
+    if not binary_path.exists():
+        raise BinaryError(f"Build succeeded but {binary_path} is missing")
+
+    binary_path.chmod(
+        binary_path.stat().st_mode | stat.S_IXUSR | stat.S_IXGRP | stat.S_IXOTH
+    )
+    _version_file().write_text("source-build")
+    logger.info(f"Built sldl at {binary_path}")
+    return binary_path
+
+
+def ensure_sldl_binary(
+    project_root: Path | None = None,
+    force_refresh: bool = False,
+) -> Path:
+    """Return a path to a working sldl binary, installing or building if needed.
+
+    Order of operations:
+      1. If the binary already exists and executes, return it (unless force_refresh).
+      2. If TOOLCRATE_SLDL_BUILD_FROM_SOURCE is set, build from submodule.
+      3. Otherwise, download the pinned/latest release, strip quarantine, verify.
+      4. If verification fails (common on macOS due to code signing), fall back
+         to building from source.
+    """
+    binary_path = get_binary_path()
+
+    if not force_refresh and binary_path.exists() and _verify_executable(binary_path):
+        return binary_path
+
+    if os.environ.get(ENV_BUILD_FROM_SOURCE):
+        if project_root is None:
+            raise BinaryError("project_root required for source build")
+        return _build_from_source(project_root)
+
+    try:
+        version = resolve_latest_version()
+        installed = _install_from_release(version)
+        if _verify_executable(installed):
+            return installed
+        logger.warning(
+            "Downloaded sldl binary failed to execute (likely a macOS signing "
+            "issue). Falling back to building from source."
+        )
+    except BinaryError as e:
+        logger.warning(f"Release download failed: {e}. Attempting source build.")
+
+    if project_root is None:
+        raise BinaryError(
+            "Downloaded sldl binary is not executable and no project_root was "
+            "provided for the source-build fallback."
+        )
+    return _build_from_source(project_root)
+
+
+def tool_statuses() -> list[ToolStatus]:
+    sldl_path = get_binary_path()
     commands = [
-        ("slsk-batchdl", "sldl", shutil.which("sldl"), "managed sldl or system sldl"),
-        ("shazam-tool", "shazam-tool", None, "managed shim only"),
+        (
+            "slsk-batchdl",
+            "sldl",
+            sldl_path,
+            shutil.which("sldl"),
+            "managed sldl or system sldl",
+        ),
+        (
+            "shazam-tool",
+            "shazam-tool",
+            managed_executable("shazam-tool"),
+            None,
+            "managed shim only",
+        ),
         (
             "mdl-tool",
             "mdl-tool",
+            managed_executable("mdl-tool"),
             shutil.which("mdl-utils"),
             "managed shim; mdl-utils or built-in metadata fallback",
         ),
     ]
     statuses = []
-    for name, command, system, note in commands:
-        managed = managed_executable(command)
+    for name, command, managed, system, note in commands:
         statuses.append(
             ToolStatus(
                 name=name,
@@ -130,7 +402,7 @@ def tool_statuses() -> List[ToolStatus]:
     return statuses
 
 
-def verify_command_for_tool(command: str) -> List[str]:
+def verify_command_for_tool(command: str) -> list[str]:
     if command == "sldl":
         return ["--version"]
     return ["--help"]
@@ -140,10 +412,12 @@ def executable_for_status(status: ToolStatus) -> Optional[str]:
     if status.command in {"shazam-tool", "mdl-tool"}:
         managed = find_managed(status.command)
         return str(managed) if managed else None
-    return find_executable(status.command)
+    if status.managed_path.exists() and os.access(status.managed_path, os.X_OK):
+        return str(status.managed_path)
+    return shutil.which(status.command)
 
 
-def verify_tools(timeout: int = 10) -> List[ToolCheckResult]:
+def verify_tools(timeout: int = 10) -> list[ToolCheckResult]:
     results = []
     for status in tool_statuses():
         executable = executable_for_status(status)
@@ -163,7 +437,7 @@ def verify_tools(timeout: int = 10) -> List[ToolCheckResult]:
 
         try:
             completed = subprocess.run(
-                [executable] + verify_command_for_tool(status.command),
+                [executable, *verify_command_for_tool(status.command)],
                 capture_output=True,
                 text=True,
                 timeout=timeout,
@@ -201,120 +475,26 @@ def verify_tools(timeout: int = 10) -> List[ToolCheckResult]:
     return results
 
 
-def platform_runtime() -> str:
-    machine = os.uname().machine if hasattr(os, "uname") else ""
-    if sys.platform == "darwin":
-        return "osx-arm64" if machine == "arm64" else "osx-x64"
-    if sys.platform.startswith("linux"):
-        return "linux-arm64" if machine in {"aarch64", "arm64"} else "linux-x64"
-    if sys.platform == "win32":
-        return "win-x64"
-    raise RuntimeError(f"Unsupported platform: {sys.platform}")
-
-
-def run(command: List[str], cwd: Optional[Path] = None) -> None:
-    subprocess.run(command, cwd=str(cwd) if cwd else None, check=True)
-
-
-def install_sldl() -> Path:
-    """Install the sldl executable into ToolCrate's managed bin directory."""
-    managed_bin_dir().mkdir(parents=True, exist_ok=True)
-    managed_tools_dir().mkdir(parents=True, exist_ok=True)
-
-    root = project_root()
-    source_binary_candidates = [
-        root / "src" / "bin" / "sldl",
-        root / "src" / "slsk-batchdl" / "bin" / platform_runtime() / "sldl",
-    ]
-    for candidate in source_binary_candidates:
-        if candidate.exists():
-            runtime_dir = managed_tools_dir() / "sldl"
-            if runtime_dir.exists():
-                shutil.rmtree(runtime_dir)
-            shutil.copytree(candidate.parent, runtime_dir)
-            runtime_binary = runtime_dir / candidate.name
-            make_executable(runtime_binary)
-            return write_exec_wrapper("sldl", runtime_binary)
-
-    source_dir = root / "src" / "slsk-batchdl"
-    if source_dir.exists() and shutil.which("dotnet"):
-        output_dir = managed_tools_dir() / "sldl"
-        output_dir.mkdir(parents=True, exist_ok=True)
-        run(
-            [
-                "dotnet",
-                "publish",
-                "slsk-batchdl/slsk-batchdl.csproj",
-                "-c",
-                "Release",
-                "-r",
-                platform_runtime(),
-                "--self-contained",
-                "-o",
-                str(output_dir),
-            ],
-            cwd=source_dir,
-        )
-        binary_name = "sldl.exe" if sys.platform == "win32" else "sldl"
-        built_binary = output_dir / binary_name
-        if not built_binary.exists():
-            raise RuntimeError(
-                f"dotnet publish completed, but {built_binary} was not created"
-            )
-        make_executable(built_binary)
-        return write_exec_wrapper("sldl", built_binary)
-
-    if sys.platform == "darwin" and platform_runtime() == "osx-arm64":
-        return download_sldl_release("v2.4.6", "sldl_osx-arm64.zip")
-
-    raise RuntimeError(
-        "Could not install sldl. Initialize src/slsk-batchdl and install dotnet, "
-        "or place a compatible sldl binary at src/bin/sldl."
-    )
-
-
-def download_sldl_release(version: str, archive_name: str) -> Path:
-    managed_bin_dir().mkdir(parents=True, exist_ok=True)
-    download_dir = managed_tools_dir() / "downloads"
-    download_dir.mkdir(parents=True, exist_ok=True)
-    archive_path = download_dir / archive_name
-    url = f"https://github.com/gfrancesco-ul/slsk-batchdl/releases/download/{version}/{archive_name}"
-    urllib.request.urlretrieve(url, archive_path)
-
-    extract_dir = managed_tools_dir() / "sldl-release"
-    if extract_dir.exists():
-        shutil.rmtree(extract_dir)
-    extract_dir.mkdir(parents=True)
-    with zipfile.ZipFile(archive_path) as archive:
-        archive.extractall(extract_dir)
-
-    binary = next((path for path in extract_dir.rglob("sldl") if path.is_file()), None)
-    if binary is None:
-        raise RuntimeError(f"No sldl executable found in {archive_path}")
-    make_executable(binary)
-    return write_exec_wrapper("sldl", binary)
-
-
 def write_script(path: Path, body: str) -> Path:
     path.parent.mkdir(parents=True, exist_ok=True)
     path.write_text(body, encoding="utf-8")
-    make_executable(path)
+    path.chmod(path.stat().st_mode | stat.S_IXUSR | stat.S_IXGRP | stat.S_IXOTH)
     return path
 
 
-def write_exec_wrapper(command: str, target: Path) -> Path:
-    script = f"""#!/usr/bin/env bash
-set -euo pipefail
-exec {shlex_quote(str(target))} "$@"
-"""
-    return write_script(managed_executable(command), script)
+def shlex_quote(value: str) -> str:
+    return "'" + value.replace("'", "'\"'\"'") + "'"
+
+
+def install_sldl() -> Path:
+    return ensure_sldl_binary(project_root=project_root())
 
 
 def install_shazam_tool() -> Path:
     root = project_root()
     shazam_script = root / "src" / "Shazam-Tool" / "shazam.py"
     if not shazam_script.exists():
-        raise RuntimeError(
+        raise BinaryError(
             "Could not find src/Shazam-Tool/shazam.py. Initialize the Shazam-Tool submodule first."
         )
 
@@ -345,13 +525,9 @@ exec {shlex_quote(sys.executable)} -m toolcrate.cli.mdl "$@"
     return write_script(managed_executable("mdl-tool"), script)
 
 
-def install_all() -> Dict[str, Path]:
+def install_all() -> dict[str, Path]:
     return {
         "sldl": install_sldl(),
         "shazam-tool": install_shazam_tool(),
         "mdl-tool": install_mdl_tool(),
     }
-
-
-def shlex_quote(value: str) -> str:
-    return "'" + value.replace("'", "'\"'\"'") + "'"

@@ -47,24 +47,23 @@ def test_cli_verify_reports_failures(monkeypatch, tmp_path):
     assert "mdl-tool: failed" in result.output
 
 
-def test_install_sldl_copies_runtime_directory(monkeypatch, tmp_path):
+def test_install_sldl_uses_native_binary_provisioner(monkeypatch, tmp_path):
     monkeypatch.setenv(binary_manager.APP_DIR_ENV, str(tmp_path / "home"))
     project = tmp_path / "project"
-    source_dir = project / "src" / "bin"
-    source_sldl = make_executable(
-        source_dir / "sldl", "#!/usr/bin/env bash\necho runtime-ok\n"
+    provisioned = make_executable(
+        tmp_path / "managed" / "sldl", "#!/usr/bin/env bash\necho runtime-ok\n"
     )
-    (source_dir / "sldl.dll").write_text("runtime dependency", encoding="utf-8")
     monkeypatch.setattr(binary_manager, "project_root", lambda: project)
+    monkeypatch.setattr(
+        binary_manager,
+        "ensure_sldl_binary",
+        lambda project_root: provisioned,
+    )
 
-    shim = binary_manager.install_sldl()
+    installed = binary_manager.install_sldl()
 
-    assert shim == binary_manager.managed_executable("sldl")
-    assert os.access(shim, os.X_OK)
-    runtime_sldl = binary_manager.managed_tools_dir() / "sldl" / source_sldl.name
-    assert runtime_sldl.exists()
-    assert (binary_manager.managed_tools_dir() / "sldl" / "sldl.dll").exists()
-    assert str(runtime_sldl) in shim.read_text(encoding="utf-8")
+    assert installed == provisioned
+    assert os.access(installed, os.X_OK)
 
 
 def test_install_shazam_and_mdl_create_runnable_shims(monkeypatch, tmp_path):

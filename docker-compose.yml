@@ -1,0 +1,28 @@
+version: '3.8'
+
+services:
+  toolcrate:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    image: toolcrate:latest
+    container_name: toolcrate
+    restart: unless-stopped
+    environment:
+      - PYTHONPATH=/app/src
+      - PYTHONUNBUFFERED=1
+    working_dir: /app
+    volumes:
+      # Config: place sldl.conf, toolcrate.yaml etc. here
+      - ${TOOLCRATE_CONFIG:-./config}:/app/config
+      # Downloads land here
+      - ${TOOLCRATE_DATA:-./data}:/app/data
+      - ${TOOLCRATE_LOGS:-./logs}:/app/logs
+    networks:
+      - toolcrate-network
+    # Keeps container running so cron and exec commands work
+    command: ["tail", "-f", "/dev/null"]
+
+networks:
+  toolcrate-network:
+    driver: bridge

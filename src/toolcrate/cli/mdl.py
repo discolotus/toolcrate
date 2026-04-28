@@ -6,12 +6,12 @@ import argparse
 import json
 import sys
 from pathlib import Path
-from typing import Any, Dict, List, Optional
+from typing import Any
 
 from pydub.utils import mediainfo
 
 
-def read_metadata(path: Path) -> Dict[str, Any]:
+def read_metadata(path: Path) -> dict[str, Any]:
     info = mediainfo(str(path))
     tags = info.get("TAG", {}) if isinstance(info.get("TAG"), dict) else {}
     return {
@@ -25,7 +25,7 @@ def read_metadata(path: Path) -> Dict[str, Any]:
     }
 
 
-def main(argv: Optional[List[str]] = None) -> int:
+def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description="ToolCrate metadata utility")
     parser.add_argument(
         "files",

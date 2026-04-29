@@ -219,3 +219,7 @@ config/crontabs/
 config/download-queue.txt
 
 .superpowers/
+
+# Local dev databases
+*.db
+toolcrate_dev.db

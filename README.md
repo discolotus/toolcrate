@@ -111,6 +111,24 @@ uv run toolcrate queue run
 
 See [docs/WISHLIST_SCHEDULING.md](docs/WISHLIST_SCHEDULING.md) and [docs/DOWNLOAD_QUEUE.md](docs/DOWNLOAD_QUEUE.md) for details.
 
+### Web/API daemon (Phase 1)
+
+ToolCrate now ships a long-lived daemon that exposes a JSON API for managing
+source lists and triggering downloads. No frontend yet — Phase 1 is backend
+only.
+
+```bash
+uv run toolcrate migrate         # one-time: import existing flat files
+uv run toolcrate serve           # starts API on http://127.0.0.1:48721
+```
+
+The first launch generates an API token at `~/.config/toolcrate/api-token`.
+Send `Authorization: Bearer <token>` on requests.
+
+OpenAPI docs: <http://127.0.0.1:48721/api/docs>
+
+See [docs/SERVE.md](docs/SERVE.md) for endpoint reference.
+
 ## Managed Tools
 
 ToolCrate can install and verify local command shims for the integrated tools:

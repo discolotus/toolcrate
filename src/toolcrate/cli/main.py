@@ -15,6 +15,7 @@ from . import binary_manager
 from .binary_manager import BinaryError, ensure_sldl_binary, get_binary_path
 from .queue import queue
 from .schedule import schedule
+from .migrate import migrate as migrate_cmd
 from .serve import serve as serve_cmd
 from .wishlist_run import wishlist_run
 from .wrappers import (
@@ -214,6 +215,9 @@ main.add_command(queue)
 
 # Add the serve command
 main.add_command(serve_cmd)
+
+# Add the migrate command
+main.add_command(migrate_cmd)
 
 
 @main.group(name="slsk-tool")

@@ -54,6 +54,11 @@ class TrackEntry(Base):
     __tablename__ = "track_entry"
     __table_args__ = (
         Index("ix_track_entry_list_position", "source_list_id", "position"),
+        # NOTE: SQLite treats NULL != NULL in UNIQUE, so this constraint
+        # behaves as a partial unique. If we ever port to Postgres, replace
+        # with `Index(..., unique=True, sqlite_where=isrc.is_not(None))` or
+        # an equivalent partial index, otherwise multiple NULL ISRCs
+        # within a single source_list would conflict.
         UniqueConstraint("source_list_id", "isrc", name="uq_track_list_isrc"),
     )
 

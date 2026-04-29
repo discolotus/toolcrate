@@ -58,7 +58,12 @@ class DownloadService:
             sl = await session.get(SourceList, track.source_list_id)
         query = f"{track.artist} - {track.title}"
 
-        log_file = Path(log_path) if log_path else Path(tempfile.mktemp(suffix=".log"))
+        if log_path:
+            log_file = Path(log_path)
+        else:
+            tmp = tempfile.NamedTemporaryFile(prefix="sldl-track-", suffix=".log", delete=False)
+            tmp.close()
+            log_file = Path(tmp.name)
         with tempfile.TemporaryDirectory() as tmpdir:
             index_path = str(Path(tmpdir) / "index.sldl")
             cmd = build_command(

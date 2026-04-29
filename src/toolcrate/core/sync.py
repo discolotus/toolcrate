@@ -67,7 +67,13 @@ class SyncService:
         if not sl.source_url and sl.source_type != "manual":
             raise ValueError(f"list {list_id} has no source_url")
 
-        log_file = Path(log_path) if log_path else Path(tempfile.mktemp(prefix="sldl-", suffix=".log"))
+        if log_path:
+            log_file = Path(log_path)
+        else:
+            # NamedTemporaryFile avoids the deprecated mktemp TOCTOU window.
+            tmp = tempfile.NamedTemporaryFile(prefix="sldl-", suffix=".log", delete=False)
+            tmp.close()
+            log_file = Path(tmp.name)
         log_file.parent.mkdir(parents=True, exist_ok=True)
 
         with tempfile.TemporaryDirectory() as tmpdir:

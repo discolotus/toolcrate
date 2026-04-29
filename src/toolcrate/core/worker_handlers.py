@@ -25,7 +25,11 @@ Handler = Callable[[Job], Awaitable[None]]
 
 
 def _make_log_path(job: Job) -> str:
-    return tempfile.mktemp(prefix=f"toolcrate-job-{job.id}-", suffix=".log")
+    # NamedTemporaryFile reserves a unique path atomically; we just need the name.
+    tmp = tempfile.NamedTemporaryFile(prefix=f"toolcrate-job-{job.id}-",
+                                      suffix=".log", delete=False)
+    tmp.close()
+    return tmp.name
 
 
 def build_handlers(

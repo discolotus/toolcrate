@@ -62,7 +62,7 @@ async def appctx(session_factory) -> AppCtx:
         api_token_hash=TEST_TOKEN_HASH,
         allowed_hosts={"localhost", "127.0.0.1", "testserver"},
         routers=[
-            build_health(version="0.1.0-test"),
+            build_health(version="0.1.0-test", token_hash=TEST_TOKEN_HASH),
             build_lists(src=src, queue=queue, token_hash=TEST_TOKEN_HASH),
             build_tracks(src=src, session_factory=session_factory, queue=queue, token_hash=TEST_TOKEN_HASH),
             build_jobs(queue=queue, session_factory=session_factory, token_hash=TEST_TOKEN_HASH),

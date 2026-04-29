@@ -121,7 +121,7 @@ def serve(host: str, port: int, reload: bool) -> None:
         api_token_hash=api_token_hash,
         allowed_hosts={"localhost", "127.0.0.1"},
         routers=[
-            build_health(version="0.1.0"),
+            build_health(version="0.1.0", token_hash=api_token_hash),
             build_lists(src=src, queue=queue, token_hash=api_token_hash),
             build_tracks(src=src, session_factory=sf, queue=queue, token_hash=api_token_hash),
             build_jobs(queue=queue, session_factory=sf, token_hash=api_token_hash),

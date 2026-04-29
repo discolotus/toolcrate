@@ -143,21 +143,21 @@ class TestEndToEndWorkflows:
     @patch("click.echo")
     @patch("sys.exit")
     def test_slsk_wrapper_help_workflow(self, mock_exit, mock_echo):
-        """Test slsk wrapper help workflow."""
+        """Test slsk wrapper exits with error when binary cannot be provisioned."""
+        from toolcrate.cli import binary_manager
         from toolcrate.cli.wrappers import run_slsk
 
         with (
             patch("toolcrate.cli.wrappers.get_project_root") as mock_root,
-            patch("pathlib.Path.exists", return_value=False),
-            patch("shutil.which", return_value=None),
-            patch("toolcrate.cli.wrappers.check_docker_image", return_value=False),
+            patch(
+                "toolcrate.cli.binary_manager.ensure_sldl_binary",
+                side_effect=binary_manager.BinaryError("no binary"),
+            ),
         ):
-
             mock_root.return_value = Path("/fake/root")
 
             run_slsk()
 
-            # Should show error message when not found
             mock_echo.assert_called_once()
             mock_exit.assert_called_once_with(1)
 
@@ -187,18 +187,14 @@ class TestEndToEndWorkflows:
     @patch("click.echo")
     @patch("sys.exit")
     def test_mdl_wrapper_help_workflow(self, mock_exit, mock_echo):
-        """Test mdl wrapper help workflow."""
+        """Test mdl wrapper exits with error when no managed binary is found."""
         from toolcrate.cli.wrappers import run_mdl
 
-        with (
-            patch("shutil.which", return_value=None),
-            patch("toolcrate.cli.wrappers.mdl_utils", side_effect=ImportError),
-            patch("toolcrate.cli.wrappers.check_docker_image", return_value=False),
+        with patch(
+            "toolcrate.cli.binary_manager.find_managed", return_value=None
         ):
-
             run_mdl()
 
-            # Should show error message when not found
             mock_echo.assert_called_once()
             mock_exit.assert_called_once_with(1)
 
@@ -291,22 +287,22 @@ class TestExternalToolIntegration:
 
     def test_slsk_tool_integration(self):
         """Test integration with SLSK tool."""
+        from toolcrate.cli import binary_manager
         from toolcrate.cli.wrappers import run_slsk
 
         # Test that the wrapper function exists and is callable
         assert callable(run_slsk)
 
-        # Test with mocked environment
         with (
             patch("sys.argv", ["slsk-tool"]),
             patch("toolcrate.cli.wrappers.get_project_root"),
-            patch("pathlib.Path.exists", return_value=False),
-            patch("shutil.which", return_value=None),
-            patch("toolcrate.cli.wrappers.check_docker_image", return_value=False),
+            patch(
+                "toolcrate.cli.binary_manager.ensure_sldl_binary",
+                side_effect=binary_manager.BinaryError("no binary"),
+            ),
             patch("click.echo"),
             patch("sys.exit"),
         ):
-
             # Should handle missing tool gracefully
             run_slsk()
 
@@ -317,15 +313,11 @@ class TestExternalToolIntegration:
         # Test that the wrapper function exists and is callable
         assert callable(run_mdl)
 
-        # Test with mocked environment
         with (
             patch("sys.argv", ["mdl-tool"]),
-            patch("shutil.which", return_value=None),
-            patch("toolcrate.cli.wrappers.mdl_utils", side_effect=ImportError),
-            patch("toolcrate.cli.wrappers.check_docker_image", return_value=False),
+            patch("toolcrate.cli.binary_manager.find_managed", return_value=None),
             patch("click.echo"),
             patch("sys.exit"),
         ):
-
             # Should handle missing tool gracefully
             run_mdl()

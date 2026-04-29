@@ -56,10 +56,10 @@ class TestMainCLI:
         assert "Show information about available tools" in result.output
 
     def test_main_with_no_command(self):
-        """Test main CLI with no command shows help."""
+        """Test main CLI with no command emits usage and exits 2."""
         result = self.runner.invoke(main, [])
-        assert result.exit_code == 0
-        # Should show help or usage information
+        assert result.exit_code == 2
+        assert "Usage:" in result.output
 
     def test_main_with_invalid_command(self):
         """Test main CLI with invalid command."""
@@ -109,6 +109,7 @@ class TestMainCLI:
         # Test that the main function exists and is callable
         assert callable(main)
 
-        # Test with empty args (should show help)
-        result = self.runner.invoke(main, [])
+        # Empty args is a Click usage error (exit 2); --help shows the help screen.
+        result = self.runner.invoke(main, ["--help"])
         assert result.exit_code == 0
+        assert "Usage:" in result.output

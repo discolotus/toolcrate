@@ -323,6 +323,7 @@ def run_slsk(download_path=None, links_file=None, open_shell=False):
     except BinaryError as exc:
         click.echo(f"Error: could not provision sldl binary: {exc}", err=True)
         sys.exit(1)
+        return
 
     os.execv(str(binary), [binary.name, *args])
 
@@ -335,6 +336,7 @@ def run_shazam():
     executable = find_managed("shazam-tool")
     if executable:
         os.execv(str(executable), ["shazam-tool", *args])
+        return
 
     click.echo(
         "Error: shazam-tool is not installed. Run `toolcrate tools install --tool shazam-tool`."
@@ -350,6 +352,7 @@ def run_mdl():
     executable = find_managed("mdl-tool")
     if executable:
         os.execv(str(executable), ["mdl-tool", *args])
+        return
 
     click.echo(
         "Error: mdl-tool is not installed. Run `toolcrate tools install --tool mdl-tool`."

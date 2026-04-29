@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import dataclasses
 import hashlib
 import os
 import tempfile
@@ -13,10 +14,17 @@ from fastapi.testclient import TestClient
 
 from toolcrate.db.models import Base
 from toolcrate.db.session import create_engine_for_url, get_async_session_factory
+from toolcrate.core.events import EventBus
 
 
 TEST_TOKEN = "test-token"
 TEST_TOKEN_HASH = hashlib.sha256(TEST_TOKEN.encode()).hexdigest()
+
+
+@dataclasses.dataclass
+class AppCtx:
+    app: object
+    bus: EventBus
 
 
 @pytest.fixture
@@ -35,16 +43,18 @@ def auth_headers() -> dict[str, str]:
 
 
 @pytest.fixture
-async def app(session_factory):
-    """Build a wired FastAPI app for integration tests."""
+async def appctx(session_factory) -> AppCtx:
+    """Build a wired FastAPI app + event bus for integration tests."""
     from toolcrate.web.app import create_app, AppDeps
     from toolcrate.web.routers.health import build_router as build_health
     from toolcrate.web.routers.lists import build_router as build_lists
     from toolcrate.web.routers.tracks import build_router as build_tracks
     from toolcrate.web.routers.jobs import build_router as build_jobs
+    from toolcrate.web.routers.events import build_router as build_events
     from toolcrate.core.jobs import JobQueue
     from toolcrate.core.source_lists import SourceListService
 
+    bus = EventBus()
     src = SourceListService(session_factory, music_root="/tmp/m")
     queue = JobQueue(session_factory)
 
@@ -56,14 +66,21 @@ async def app(session_factory):
             build_lists(src=src, queue=queue, token_hash=TEST_TOKEN_HASH),
             build_tracks(src=src, session_factory=session_factory, queue=queue, token_hash=TEST_TOKEN_HASH),
             build_jobs(queue=queue, session_factory=session_factory, token_hash=TEST_TOKEN_HASH),
+            build_events(bus=bus, token_hash=TEST_TOKEN_HASH),
         ],
     )
-    return create_app(deps)
+    return AppCtx(app=create_app(deps), bus=bus)
 
 
 @pytest.fixture
-def client(app) -> TestClient:
-    return TestClient(app)
+def client(appctx) -> TestClient:
+    return TestClient(appctx.app)
+
+
+# Keep `app` as an alias of `appctx.app` for tests that consume `app` directly.
+@pytest.fixture
+def app(appctx):
+    return appctx.app
 
 
 @pytest.fixture

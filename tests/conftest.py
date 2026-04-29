@@ -40,6 +40,8 @@ async def app(session_factory):
     from toolcrate.web.app import create_app, AppDeps
     from toolcrate.web.routers.health import build_router as build_health
     from toolcrate.web.routers.lists import build_router as build_lists
+    from toolcrate.web.routers.tracks import build_router as build_tracks
+    from toolcrate.web.routers.jobs import build_router as build_jobs
     from toolcrate.core.jobs import JobQueue
     from toolcrate.core.source_lists import SourceListService
 
@@ -52,6 +54,8 @@ async def app(session_factory):
         routers=[
             build_health(version="0.1.0-test"),
             build_lists(src=src, queue=queue, token_hash=TEST_TOKEN_HASH),
+            build_tracks(src=src, session_factory=session_factory, queue=queue, token_hash=TEST_TOKEN_HASH),
+            build_jobs(queue=queue, session_factory=session_factory, token_hash=TEST_TOKEN_HASH),
         ],
     )
     return create_app(deps)

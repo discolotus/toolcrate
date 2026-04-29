@@ -22,22 +22,26 @@ class TestSldlDockerCommand:
     @patch("toolcrate.cli.wrappers.check_dependency")
     @patch("toolcrate.cli.wrappers.get_project_root")
     def test_sldl_command_no_docker(self, mock_get_root, mock_check_dep):
-        """Test sldl command when docker is not available."""
+        """Test sldl command when docker is not available (Docker mode)."""
         mock_check_dep.return_value = False
         mock_get_root.return_value = Path("/fake/root")
 
-        result = self.runner.invoke(main, ["sldl", "--version"])
+        result = self.runner.invoke(
+            main, ["sldl", "--version"], env={"TOOLCRATE_USE_DOCKER": "1"}
+        )
         assert result.exit_code == 1
         assert "Docker is not installed" in result.output
 
     @patch("toolcrate.cli.wrappers.check_dependency")
     @patch("toolcrate.cli.wrappers.get_project_root")
     def test_sldl_command_no_compose_file(self, mock_get_root, mock_check_dep):
-        """Test sldl command when docker-compose.yml is missing."""
+        """Test sldl command when docker-compose.yml is missing (Docker mode)."""
         mock_check_dep.return_value = True
         mock_get_root.return_value = Path("/fake/root")
 
-        result = self.runner.invoke(main, ["sldl", "--version"])
+        result = self.runner.invoke(
+            main, ["sldl", "--version"], env={"TOOLCRATE_USE_DOCKER": "1"}
+        )
         assert result.exit_code == 1
         assert "Docker Compose file not found" in result.output
 
@@ -157,11 +161,15 @@ class TestSldlDockerCommand:
     @patch("toolcrate.cli.wrappers.check_dependency")
     @patch("toolcrate.cli.wrappers.get_project_root")
     def test_sldl_command_with_args(self, mock_get_root, mock_check_dep):
-        """Test sldl command with arguments."""
+        """Test sldl command with arguments (Docker mode)."""
         mock_check_dep.return_value = False
         mock_get_root.return_value = Path("/fake/root")
-        
-        result = self.runner.invoke(main, ["sldl", "-a", "artist", "-t", "track"])
+
+        result = self.runner.invoke(
+            main,
+            ["sldl", "-a", "artist", "-t", "track"],
+            env={"TOOLCRATE_USE_DOCKER": "1"},
+        )
         assert result.exit_code == 1
         assert "Docker is not installed" in result.output
 

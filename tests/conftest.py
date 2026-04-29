@@ -1,11 +1,65 @@
 """Shared fixtures and configuration for ToolCrate tests."""
 
+from __future__ import annotations
+
+import hashlib
 import os
 import tempfile
 from pathlib import Path
 from unittest.mock import Mock, patch
 
 import pytest
+from fastapi.testclient import TestClient
+
+from toolcrate.db.models import Base
+from toolcrate.db.session import create_engine_for_url, get_async_session_factory
+
+
+TEST_TOKEN = "test-token"
+TEST_TOKEN_HASH = hashlib.sha256(TEST_TOKEN.encode()).hexdigest()
+
+
+@pytest.fixture
+async def session_factory():
+    engine = create_engine_for_url("sqlite+aiosqlite:///:memory:")
+    async with engine.begin() as conn:
+        await conn.run_sync(Base.metadata.create_all)
+    factory = get_async_session_factory(engine)
+    yield factory
+    await engine.dispose()
+
+
+@pytest.fixture
+def auth_headers() -> dict[str, str]:
+    return {"Authorization": f"Bearer {TEST_TOKEN}", "Host": "localhost"}
+
+
+@pytest.fixture
+async def app(session_factory):
+    """Build a wired FastAPI app for integration tests."""
+    from toolcrate.web.app import create_app, AppDeps
+    from toolcrate.web.routers.health import build_router as build_health
+    from toolcrate.web.routers.lists import build_router as build_lists
+    from toolcrate.core.jobs import JobQueue
+    from toolcrate.core.source_lists import SourceListService
+
+    src = SourceListService(session_factory, music_root="/tmp/m")
+    queue = JobQueue(session_factory)
+
+    deps = AppDeps(
+        api_token_hash=TEST_TOKEN_HASH,
+        allowed_hosts={"localhost", "127.0.0.1", "testserver"},
+        routers=[
+            build_health(version="0.1.0-test"),
+            build_lists(src=src, queue=queue, token_hash=TEST_TOKEN_HASH),
+        ],
+    )
+    return create_app(deps)
+
+
+@pytest.fixture
+def client(app) -> TestClient:
+    return TestClient(app)
 
 
 @pytest.fixture

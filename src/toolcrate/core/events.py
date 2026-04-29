@@ -7,8 +7,8 @@ queues. Used to bridge worker/service progress -> SSE handlers.
 from __future__ import annotations
 
 import asyncio
-from dataclasses import dataclass, field
-from typing import AsyncIterator, Iterable
+from collections.abc import AsyncIterator, Iterable
+from dataclasses import dataclass
 
 
 @dataclass(slots=True)

@@ -16,10 +16,8 @@ import csv
 import io
 import os
 import re
-from dataclasses import dataclass, field
-from pathlib import Path
-from typing import AsyncIterator
-
+from collections.abc import AsyncIterator
+from dataclasses import dataclass
 
 _STATE_MAP = {
     "0": "not_processed",

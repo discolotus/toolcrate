@@ -8,13 +8,12 @@ class will gain a `with_token(...)` constructor then.
 from __future__ import annotations
 
 import re
+from collections.abc import Iterable
 from dataclasses import dataclass
-from typing import Iterable
 
 import httpx
 
 from .exceptions import IntegrationError, ValidationError
-
 
 _PLAYLIST_RE = re.compile(r"open\.spotify\.com/playlist/([A-Za-z0-9]+)")
 

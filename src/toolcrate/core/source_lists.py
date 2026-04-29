@@ -20,10 +20,10 @@ from urllib.parse import parse_qs, urlparse
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 
-from .exceptions import NotFound, ValidationError
-from .spotify import parse_playlist_url
 from toolcrate.db.models import SourceList
 
+from .exceptions import NotFound, ValidationError
+from .spotify import parse_playlist_url
 
 _SLUG_RE = re.compile(r"[^a-z0-9]+")
 

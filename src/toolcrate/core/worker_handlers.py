@@ -8,16 +8,15 @@ from __future__ import annotations
 
 import logging
 import tempfile
-from typing import Any, Awaitable, Callable
-from pathlib import Path
+from collections.abc import Awaitable, Callable
 
 from sqlalchemy import update
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 
-from .events import EventBus
-from .jobs import JobType
 from toolcrate.db.models import Job
 
+from .events import EventBus
+from .jobs import JobType
 
 logger = logging.getLogger(__name__)
 

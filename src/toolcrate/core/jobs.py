@@ -15,15 +15,16 @@ from __future__ import annotations
 import asyncio
 import enum
 import logging
-from datetime import datetime, timezone, timedelta
-from typing import Any, Awaitable, Callable, Mapping
+from collections.abc import Awaitable, Callable, Mapping
+from datetime import datetime, timedelta, timezone
+from typing import Any
 
 from sqlalchemy import select, update
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 
-from .events import Event, EventBus
 from toolcrate.db.models import Job
 
+from .events import Event, EventBus
 
 logger = logging.getLogger(__name__)
 

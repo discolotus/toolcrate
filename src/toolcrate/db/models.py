@@ -10,12 +10,12 @@ from sqlalchemy import (
     Boolean,
     DateTime,
     ForeignKey,
+    Index,
     Integer,
     LargeBinary,
     String,
     Text,
     UniqueConstraint,
-    Index,
 )
 from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column, relationship
 
@@ -47,7 +47,7 @@ class SourceList(Base):
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=_utcnow)
     updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=_utcnow, onupdate=_utcnow)
 
-    tracks: Mapped[list["TrackEntry"]] = relationship(back_populates="source_list", cascade="all,delete-orphan")
+    tracks: Mapped[list[TrackEntry]] = relationship(back_populates="source_list", cascade="all,delete-orphan")
 
 
 class TrackEntry(Base):

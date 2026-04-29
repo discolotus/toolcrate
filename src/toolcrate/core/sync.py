@@ -12,19 +12,24 @@ from __future__ import annotations
 
 import logging
 import tempfile
+from collections.abc import Iterable
 from datetime import datetime, timezone
 from pathlib import Path
-from typing import Iterable
 
 from sqlalchemy import select, update
-from sqlalchemy.ext.asyncio import async_sessionmaker, AsyncSession
+from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
+
+from toolcrate.db.models import Download, Job, TrackEntry
 
 from .events import Event, EventBus
 from .reconcile import match_index_to_tracks
-from .sldl_adapter import build_command, parse_index_csv, parse_progress_line, stream_sldl
+from .sldl_adapter import (
+    build_command,
+    parse_index_csv,
+    parse_progress_line,
+    stream_sldl,
+)
 from .source_lists import SourceListService
-from toolcrate.db.models import Download, Job, TrackEntry
-
 
 logger = logging.getLogger(__name__)
 

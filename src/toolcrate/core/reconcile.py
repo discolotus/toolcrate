@@ -10,8 +10,8 @@ from __future__ import annotations
 
 import re
 import unicodedata
+from collections.abc import Iterable
 from dataclasses import dataclass
-from typing import Iterable
 
 from toolcrate.core.sldl_adapter import SldlIndexEntry
 from toolcrate.db.models import TrackEntry

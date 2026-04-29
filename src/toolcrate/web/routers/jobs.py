@@ -5,15 +5,14 @@ from __future__ import annotations
 from datetime import datetime, timezone
 
 from fastapi import APIRouter, Depends, HTTPException, Query
-
 from sqlalchemy import select
-from sqlalchemy.ext.asyncio import async_sessionmaker, AsyncSession
+from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 
 from toolcrate.core.jobs import JobQueue
 from toolcrate.db.models import Job
 from toolcrate.web.deps import api_token_auth
 from toolcrate.web.schemas.common import Page
-from toolcrate.web.schemas.jobs import JobOut, JobLogPage
+from toolcrate.web.schemas.jobs import JobLogPage, JobOut
 
 
 def build_router(

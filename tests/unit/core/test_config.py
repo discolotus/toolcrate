@@ -1,4 +1,5 @@
 import pytest
+
 from toolcrate.core.config import SettingsStore
 from toolcrate.db.models import Base
 from toolcrate.db.session import create_engine_for_url, get_async_session_factory

@@ -3,8 +3,6 @@ import os
 import subprocess
 from pathlib import Path
 
-import pytest
-
 
 def test_migrate_imports_wishlist(tmp_path: Path):
     home = tmp_path / "home"

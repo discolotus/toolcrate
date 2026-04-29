@@ -13,9 +13,9 @@ import click
 from ..downloaders.audio import AudioDownloader
 from . import binary_manager
 from .binary_manager import BinaryError, ensure_sldl_binary, get_binary_path
+from .migrate import migrate as migrate_cmd
 from .queue import queue
 from .schedule import schedule
-from .migrate import migrate as migrate_cmd
 from .serve import serve as serve_cmd
 from .wishlist_run import wishlist_run
 from .wrappers import (

@@ -1,8 +1,9 @@
 import asyncio
+
 import pytest
 
 from toolcrate.core.events import EventBus
-from toolcrate.core.jobs import JobQueue, Worker, JobType
+from toolcrate.core.jobs import JobQueue, JobType, Worker
 from toolcrate.db.models import Base, Job
 from toolcrate.db.session import create_engine_for_url, get_async_session_factory
 

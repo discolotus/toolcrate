@@ -9,7 +9,7 @@ from pathlib import Path
 import click
 
 from toolcrate.core.source_lists import SourceListService
-from toolcrate.db.models import Base, TrackEntry
+from toolcrate.db.models import TrackEntry
 from toolcrate.db.session import create_engine_for_url, get_async_session_factory
 
 
@@ -56,7 +56,7 @@ async def _run() -> None:
 async def _migrate_wishlist(src, sf, path: Path) -> None:
     if not path.exists():
         return
-    lines = [l.strip() for l in path.read_text().splitlines() if l.strip()]
+    lines = [line.strip() for line in path.read_text().splitlines() if line.strip()]
     if not lines:
         return
     # Find or create the "Wishlist" manual list
@@ -103,7 +103,7 @@ async def _migrate_djsets(src, path: Path) -> None:
 async def _migrate_queue(src, path: Path) -> None:
     if not path.exists():
         return
-    lines = [l.strip() for l in path.read_text().splitlines() if l.strip()]
+    lines = [line.strip() for line in path.read_text().splitlines() if line.strip()]
     if not lines:
         return
     existing = await src.list(source_type="manual")

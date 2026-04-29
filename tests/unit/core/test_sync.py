@@ -1,13 +1,12 @@
 # tests/unit/core/test_sync.py
 import os
 from pathlib import Path
-import textwrap
 
 import pytest
 
 from toolcrate.core.events import EventBus
-from toolcrate.core.sync import SyncService
 from toolcrate.core.source_lists import SourceListService
+from toolcrate.core.sync import SyncService
 from toolcrate.db.models import Base, TrackEntry
 from toolcrate.db.session import create_engine_for_url, get_async_session_factory
 

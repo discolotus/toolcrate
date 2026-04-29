@@ -73,14 +73,14 @@ class DownloadService:
             )
             with log_file.open("w") as logf:
                 first = True
-                async for proc, line in stream_sldl(cmd):
+                async for _proc, line in stream_sldl(cmd):
                     if first:
                         first = False
                         continue
                     if not line:
                         continue
                     logf.write(line + "\n")
-                    if (ev := parse_progress_line(line)) is not None:
+                    if parse_progress_line(line) is not None:
                         await self._bus.publish(Event(
                             name="log.append", topic="jobs",
                             data={"job_id": job_id, "lines": [line]},

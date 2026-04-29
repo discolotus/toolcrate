@@ -7,15 +7,14 @@ import hashlib
 import os
 import tempfile
 from pathlib import Path
-from unittest.mock import Mock, patch
+from unittest.mock import patch
 
 import pytest
 from fastapi.testclient import TestClient
 
+from toolcrate.core.events import EventBus
 from toolcrate.db.models import Base
 from toolcrate.db.session import create_engine_for_url, get_async_session_factory
-from toolcrate.core.events import EventBus
-
 
 TEST_TOKEN = "test-token"
 TEST_TOKEN_HASH = hashlib.sha256(TEST_TOKEN.encode()).hexdigest()
@@ -45,14 +44,14 @@ def auth_headers() -> dict[str, str]:
 @pytest.fixture
 async def appctx(session_factory) -> AppCtx:
     """Build a wired FastAPI app + event bus for integration tests."""
-    from toolcrate.web.app import create_app, AppDeps
-    from toolcrate.web.routers.health import build_router as build_health
-    from toolcrate.web.routers.lists import build_router as build_lists
-    from toolcrate.web.routers.tracks import build_router as build_tracks
-    from toolcrate.web.routers.jobs import build_router as build_jobs
-    from toolcrate.web.routers.events import build_router as build_events
     from toolcrate.core.jobs import JobQueue
     from toolcrate.core.source_lists import SourceListService
+    from toolcrate.web.app import AppDeps, create_app
+    from toolcrate.web.routers.events import build_router as build_events
+    from toolcrate.web.routers.health import build_router as build_health
+    from toolcrate.web.routers.jobs import build_router as build_jobs
+    from toolcrate.web.routers.lists import build_router as build_lists
+    from toolcrate.web.routers.tracks import build_router as build_tracks
 
     bus = EventBus()
     src = SourceListService(session_factory, music_root="/tmp/m")
@@ -103,7 +102,7 @@ def mock_subprocess():
     """Mock subprocess module."""
     with (
         patch("subprocess.run") as mock_run,
-        patch("subprocess.CalledProcessError") as mock_error,
+        patch("subprocess.CalledProcessError"),
     ):
         mock_run.return_value.returncode = 0
         mock_run.return_value.stdout = ""

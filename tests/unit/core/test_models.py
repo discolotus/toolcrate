@@ -1,9 +1,9 @@
 # tests/unit/core/test_models.py
+
 import pytest
-from datetime import datetime, timezone
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from toolcrate.db.models import Base, SourceList, TrackEntry, Job
+from toolcrate.db.models import Base, Job, SourceList, TrackEntry
 from toolcrate.db.session import create_engine_for_url, get_async_session_factory
 
 

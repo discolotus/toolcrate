@@ -1,8 +1,12 @@
 # tests/unit/core/test_source_lists.py
 import pytest
 
-from toolcrate.core.source_lists import SourceListService, slugify, default_download_path
 from toolcrate.core.exceptions import NotFound, ValidationError
+from toolcrate.core.source_lists import (
+    SourceListService,
+    default_download_path,
+    slugify,
+)
 from toolcrate.db.models import Base
 from toolcrate.db.session import create_engine_for_url, get_async_session_factory
 

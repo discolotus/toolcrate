@@ -4,8 +4,6 @@ from __future__ import annotations
 
 import asyncio
 
-import pytest
-
 
 def test_list_tracks_for_list(client, auth_headers, session_factory):
     r = client.post(

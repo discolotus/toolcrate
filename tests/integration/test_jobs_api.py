@@ -2,8 +2,6 @@
 
 from __future__ import annotations
 
-import pytest
-
 
 def test_list_jobs_empty(client, auth_headers):
     r = client.get("/api/v1/jobs", headers=auth_headers)

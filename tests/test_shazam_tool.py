@@ -1,11 +1,9 @@
 """Tests for Shazam tool functionality."""
 
 import asyncio
-import os
 import sys
-import tempfile
 from pathlib import Path
-from unittest.mock import AsyncMock, Mock, call, patch
+from unittest.mock import AsyncMock, Mock, patch
 
 import pytest
 
@@ -337,7 +335,7 @@ class TestShazamTool:
 
         with (
             patch("os.listdir", return_value=["1.mp3", "2.mp3"]),
-            patch("builtins.open", create=True) as mock_open,
+            patch("builtins.open", create=True),
             patch("asyncio.run") as mock_asyncio_run,
         ):
 

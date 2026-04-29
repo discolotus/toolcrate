@@ -1,6 +1,6 @@
 import asyncio
-import pytest
-from toolcrate.core.events import EventBus, Event
+
+from toolcrate.core.events import Event, EventBus
 
 
 async def test_subscriber_receives_published_event():

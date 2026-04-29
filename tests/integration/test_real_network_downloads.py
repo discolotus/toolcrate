@@ -21,12 +21,11 @@ These tests are useful for:
 """
 
 import os
+import shutil
 import subprocess
 import tempfile
 import unittest
 from pathlib import Path
-import shutil
-import time
 
 try:
     from .test_network_config import NetworkTestConfig, requires_network_tests
@@ -68,7 +67,7 @@ class TestRealNetworkDownloads(unittest.TestCase):
             downloaded_files = list(cls.download_dir.glob("**/*"))
             audio_files = [f for f in downloaded_files if f.suffix.lower() in ['.mp3', '.flac', '.wav', '.m4a']]
 
-            print(f"\n📊 Final Test Statistics:")
+            print("\n📊 Final Test Statistics:")
             print(f"  Total files created: {len(downloaded_files)}")
             print(f"  Audio files downloaded: {len(audio_files)}")
 
@@ -167,7 +166,7 @@ class TestRealNetworkDownloads(unittest.TestCase):
         links_file = self.config.create_test_links_file('spotify', self.temp_dir)
 
         print(f"🔗 Testing URL: {self.config.test_urls['spotify_track']}")
-        print(f"⚠️ Expected: Graceful failure with dummy credentials")
+        print("⚠️ Expected: Graceful failure with dummy credentials")
 
         cmd = [
             'toolcrate', 'sldl',
@@ -224,7 +223,7 @@ class TestRealNetworkDownloads(unittest.TestCase):
         config_file = self.config.create_test_sldl_config(self.download_dir)
         links_file = self.config.create_test_links_file('mixed', self.temp_dir)
 
-        print(f"📄 Links file contains: YouTube, Spotify, SoundCloud, and search terms")
+        print("📄 Links file contains: YouTube, Spotify, SoundCloud, and search terms")
 
         cmd = [
             'toolcrate', 'sldl',
@@ -291,9 +290,9 @@ class TestRealNetworkDownloads(unittest.TestCase):
     def test_links_file_processing_real_network(self):
         """Test processing a links file with mixed content."""
         print("\n📄 Testing links file processing with real network...")
-        
+
         config_file = self.create_test_sldl_config()
-        
+
         # Create links file with mixed content
         links_content = f"""# Test links file for real network testing
 # YouTube should work with yt-dlp fallback
@@ -305,21 +304,21 @@ Rick Astley - Never Gonna Give You Up
 # Spotify (may fail with dummy credentials)
 {self.test_urls['spotify_track']}
 """
-        
+
         links_file = self.temp_dir / "mixed_links.txt"
         links_file.write_text(links_content)
-        
+
         cmd = [
             'toolcrate', 'sldl',
             '--download-path', str(self.download_dir),
             '--links-file', str(links_file)
         ]
-        
+
         print(f"🚀 Running command: {' '.join(cmd)}")
-        
+
         env = os.environ.copy()
         env['SLDL_CONFIG'] = str(config_file)
-        
+
         try:
             result = subprocess.run(
                 cmd,
@@ -329,18 +328,18 @@ Rick Astley - Never Gonna Give You Up
                 env=env,
                 cwd=self.temp_dir
             )
-            
+
             print(f"📤 Command output:\n{result.stdout}")
             if result.stderr:
                 print(f"⚠️ Command errors:\n{result.stderr}")
-            
+
             # Check what was processed
             downloaded_files = list(self.download_dir.glob("**/*"))
             downloaded_audio = [f for f in downloaded_files if f.suffix.lower() in ['.mp3', '.flac', '.wav', '.m4a']]
-            
+
             print(f"📁 Total files: {len(downloaded_files)}")
             print(f"🎵 Audio files: {len(downloaded_audio)}")
-            
+
             # Test passes if we see evidence of processing different types
             output_lower = result.stdout.lower()
             processing_evidence = [
@@ -350,12 +349,12 @@ Rick Astley - Never Gonna Give You Up
                 "yt-dlp" in output_lower,
                 len(downloaded_audio) > 0
             ]
-            
+
             self.assertTrue(
                 any(processing_evidence),
                 f"Expected evidence of processing different link types. Got: {result.stdout}"
             )
-            
+
         except subprocess.TimeoutExpired:
             print("⏰ Mixed links test timed out")
             # Check if any partial downloads occurred
@@ -366,7 +365,7 @@ Rick Astley - Never Gonna Give You Up
     def test_docker_container_real_execution(self):
         """Test that Docker container can actually be started and execute commands."""
         print("\n🐳 Testing Docker container real execution...")
-        
+
         # Check if Docker is available
         try:
             docker_check = subprocess.run(['docker', '--version'], capture_output=True, text=True)
@@ -374,20 +373,20 @@ Rick Astley - Never Gonna Give You Up
                 self.skipTest("Docker not available")
         except FileNotFoundError:
             self.skipTest("Docker not installed")
-        
+
         config_file = self.create_test_sldl_config()
-        
+
         # Try to run a simple command in the container
         cmd = [
             'toolcrate', '--build', 'sldl',
             '--help'
         ]
-        
+
         print(f"🚀 Running command: {' '.join(cmd)}")
-        
+
         env = os.environ.copy()
         env['SLDL_CONFIG'] = str(config_file)
-        
+
         try:
             result = subprocess.run(
                 cmd,
@@ -397,11 +396,11 @@ Rick Astley - Never Gonna Give You Up
                 env=env,
                 cwd=self.temp_dir
             )
-            
+
             print(f"📤 Command output:\n{result.stdout}")
             if result.stderr:
                 print(f"⚠️ Command errors:\n{result.stderr}")
-            
+
             # Should show help or container activity
             self.assertTrue(
                 result.returncode == 0 or
@@ -410,7 +409,7 @@ Rick Astley - Never Gonna Give You Up
                 "container" in result.stdout.lower(),
                 f"Expected Docker container activity. Got: {result.stdout}"
             )
-            
+
         except subprocess.TimeoutExpired:
             self.fail("Docker container test timed out")
 

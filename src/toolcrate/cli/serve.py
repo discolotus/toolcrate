@@ -27,7 +27,6 @@ from toolcrate.web.routers.jobs import build_router as build_jobs
 from toolcrate.web.routers.lists import build_router as build_lists
 from toolcrate.web.routers.tracks import build_router as build_tracks
 
-
 logger = logging.getLogger("toolcrate.serve")
 
 

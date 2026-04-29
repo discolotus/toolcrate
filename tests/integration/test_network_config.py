@@ -1,45 +1,44 @@
 """Configuration and utilities for real network integration tests."""
 
 import os
-import tempfile
 from pathlib import Path
-from typing import Dict, Any
+from typing import Any
 
 
 class NetworkTestConfig:
     """Configuration for real network integration tests."""
-    
+
     def __init__(self):
         """Initialize network test configuration."""
         self.enabled = os.environ.get('TOOLCRATE_REAL_NETWORK_TESTS') == '1'
         self.timeout_short = int(os.environ.get('TOOLCRATE_NETWORK_TIMEOUT_SHORT', '180'))  # 3 minutes
         self.timeout_long = int(os.environ.get('TOOLCRATE_NETWORK_TIMEOUT_LONG', '600'))   # 10 minutes
         self.max_download_size = os.environ.get('TOOLCRATE_MAX_DOWNLOAD_SIZE', '50MB')
-        
+
         # Dummy credentials for testing
         self.dummy_credentials = {
             'username': 'test_user_toolcrate',
             'password': 'test_pass_123'
         }
-        
+
         # Test URLs - carefully selected for testing
         self.test_urls = {
             # YouTube URLs that should work with yt-dlp
             'youtube_short': 'https://www.youtube.com/watch?v=dQw4w9WgXcQ',  # Rick Roll - famous, stable
             'youtube_music': 'https://music.youtube.com/watch?v=dQw4w9WgXcQ',  # Same but YouTube Music
-            
+
             # Spotify URLs (will likely fail with dummy credentials, but should be processed)
             'spotify_track': 'https://open.spotify.com/track/4iV5W9uYEdYUVa79Axb7Rh',  # Mr. Brightside
             'spotify_album': 'https://open.spotify.com/album/4aawyAB9vmqN3uQ7FjRGTy',  # Hot Fuss album
-            
+
             # SoundCloud (public tracks)
             'soundcloud_track': 'https://soundcloud.com/rick-astley-official/never-gonna-give-you-up-4',
-            
+
             # Search terms that should work on Soulseek (if credentials were real)
             'search_popular': 'Rick Astley - Never Gonna Give You Up',
             'search_common': 'The Beatles - Hey Jude',
         }
-        
+
         # Expected behaviors for different URL types
         self.expected_behaviors = {
             'youtube': {
@@ -70,10 +69,10 @@ class NetworkTestConfig:
 
     def create_test_sldl_config(self, download_dir: Path) -> Path:
         """Create a test sldl.conf file with dummy credentials.
-        
+
         Args:
             download_dir: Directory where downloads should be saved
-            
+
         Returns:
             Path to the created config file
         """
@@ -109,29 +108,29 @@ skip-existing = true
 # Shorter timeouts to prevent hanging
 max-search-time = {self.timeout_short // 6}
 """
-        
+
         config_file = download_dir.parent / "sldl.conf"
         config_file.write_text(config_content)
         return config_file
 
     def create_test_links_file(self, content_type: str, temp_dir: Path) -> Path:
         """Create a test links file with specific content type.
-        
+
         Args:
             content_type: Type of content ('youtube', 'spotify', 'mixed', etc.)
             temp_dir: Temporary directory for the file
-            
+
         Returns:
             Path to the created links file
         """
         links_file = temp_dir / f"test_{content_type}.txt"
-        
+
         if content_type == 'youtube':
             content = f"""# YouTube test links
 {self.test_urls['youtube_short']}
 """
         elif content_type == 'spotify':
-            content = f"""# Spotify test links  
+            content = f"""# Spotify test links
 {self.test_urls['spotify_track']}
 """
         elif content_type == 'soundcloud':
@@ -158,16 +157,16 @@ max-search-time = {self.timeout_short // 6}
 """
         else:
             raise ValueError(f"Unknown content type: {content_type}")
-        
+
         links_file.write_text(content)
         return links_file
 
-    def get_expected_behavior(self, url_or_type: str) -> Dict[str, Any]:
+    def get_expected_behavior(self, url_or_type: str) -> dict[str, Any]:
         """Get expected behavior for a URL or content type.
-        
+
         Args:
             url_or_type: URL string or content type
-            
+
         Returns:
             Dictionary of expected behaviors
         """
@@ -185,10 +184,10 @@ max-search-time = {self.timeout_short // 6}
 
     def is_success_expected(self, url_or_type: str) -> bool:
         """Check if successful download is expected for this URL/type.
-        
+
         Args:
             url_or_type: URL string or content type
-            
+
         Returns:
             True if download success is expected
         """
@@ -197,10 +196,10 @@ max-search-time = {self.timeout_short // 6}
 
     def should_use_ytdlp(self, url_or_type: str) -> bool:
         """Check if yt-dlp should be used for this URL/type.
-        
+
         Args:
             url_or_type: URL string or content type
-            
+
         Returns:
             True if yt-dlp should be used
         """
@@ -209,10 +208,10 @@ max-search-time = {self.timeout_short // 6}
 
     def get_timeout(self, url_or_type: str) -> int:
         """Get appropriate timeout for this URL/type.
-        
+
         Args:
             url_or_type: URL string or content type
-            
+
         Returns:
             Timeout in seconds
         """
@@ -232,7 +231,7 @@ max-search-time = {self.timeout_short // 6}
 
     def print_test_info(self):
         """Print information about the test configuration."""
-        print(f"\n🧪 Network Test Configuration:")
+        print("\n🧪 Network Test Configuration:")
         print(f"  Enabled: {self.enabled}")
         print(f"  Short timeout: {self.timeout_short}s")
         print(f"  Long timeout: {self.timeout_long}s")

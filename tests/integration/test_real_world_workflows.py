@@ -5,8 +5,7 @@ import subprocess
 import tempfile
 import unittest
 from pathlib import Path
-from unittest.mock import patch, MagicMock, call
-import json
+from unittest.mock import MagicMock, patch
 
 
 class TestRealURLProcessing(unittest.TestCase):
@@ -35,7 +34,7 @@ class TestRealURLProcessing(unittest.TestCase):
         mock_check_dep.return_value = True
         mock_get_root.return_value = Path("/fake/root")
         mock_exists.return_value = True
-        
+
         # Mock container running
         mock_result = MagicMock()
         mock_result.stdout = "sldl"
@@ -44,7 +43,7 @@ class TestRealURLProcessing(unittest.TestCase):
 
         with patch('toolcrate.config.manager.ConfigManager.generate_sldl_conf'):
             from toolcrate.cli.wrappers import run_sldl_docker_command
-            
+
             # Test with real Spotify URL
             run_sldl_docker_command({}, [self.real_urls['spotify_top50_global']])
 
@@ -70,7 +69,7 @@ class TestRealURLProcessing(unittest.TestCase):
         mock_check_dep.return_value = True
         mock_get_root.return_value = Path("/fake/root")
         mock_exists.return_value = True
-        
+
         # Mock container running
         mock_result = MagicMock()
         mock_result.stdout = "sldl"
@@ -79,15 +78,15 @@ class TestRealURLProcessing(unittest.TestCase):
 
         with patch('toolcrate.config.manager.ConfigManager.generate_sldl_conf'):
             from toolcrate.cli.wrappers import run_sldl_docker_command
-            
+
             # Test with real YouTube URL
             run_sldl_docker_command({}, [self.real_urls['youtube_music_trending']])
-            
+
             # Verify docker exec was called
             mock_execvp.assert_called_once()
             args = mock_execvp.call_args[0]
             cmd_args = args[1]
-            
+
             # Should include the YouTube URL
             self.assertIn(self.real_urls['youtube_music_trending'], cmd_args)
             # Should include config file
@@ -104,7 +103,7 @@ class TestRealURLProcessing(unittest.TestCase):
             f.write("# Comment line should be ignored\n")
             f.write(f"{self.real_urls['spotify_track']}\n")
             temp_file = f.name
-        
+
         try:
             # Test that the command recognizes the --links-file option
             result = subprocess.run(
@@ -113,12 +112,12 @@ class TestRealURLProcessing(unittest.TestCase):
                 text=True,
                 check=False,
             )
-            
+
             # Should not show "unknown option" error
             self.assertNotIn("No such option", result.stdout)
             self.assertNotIn("Unrecognized option", result.stdout)
             # May fail due to docker, but option should be recognized
-            
+
         finally:
             os.unlink(temp_file)
 
@@ -150,28 +149,28 @@ Another Artist - Another Song
             'https://www.youtube.com/playlist?list=PLMC9KNkIncKtPzgY-5rmhvj7fax8fdxoj',
             'Artist Name - Song Title'
         ]
-        
+
         # Mock successful processing
         mock_process_entry.return_value = True
-        
+
         try:
-            from toolcrate.wishlist.processor import WishlistProcessor
             from toolcrate.config.manager import ConfigManager
-            
+            from toolcrate.wishlist.processor import WishlistProcessor
+
             # Create processor with mocked config
             with patch.object(ConfigManager, '__init__', return_value=None):
                 processor = WishlistProcessor.__new__(WishlistProcessor)
                 processor.wishlist_config = {'enabled': True}
                 processor.config_manager = MagicMock()
-                
+
                 # Test processing
                 result = processor.process_all_entries()
-                
+
                 # Should process all entries
                 self.assertEqual(mock_process_entry.call_count, 3)
                 self.assertEqual(result['processed'], 3)
                 self.assertEqual(result['failed'], 0)
-                
+
         except ImportError:
             self.skipTest("WishlistProcessor not available")
 
@@ -183,7 +182,7 @@ Another Artist - Another Song
             text=True,
             check=False,
         )
-        
+
         # Should show help or recognize command
         self.assertNotIn("No such command", result.stdout)
 
@@ -200,16 +199,16 @@ class TestSchedulingWorkflow(unittest.TestCase):
         """Test that cron manager functions can be imported."""
         try:
             from toolcrate.scripts.cron_manager import (
-                add_identify_tracks_cron,
                 add_download_wishlist_cron,
-                remove_scheduled_job
+                add_identify_tracks_cron,
+                remove_scheduled_job,
             )
-            
+
             # Functions should be callable
             self.assertTrue(callable(add_identify_tracks_cron))
             self.assertTrue(callable(add_download_wishlist_cron))
             self.assertTrue(callable(remove_scheduled_job))
-            
+
         except ImportError as e:
             self.fail(f"Could not import cron manager functions: {e}")
 
@@ -220,7 +219,7 @@ class TestQueueWorkflow(unittest.TestCase):
     def test_queue_processor_can_be_imported(self):
         """Test that queue processor can be imported."""
         try:
-            from toolcrate.queue.processor import QueueProcessor
+            from toolcrate.queue.processor import QueueProcessor  # noqa: F401
             # Should be able to import without errors
             self.assertTrue(True)
         except ImportError as e:
@@ -235,32 +234,32 @@ class TestQueueWorkflow(unittest.TestCase):
             'https://open.spotify.com/playlist/37i9dQZEVXbMDoHDwVN2tF',
             'https://www.youtube.com/playlist?list=PLMC9KNkIncKtPzgY-5rmhvj7fax8fdxoj'
         ]
-        
+
         # Mock successful processing
         mock_process_entry.return_value = True
-        
+
         try:
-            from toolcrate.queue.processor import QueueProcessor
             from toolcrate.config.manager import ConfigManager
-            
+            from toolcrate.queue.processor import QueueProcessor
+
             # Create processor with mocked config
             with patch.object(ConfigManager, '__init__', return_value=None):
                 processor = QueueProcessor.__new__(QueueProcessor)
                 processor.queue_config = {'enabled': True}
                 processor.config_manager = MagicMock()
-                
+
                 # Mock lock acquisition
                 with patch.object(processor, 'acquire_lock', return_value=MagicMock()):
                     with patch.object(processor, 'remove_processed_entries'):
                         with patch.object(processor, 'backup_processed_entry'):
                             # Test processing
                             result = processor.process_all_entries()
-                            
+
                             # Should process all entries
                             self.assertEqual(mock_process_entry.call_count, 2)
                             self.assertEqual(result['processed'], 2)
                             self.assertEqual(result['failed'], 0)
-                
+
         except ImportError:
             self.skipTest("QueueProcessor not available")
 

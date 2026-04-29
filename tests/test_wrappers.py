@@ -12,8 +12,6 @@ The lower-level helpers (``check_dependency``, ``check_docker_image``,
 from pathlib import Path
 from unittest.mock import patch
 
-import pytest
-
 from toolcrate.cli import wrappers
 from toolcrate.cli.binary_manager import BinaryError
 

@@ -1,6 +1,6 @@
 # tests/integration/test_alembic_migration.py
 from pathlib import Path
-import pytest
+
 from alembic import command
 from alembic.config import Config
 

@@ -1,10 +1,11 @@
 import os
 from pathlib import Path
+
 import pytest
 from sqlalchemy import select
 
-from toolcrate.core.events import EventBus
 from toolcrate.core.downloads import DownloadService
+from toolcrate.core.events import EventBus
 from toolcrate.core.source_lists import SourceListService
 from toolcrate.db.models import Base, TrackEntry
 from toolcrate.db.session import create_engine_for_url, get_async_session_factory

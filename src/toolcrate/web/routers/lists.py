@@ -47,7 +47,7 @@ def build_router(*, src: SourceListService, queue: JobQueue, token_hash: str) ->
 
     @router.patch("/{list_id}", response_model=SourceListOut)
     async def patch(list_id: int, payload: SourceListPatch) -> SourceListOut:
-        fields = {k: v for k, v in payload.model_dump(exclude_unset=True).items()}
+        fields = dict(payload.model_dump(exclude_unset=True).items())
         try:
             row = await src.update(list_id, fields)
         except NotFound:

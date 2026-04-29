@@ -1,5 +1,4 @@
-import pytest
-from toolcrate.core.reconcile import match_index_to_tracks, MatchResult
+from toolcrate.core.reconcile import match_index_to_tracks
 from toolcrate.core.sldl_adapter import SldlIndexEntry
 from toolcrate.db.models import TrackEntry
 

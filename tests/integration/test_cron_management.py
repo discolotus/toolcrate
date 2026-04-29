@@ -1,12 +1,9 @@
 """Integration tests for cron job management functionality."""
 
-import os
 import subprocess
-import tempfile
 import unittest
 from pathlib import Path
-from unittest.mock import patch, MagicMock, mock_open
-import shutil
+from unittest.mock import MagicMock, patch
 
 
 class TestCronManagement(unittest.TestCase):
@@ -35,13 +32,13 @@ class TestCronManagement(unittest.TestCase):
         mock_result.returncode = 0
         mock_result.stdout = self.test_cron_content
         mock_subprocess.return_value = mock_result
-        
+
         try:
             from toolcrate.cli.schedule import get_current_crontab
-            
+
             result = get_current_crontab()
             self.assertEqual(result, self.test_cron_content)
-            
+
             # Verify crontab -l was called
             mock_subprocess.assert_called_with(
                 ['crontab', '-l'],
@@ -49,7 +46,7 @@ class TestCronManagement(unittest.TestCase):
                 text=True,
                 check=False,
             )
-            
+
         except ImportError:
             self.skipTest("Schedule module not available")
 
@@ -60,21 +57,21 @@ class TestCronManagement(unittest.TestCase):
         mock_result = MagicMock()
         mock_result.returncode = 0
         mock_subprocess.return_value = mock_result
-        
+
         try:
             from toolcrate.cli.schedule import update_crontab
-            
+
             new_content = self.test_cron_content + self.toolcrate_cron_section
             result = update_crontab(new_content)
-            
+
             self.assertTrue(result)
-            
+
             # Should have called crontab with temp file
             self.assertEqual(mock_subprocess.call_count, 1)
             call_args = mock_subprocess.call_args[0][0]
             self.assertEqual(call_args[0], 'crontab')
             self.assertTrue(call_args[1].startswith('/tmp/') or call_args[1].startswith('/var/'))
-            
+
         except ImportError:
             self.skipTest("Schedule module not available")
 
@@ -84,18 +81,18 @@ class TestCronManagement(unittest.TestCase):
         # Mock crontab with existing ToolCrate jobs
         existing_crontab = self.test_cron_content + self.toolcrate_cron_section
         mock_get_crontab.return_value = existing_crontab
-        
+
         try:
             from toolcrate.cli.schedule import remove_toolcrate_jobs_from_crontab
-            
+
             result = remove_toolcrate_jobs_from_crontab()
-            
+
             # Should remove ToolCrate section but keep other jobs
             self.assertIn('/usr/bin/backup', result)
             self.assertIn('/usr/bin/weekly-task', result)
             self.assertNotIn('ToolCrate Scheduled Downloads', result)
             self.assertNotIn('toolcrate.wishlist.processor', result)
-            
+
         except ImportError:
             self.skipTest("Schedule module not available")
 
@@ -152,7 +149,7 @@ class TestCronManagement(unittest.TestCase):
             text=True,
             check=False,
         )
-        
+
         self.assertEqual(result.returncode, 0)
         self.assertIn("schedule", result.stdout.lower())
 
@@ -165,10 +162,10 @@ class TestCronManagement(unittest.TestCase):
             text=True,
             check=False,
         )
-        
+
         self.assertEqual(result.returncode, 0)
         self.assertIn("hourly", result.stdout.lower())
-        
+
         # Test daily command
         result = subprocess.run(
             ["toolcrate", "schedule", "daily", "--help"],
@@ -176,7 +173,7 @@ class TestCronManagement(unittest.TestCase):
             text=True,
             check=False,
         )
-        
+
         self.assertEqual(result.returncode, 0)
         self.assertIn("daily", result.stdout.lower())
 
@@ -194,7 +191,7 @@ class TestCronManagement(unittest.TestCase):
             '*/15 * * * *',   # Every 15 minutes
             '0 9-17 * * 1-5', # Business hours weekdays
         ]
-        
+
         invalid_expressions = [
             '60 * * * *',     # Invalid minute
             '* 25 * * *',     # Invalid hour
@@ -202,20 +199,20 @@ class TestCronManagement(unittest.TestCase):
             '* * * 13 *',     # Invalid month
             '* * * * 8',      # Invalid weekday
         ]
-        
+
         try:
             from toolcrate.cli.schedule import validate_cron_expression
-            
+
             for expr in valid_expressions:
                 with self.subTest(expression=expr):
                     # Should not raise exception
                     validate_cron_expression(expr)
-            
+
             for expr in invalid_expressions:
                 with self.subTest(expression=expr):
                     with self.assertRaises(ValueError):
                         validate_cron_expression(expr)
-                        
+
         except ImportError:
             self.skipTest("Schedule validation not available")
 
@@ -233,10 +230,10 @@ class TestCronJobExecution(unittest.TestCase):
                 text=True,
                 check=False,
             )
-            
+
             self.assertEqual(result.returncode, 0)
             self.assertIn("Import successful", result.stdout)
-            
+
         except Exception as e:
             self.fail(f"Could not test wishlist processor module: {e}")
 
@@ -250,10 +247,10 @@ class TestCronJobExecution(unittest.TestCase):
                 text=True,
                 check=False,
             )
-            
+
             self.assertEqual(result.returncode, 0)
             self.assertIn("Import successful", result.stdout)
-            
+
         except Exception as e:
             self.fail(f"Could not test queue processor module: {e}")
 

@@ -3,7 +3,6 @@ import json
 from pathlib import Path
 
 import httpx
-import pytest
 import respx
 
 from toolcrate.core.spotify import SpotifyClient, parse_playlist_url

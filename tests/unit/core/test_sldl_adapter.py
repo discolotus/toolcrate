@@ -1,11 +1,9 @@
 # tests/unit/core/test_sldl_adapter.py
 from pathlib import Path
-import pytest
+
 from toolcrate.core.sldl_adapter import (
     parse_index_csv,
     parse_progress_line,
-    SldlIndexEntry,
-    SldlProgressEvent,
 )
 
 FIX = Path(__file__).resolve().parents[2] / "fixtures"

@@ -2,10 +2,6 @@
 
 from __future__ import annotations
 
-import asyncio
-
-import pytest
-
 
 def test_events_endpoint_requires_auth(client):
     """No bearer token => 401 (router auth dependency works)."""

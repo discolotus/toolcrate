@@ -15,6 +15,7 @@ from . import binary_manager
 from .binary_manager import BinaryError, ensure_sldl_binary, get_binary_path
 from .queue import queue
 from .schedule import schedule
+from .serve import serve as serve_cmd
 from .wishlist_run import wishlist_run
 from .wrappers import (
     get_project_root,
@@ -210,6 +211,9 @@ main.add_command(wishlist_run)
 
 # Add the queue command group
 main.add_command(queue)
+
+# Add the serve command
+main.add_command(serve_cmd)
 
 
 @main.group(name="slsk-tool")

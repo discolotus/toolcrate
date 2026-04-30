@@ -9,7 +9,13 @@ from toolcrate.core.jobs import JobQueue, JobType
 from toolcrate.core.source_lists import SourceListService
 from toolcrate.web.deps import api_token_auth
 from toolcrate.web.schemas.common import Page
-from toolcrate.web.schemas.lists import SourceListIn, SourceListOut, SourceListPatch
+from toolcrate.web.schemas.lists import (
+    ListPreviewIn,
+    ListPreviewOut,
+    SourceListIn,
+    SourceListOut,
+    SourceListPatch,
+)
 
 
 def build_router(*, src: SourceListService, queue: JobQueue, token_hash: str) -> APIRouter:
@@ -36,6 +42,23 @@ def build_router(*, src: SourceListService, queue: JobQueue, token_hash: str) ->
         except ValidationError as e:
             raise HTTPException(status_code=400, detail=str(e)) from e
         return SourceListOut.model_validate(row)
+
+    @router.post("/preview", response_model=ListPreviewOut)
+    async def preview(payload: ListPreviewIn) -> ListPreviewOut:
+        try:
+            playlist = await src.preview_url(payload.source_url)
+        except ValidationError as e:
+            raise HTTPException(status_code=400, detail=str(e)) from e
+        except NotFound as e:
+            raise HTTPException(status_code=404, detail=str(e)) from e
+        return ListPreviewOut(
+            source_type="spotify_playlist",
+            external_id=playlist.id,
+            name=playlist.name,
+            owner=playlist.owner,
+            total_tracks=len(playlist.tracks),
+            art_url=playlist.image_url,
+        )
 
     @router.get("/{list_id}", response_model=SourceListOut)
     async def get_one(list_id: int) -> SourceListOut:

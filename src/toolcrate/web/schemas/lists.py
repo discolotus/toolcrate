@@ -41,3 +41,16 @@ class SourceListOut(BaseModel):
     metadata_json: dict
     created_at: datetime
     updated_at: datetime
+
+
+class ListPreviewIn(BaseModel):
+    source_url: str = Field(min_length=1)
+
+
+class ListPreviewOut(BaseModel):
+    source_type: SourceType
+    external_id: str
+    name: str
+    owner: str
+    total_tracks: int
+    art_url: str | None = None

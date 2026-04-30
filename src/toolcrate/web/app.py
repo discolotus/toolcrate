@@ -27,6 +27,17 @@ def create_app(deps: AppDeps) -> FastAPI:
         redoc_url=None,
         openapi_url="/api/openapi.json",
     )
+    # Middleware order note: Starlette's add_middleware prepends to the stack,
+    # so the LAST middleware added is OUTERMOST at request time. With this
+    # ordering the host guard runs first (outermost) and validates the Host
+    # header before CORS runs. That's safe: OPTIONS preflights pass the guard
+    # whenever Host is in allowed_hosts, then CORSMiddleware handles the
+    # preflight and emits the right headers.
+    #
+    # `allow_methods=["*"]` + `allow_headers=["*"]` with allow_credentials=True
+    # is acceptable here because (1) it only activates when an operator opts in
+    # via TOOLCRATE_ENV=dev, (2) origins is an explicit allow-list (never "*"),
+    # and (3) the deployment is local-only.
     if deps.dev_cors_origins:
         app.add_middleware(
             CORSMiddleware,

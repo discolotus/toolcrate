@@ -13,7 +13,6 @@ from __future__ import annotations
 import os
 import shutil
 import subprocess
-import sys
 from pathlib import Path
 
 from hatchling.builders.hooks.plugin.interface import BuildHookInterface
@@ -60,7 +59,6 @@ class FrontendBuildHook(BuildHookInterface):
 
         if not (static_dir / "index.html").exists():
             self.app.abort("[frontend] build finished but no index.html in static_dir")
-            sys.exit(1)
 
     def _ensure_stub(self, static_dir: Path) -> None:
         static_dir.mkdir(parents=True, exist_ok=True)

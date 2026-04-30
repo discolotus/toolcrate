@@ -161,7 +161,7 @@ class SourceListService:
             await session.delete(row)
             await session.commit()
 
-    async def preview_url(self, url: str):
+    async def preview_url(self, url: str) -> "SpotifyPlaylist":
         """Fetch playlist metadata for the Add-list autofill UI without persisting.
 
         Raises ValidationError if the URL doesn't match a supported source type.

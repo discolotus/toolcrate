@@ -1,10 +1,15 @@
 import { useParams, Navigate } from "react-router-dom";
 import { useState } from "react";
+import { useForm } from "react-hook-form";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { TrackTable } from "@/components/TrackTable";
-import { useList, useTriggerSync } from "@/hooks/useLists";
+import { JobLogPane } from "@/components/JobLogPane";
+import { useList, useTriggerSync, usePatchList } from "@/hooks/useLists";
 import { useTracks, useRetryTrack } from "@/hooks/useTracks";
+import { useJobs } from "@/hooks/useJobs";
 import { fmtRelative } from "@/lib/format";
 import { StatusPill } from "@/components/StatusPill";
 
@@ -73,10 +78,114 @@ function ListDetailInner({ listId }: { listId: number }) {
   );
 }
 
-// History + Settings filled in by Task 16.
-function ListHistory({ listId: _listId }: { listId: number }) {
-  return <div className="text-muted-foreground">History tab — filled in by the next task.</div>;
+function ListHistory({ listId }: { listId: number }) {
+  const jobs = useJobs({ list_id: listId, limit: 50 });
+  const [expanded, setExpanded] = useState<number | null>(null);
+
+  if (!jobs.data) return <div className="text-muted-foreground">Loading…</div>;
+  if (jobs.data.items.length === 0) return <div className="text-muted-foreground">No sync history yet.</div>;
+
+  return (
+    <ul className="space-y-2">
+      {jobs.data.items.map((j) => (
+        <li key={j.id} className="rounded-md border border-border">
+          <button
+            type="button"
+            className="flex w-full items-center justify-between px-3 py-2 text-sm hover:bg-accent/40"
+            onClick={() => setExpanded(expanded === j.id ? null : j.id)}
+          >
+            <span>
+              <span className="font-mono text-xs">{j.type}</span>
+              <span className="ml-2 text-muted-foreground">{j.state}</span>
+            </span>
+            <span className="text-xs text-muted-foreground">
+              {j.started_at ?? j.scheduled_for}
+            </span>
+          </button>
+          {expanded === j.id && (
+            <div className="border-t border-border p-3">
+              <JobLogPane jobId={j.id} />
+            </div>
+          )}
+        </li>
+      ))}
+    </ul>
+  );
 }
-function ListSettings({ listId: _listId }: { listId: number }) {
-  return <div className="text-muted-foreground">Settings tab — filled in by the next task.</div>;
+
+interface SettingsForm {
+  name: string;
+  download_path: string;
+  sync_interval: string;
+  enabled: boolean;
+}
+
+function ListSettings({ listId }: { listId: number }) {
+  const list = useList(listId);
+  const patch = usePatchList(listId);
+  const { register, handleSubmit, formState, reset } = useForm<SettingsForm>({
+    values: list.data
+      ? {
+          name: list.data.name,
+          download_path: list.data.download_path,
+          sync_interval: list.data.sync_interval,
+          enabled: list.data.enabled,
+        }
+      : undefined,
+  });
+
+  if (!list.data) return <div className="text-muted-foreground">Loading…</div>;
+
+  const onSubmit = handleSubmit(async (form) => {
+    await patch.mutateAsync(form);
+    reset(form);
+  });
+
+  return (
+    <Card>
+      <CardHeader>
+        <CardTitle>Settings</CardTitle>
+      </CardHeader>
+      <CardContent>
+        <form className="space-y-4 max-w-xl" onSubmit={onSubmit}>
+          <Field label="Name" id="name">
+            <Input id="name" {...register("name", { required: true })} />
+          </Field>
+          <Field label="Download path" id="download_path">
+            <Input id="download_path" {...register("download_path", { required: true })} />
+          </Field>
+          <Field label="Sync interval" id="sync_interval">
+            <select
+              id="sync_interval"
+              className="h-9 w-full rounded-md border border-input bg-transparent px-2 text-sm"
+              {...register("sync_interval")}
+            >
+              <option value="manual">manual</option>
+              <option value="hourly">hourly</option>
+              <option value="daily">daily</option>
+            </select>
+          </Field>
+          <label className="flex items-center gap-2 text-sm">
+            <input type="checkbox" {...register("enabled")} /> Enabled (scheduled syncs)
+          </label>
+          <div className="flex gap-2">
+            <Button type="submit" disabled={!formState.isDirty || patch.isPending}>
+              {patch.isPending ? "Saving…" : "Save"}
+            </Button>
+          </div>
+        </form>
+      </CardContent>
+    </Card>
+  );
+}
+
+function Field({ label, id, children }: { label: string; id: string; children: React.ReactNode }) {
+  return (
+    <div className="space-y-1">
+      <label className="text-sm" htmlFor={id}>
+        {label}
+      </label>
+      {children}
+    </div>
+  );
 }

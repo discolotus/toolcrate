@@ -22,7 +22,7 @@ def api_token_auth(*, token_hash: str):
 
     def _dep(
         authorization: str | None = Header(default=None),
-        tc_session: str | None = Cookie(default=None),
+        tc_session: str | None = Cookie(default=None, alias=COOKIE_NAME),
     ) -> None:
         if authorization and authorization.startswith("Bearer "):
             token = authorization[len("Bearer "):]

@@ -1,0 +1,11 @@
+Login...
+Logged in
+Searching: Daft Punk - One More Time
+Downloading: Daft Punk - One More Time -- daft.punk@user (5 MB)
+Succeeded: Daft Punk - One More Time
+Searching: Daft Punk - Around the World
+Failed: Daft Punk - Around the World -- NoSuitableFileFound
+Searching: Daft Punk - Digital Love
+Downloading: Daft Punk - Digital Love -- foo@user (4 MB)
+Succeeded: Daft Punk - Digital Love
+Done. 2 succeeded, 1 failed.

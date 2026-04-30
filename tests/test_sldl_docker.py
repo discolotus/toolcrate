@@ -1,7 +1,5 @@
 """Tests for the sldl docker command functionality."""
 
-import os
-import subprocess
 from pathlib import Path
 from unittest.mock import MagicMock, patch
 
@@ -57,7 +55,7 @@ class TestSldlDockerCommand:
 
         # Mock compose file exists and config manager
         with patch("pathlib.Path.exists", return_value=True), \
-             patch("toolcrate.config.manager.ConfigManager.generate_sldl_conf") as mock_generate_conf:
+             patch("toolcrate.config.manager.ConfigManager.generate_sldl_conf"):
             # Mock container is running
             mock_result = MagicMock()
             mock_result.stdout = "sldl"
@@ -90,7 +88,7 @@ class TestSldlDockerCommand:
 
         # Mock compose file exists and config manager
         with patch("pathlib.Path.exists", return_value=True), \
-             patch("toolcrate.config.manager.ConfigManager.generate_sldl_conf") as mock_generate_conf:
+             patch("toolcrate.config.manager.ConfigManager.generate_sldl_conf"):
             # Mock container is running
             mock_result = MagicMock()
             mock_result.stdout = "sldl"
@@ -117,10 +115,10 @@ class TestSldlDockerCommand:
         # Setup mocks
         mock_check_dep.return_value = True
         mock_get_root.return_value = Path("/fake/root")
-        
+
         # Mock compose file exists and config manager
         with patch("pathlib.Path.exists", return_value=True), \
-             patch("toolcrate.config.manager.ConfigManager.generate_sldl_conf") as mock_generate_conf:
+             patch("toolcrate.config.manager.ConfigManager.generate_sldl_conf"):
             # Mock container not running, then successful start
             mock_results = [
                 MagicMock(stdout="", returncode=0),  # Container not running
@@ -131,7 +129,7 @@ class TestSldlDockerCommand:
 
             with patch("toolcrate.cli.wrappers.os.execvp") as mock_execvp:
                 run_sldl_docker_command({}, ["--help"])
-                
+
                 # Verify container start was attempted
                 assert mock_subprocess.call_count >= 2
                 # Verify docker exec was called
@@ -202,7 +200,7 @@ class TestSldlDockerCommand:
 
         # Mock compose file exists and config manager
         with patch("pathlib.Path.exists", return_value=True), \
-             patch("toolcrate.config.manager.ConfigManager.generate_sldl_conf") as mock_generate_conf:
+             patch("toolcrate.config.manager.ConfigManager.generate_sldl_conf"):
             # Mock multiple containers running
             mock_result = MagicMock()
             mock_result.stdout = "sldl\nslsk-batchdl-sldl-1\nanother-sldl-container"
@@ -236,7 +234,7 @@ class TestSldlDockerCommand:
 
         # Mock compose file exists and config manager
         with patch("pathlib.Path.exists", return_value=True), \
-             patch("toolcrate.config.manager.ConfigManager.generate_sldl_conf") as mock_generate_conf:
+             patch("toolcrate.config.manager.ConfigManager.generate_sldl_conf"):
             # Mock container is running
             mock_result = MagicMock()
             mock_result.stdout = "sldl"

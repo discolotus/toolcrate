@@ -197,7 +197,7 @@ class TestWishlistCommands(unittest.TestCase):
     def test_wishlist_processor_can_be_imported(self, mock_processor):
         """Test that wishlist processor can be imported and instantiated."""
         try:
-            from toolcrate.wishlist.processor import WishlistProcessor
+            from toolcrate.wishlist.processor import WishlistProcessor  # noqa: F401
             # Should be able to import without errors
             self.assertTrue(True)
         except ImportError as e:

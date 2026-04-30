@@ -10,9 +10,6 @@ the removed behaviour have been dropped.
 from pathlib import Path
 from unittest.mock import patch
 
-import pytest
-
-
 PROJECT_ROOT = Path(__file__).parent.parent
 
 

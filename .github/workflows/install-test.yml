@@ -22,8 +22,11 @@ jobs:
             runner: ubuntu-24.04-arm
           - name: "macOS ARM64 (Apple Silicon)"
             runner: macos-latest
-          - name: "macOS x86_64 (Intel)"
-            runner: macos-13
+          # NOTE: Intel macOS (macos-13) skipped — historically slow runner
+          # adds ~10-15 min to CI without catching arch-specific issues we
+          # care about. Re-enable when needed.
+          # - name: "macOS x86_64 (Intel)"
+          #   runner: macos-13
           - name: "Windows x86_64"
             runner: windows-latest
 

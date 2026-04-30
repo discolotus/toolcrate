@@ -1,0 +1,32 @@
+{
+  "id": "abc123",
+  "name": "Late Night",
+  "owner": {"display_name": "tester"},
+  "images": [{"url": "https://i.example/cover.jpg", "height": 640, "width": 640}],
+  "tracks": {
+    "total": 2,
+    "items": [
+      {
+        "track": {
+          "id": "T1",
+          "name": "One More Time",
+          "duration_ms": 320000,
+          "external_ids": {"isrc": "FR0010100001"},
+          "artists": [{"name": "Daft Punk"}],
+          "album": {"name": "Discovery"}
+        }
+      },
+      {
+        "track": {
+          "id": "T2",
+          "name": "Around the World",
+          "duration_ms": 440000,
+          "external_ids": {"isrc": "FR0010100002"},
+          "artists": [{"name": "Daft Punk"}],
+          "album": {"name": "Discovery"}
+        }
+      }
+    ],
+    "next": null
+  }
+}

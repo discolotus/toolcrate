@@ -1,10 +1,10 @@
 #!/usr/bin/env python3
 """Script to run all tests for toolcrate."""
 
+import argparse
 import os
 import sys
 import unittest
-import argparse
 
 
 def main():
@@ -47,4 +47,4 @@ def main():
 
 
 if __name__ == "__main__":
-    sys.exit(main()) 
+    sys.exit(main())

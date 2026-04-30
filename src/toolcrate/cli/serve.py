@@ -21,6 +21,7 @@ from toolcrate.core.sync import SyncService
 from toolcrate.core.worker_handlers import build_handlers
 from toolcrate.db.session import create_engine_for_url, get_async_session_factory
 from toolcrate.web.app import AppDeps, create_app
+from toolcrate.web.routers.auth_app import build_router as build_auth_app
 from toolcrate.web.routers.events import build_router as build_events
 from toolcrate.web.routers.health import build_router as build_health
 from toolcrate.web.routers.jobs import build_router as build_jobs
@@ -72,6 +73,9 @@ def serve(host: str, port: int, reload: bool) -> None:
     config_dir = _config_dir()
     api_token = _ensure_api_token(config_dir)
     api_token_hash = hashlib.sha256(api_token.encode()).hexdigest()
+
+    static_dir = Path(__file__).resolve().parents[1] / "web" / "static"
+    token_file = config_dir / "api-token"
 
     db_url = f"sqlite+aiosqlite:///{db_path}"
     sync_db_url = f"sqlite:///{db_path}"
@@ -125,6 +129,7 @@ def serve(host: str, port: int, reload: bool) -> None:
             build_tracks(src=src, session_factory=sf, queue=queue, token_hash=api_token_hash),
             build_jobs(queue=queue, session_factory=sf, token_hash=api_token_hash),
             build_events(bus=bus, token_hash=api_token_hash),
+            build_auth_app(token_file=token_file, static_dir=static_dir, token_hash=api_token_hash),
         ],
     )
     app = create_app(deps)

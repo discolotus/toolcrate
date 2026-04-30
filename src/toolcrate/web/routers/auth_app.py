@@ -14,7 +14,7 @@ from pathlib import Path
 from fastapi import APIRouter
 from fastapi.responses import FileResponse, HTMLResponse, RedirectResponse, Response
 
-COOKIE_NAME = "tc_session"
+from toolcrate.web.deps import COOKIE_NAME
 INSTALL_HINT_HTML = """\
 <!doctype html>
 <html><head><title>toolcrate</title></head><body style="font-family:sans-serif;padding:2em">
@@ -39,7 +39,7 @@ def build_router(*, token_file: Path, static_dir: Path, token_hash: str) -> APIR
     def _read_token() -> str | None:
         try:
             raw = token_file.read_text().strip()
-        except (FileNotFoundError, PermissionError, OSError):
+        except OSError:
             return None
         if not raw:
             return None

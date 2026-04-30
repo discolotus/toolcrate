@@ -120,9 +120,13 @@ def serve(host: str, port: int, reload: bool) -> None:
                               library_service=None)
     worker = Worker(sf, queue, bus, handlers=handlers)
 
+    dev_cors = (
+        ["http://localhost:5173"] if os.environ.get("TOOLCRATE_ENV") == "dev" else []
+    )
     deps = AppDeps(
         api_token_hash=api_token_hash,
         allowed_hosts={"localhost", "127.0.0.1"},
+        dev_cors_origins=dev_cors,
         routers=[
             build_health(version="0.1.0", token_hash=api_token_hash),
             build_lists(src=src, queue=queue, token_hash=api_token_hash),

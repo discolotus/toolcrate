@@ -92,4 +92,25 @@ def build_router(*, token_file: Path, static_dir: Path, token_hash: str) -> APIR
     async def spa_fallback(path: str) -> Response:
         return _index_or_hint()
 
+    @router.get("/api/v1/auth/bootstrap", include_in_schema=False)
+    async def bootstrap() -> Response:
+        """Set tc_session cookie for browser clients that bypass /app (dev mode).
+
+        No prior auth required — this IS the auth bootstrap. The Origin/Host
+        guard middleware (always active) ensures only localhost can reach it.
+        """
+        token = _read_token()
+        if token is None:
+            return Response(status_code=503)
+        resp = Response(status_code=204)
+        resp.set_cookie(
+            key=COOKIE_NAME,
+            value=token,
+            httponly=True,
+            samesite="strict",
+            secure=False,
+            path="/",
+        )
+        return resp
+
     return router

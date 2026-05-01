@@ -12,6 +12,7 @@ export const router = createBrowserRouter([
     children: [
       { index: true, element: <Dashboard /> },
       { path: "sources/spotify", element: <SpotifyLists /> },
+      { path: "sources/spotify/:id", element: <SpotifyLists /> },
       { path: "lists/:id", element: <ListDetail /> },
       { path: "jobs", element: <Jobs /> },
       { path: "*", element: <Navigate to="/app" replace /> },

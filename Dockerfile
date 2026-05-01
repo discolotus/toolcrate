@@ -29,9 +29,13 @@ RUN uv sync --frozen --no-dev --no-install-project 2>/dev/null || uv sync --no-d
 
 # Copy source and scripts
 COPY src/ ./src/
+COPY scripts/ ./scripts/
 COPY Makefile configure_toolcrate.sh ./
 
-# Install the project
+# Install the project. The hatch frontend build hook (scripts/build_frontend.py)
+# detects npm is missing and writes a stub index.html, so the wheel still builds
+# without Node. Set TOOLCRATE_SKIP_FRONTEND_BUILD=1 to short-circuit explicitly.
+ENV TOOLCRATE_SKIP_FRONTEND_BUILD=1
 RUN uv sync --frozen --no-dev 2>/dev/null || uv sync --no-dev
 
 # Create necessary directories

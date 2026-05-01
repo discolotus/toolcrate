@@ -24,7 +24,7 @@ from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 from toolcrate.db.models import SourceList
 
 from .exceptions import IntegrationError, NotFound, ValidationError
-from .spotify import parse_playlist_url
+from .spotify import SpotifyPlaylist, parse_playlist_url
 
 _SLUG_RE = re.compile(r"[^a-z0-9]+")
 
@@ -161,13 +161,13 @@ class SourceListService:
             await session.delete(row)
             await session.commit()
 
-    async def preview_url(self, url: str) -> "SpotifyPlaylist":
+    async def preview_url(self, url: str) -> SpotifyPlaylist:
         """Fetch playlist metadata for the Add-list autofill UI without persisting.
 
         Raises ValidationError if the URL doesn't match a supported source type.
         Raises NotFound if the remote refuses (404 / no such playlist).
         """
-        from toolcrate.core.spotify import SpotifyClient, parse_playlist_url
+        from toolcrate.core.spotify import SpotifyClient
 
         playlist_id = parse_playlist_url(url)
         if playlist_id is None:

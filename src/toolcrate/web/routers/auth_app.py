@@ -15,6 +15,7 @@ from fastapi import APIRouter
 from fastapi.responses import FileResponse, HTMLResponse, RedirectResponse, Response
 
 from toolcrate.web.deps import COOKIE_NAME
+
 INSTALL_HINT_HTML = """\
 <!doctype html>
 <html><head><title>toolcrate</title></head><body style="font-family:sans-serif;padding:2em">

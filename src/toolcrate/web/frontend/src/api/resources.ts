@@ -65,3 +65,15 @@ export interface ListPreview {
   total_tracks: number;
   art_url: string | null;
 }
+
+/** Extract Spotify art URL from metadata_json, or null if absent/invalid. */
+export function artUrl(list: SourceList): string | null {
+  const url = list.metadata_json?.art_url;
+  return typeof url === "string" && url.length > 0 ? url : null;
+}
+
+/** Extract total remote track count from metadata_json, or null if absent. */
+export function totalTracksRemote(list: SourceList): number | null {
+  const n = list.metadata_json?.total_tracks_remote;
+  return typeof n === "number" ? n : null;
+}

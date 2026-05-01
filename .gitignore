@@ -219,6 +219,7 @@ config/crontabs/
 config/download-queue.txt
 
 .superpowers/
+.claude/
 
 # Local dev databases
 *.db

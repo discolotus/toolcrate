@@ -12,6 +12,7 @@ persists. SyncService and RecognitionService do the network work.
 
 from __future__ import annotations
 
+import os
 import re
 import unicodedata
 from typing import Any
@@ -22,8 +23,8 @@ from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 
 from toolcrate.db.models import SourceList
 
-from .exceptions import NotFound, ValidationError
-from .spotify import parse_playlist_url
+from .exceptions import IntegrationError, NotFound, ValidationError
+from .spotify import SpotifyPlaylist, parse_playlist_url
 
 _SLUG_RE = re.compile(r"[^a-z0-9]+")
 
@@ -42,6 +43,16 @@ _SOURCE_DIR = {
 
 def default_download_path(music_root: str, source_type: str, name: str) -> str:
     return f"{music_root.rstrip('/')}/{_SOURCE_DIR[source_type]}/{slugify(name)}"
+
+
+def _read_spotify_credentials() -> tuple[str, str]:
+    cid = os.environ.get("SPOTIFY_CLIENT_ID", "")
+    csec = os.environ.get("SPOTIFY_CLIENT_SECRET", "")
+    if not cid or not csec:
+        raise IntegrationError(
+            "spotify credentials not configured: set SPOTIFY_CLIENT_ID and SPOTIFY_CLIENT_SECRET"
+        )
+    return cid, csec
 
 
 def _detect_source_type(url: str) -> tuple[str, str]:
@@ -149,3 +160,26 @@ class SourceListService:
                 raise NotFound(f"source_list {list_id}")
             await session.delete(row)
             await session.commit()
+
+    async def preview_url(self, url: str) -> SpotifyPlaylist:
+        """Fetch playlist metadata for the Add-list autofill UI without persisting.
+
+        Raises ValidationError if the URL doesn't match a supported source type.
+        Raises NotFound if the remote refuses (404 / no such playlist).
+        """
+        from toolcrate.core.spotify import SpotifyClient
+
+        playlist_id = parse_playlist_url(url)
+        if playlist_id is None:
+            raise ValidationError("unsupported source url")
+        client_id, client_secret = _read_spotify_credentials()
+        sp = SpotifyClient(client_id=client_id, client_secret=client_secret)
+        try:
+            return await sp.fetch_playlist(playlist_id)
+        except IntegrationError as e:
+            msg = str(e).lower()
+            if "404" in msg:
+                raise NotFound("playlist not found on remote") from e
+            raise
+        finally:
+            await sp.aclose()

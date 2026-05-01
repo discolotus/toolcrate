@@ -68,8 +68,24 @@ dev = [
     "freezegun>=1.5.5",
 ]
 
+[tool.hatch.build.hooks.custom]
+path = "scripts/build_frontend.py"
+
 [tool.hatch.build.targets.wheel]
 packages = ["src/toolcrate"]
+artifacts = ["src/toolcrate/web/static/**"]
+
+[tool.hatch.build.targets.sdist]
+include = [
+  "src/toolcrate",
+  "scripts/build_frontend.py",
+  "alembic.ini",
+  "alembic",
+  "Makefile",
+  "README.md",
+  "pyproject.toml",
+  "tests",
+]
 
 [tool.pytest.ini_options]
 minversion = "6.0"

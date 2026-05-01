@@ -169,3 +169,14 @@ test-docker-shell:
 test-docker-clean:
 	docker-compose down -v --remove-orphans
 	docker rmi toolcrate:test 2>/dev/null || true
+
+.PHONY: frontend frontend-dev frontend-test
+
+frontend:
+	cd src/toolcrate/web/frontend && npm ci && npm run build
+
+frontend-dev:
+	cd src/toolcrate/web/frontend && npm ci && npm run dev
+
+frontend-test:
+	cd src/toolcrate/web/frontend && npm ci && npm run lint && npm run typecheck && npm run test -- --run && npm run build

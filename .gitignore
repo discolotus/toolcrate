@@ -15,8 +15,8 @@ dist/
 downloads/
 eggs/
 .eggs/
-lib/
-lib64/
+/lib/
+/lib64/
 parts/
 sdist/
 var/
@@ -223,3 +223,9 @@ config/download-queue.txt
 # Local dev databases
 *.db
 toolcrate_dev.db
+
+# Built frontend bundle (built during wheel build by scripts/build_frontend.py)
+src/toolcrate/web/static/
+
+# Frontend node_modules
+src/toolcrate/web/frontend/node_modules/

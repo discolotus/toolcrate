@@ -164,22 +164,18 @@ class SourceListService:
     async def preview_url(self, url: str) -> SpotifyPlaylist:
         """Fetch playlist metadata for the Add-list autofill UI without persisting.
 
+        Uses the public oEmbed endpoint — no Spotify credentials needed.
         Raises ValidationError if the URL doesn't match a supported source type.
         Raises NotFound if the remote refuses (404 / no such playlist).
         """
-        from toolcrate.core.spotify import SpotifyClient
+        from toolcrate.core.spotify import fetch_playlist_oembed
 
         playlist_id = parse_playlist_url(url)
         if playlist_id is None:
             raise ValidationError("unsupported source url")
-        client_id, client_secret = _read_spotify_credentials()
-        sp = SpotifyClient(client_id=client_id, client_secret=client_secret)
         try:
-            return await sp.fetch_playlist(playlist_id)
+            return await fetch_playlist_oembed(playlist_id)
         except IntegrationError as e:
-            msg = str(e).lower()
-            if "404" in msg:
+            if "404" in str(e):
                 raise NotFound("playlist not found on remote") from e
             raise
-        finally:
-            await sp.aclose()

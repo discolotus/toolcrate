@@ -42,6 +42,29 @@ class SpotifyPlaylist:
     tracks: list[SpotifyTrack]
 
 
+OEMBED_URL = "https://open.spotify.com/oembed"
+
+
+async def fetch_playlist_oembed(playlist_id: str) -> SpotifyPlaylist:
+    """Fetch basic playlist info via Spotify's public oEmbed endpoint (no auth required)."""
+    url = f"https://open.spotify.com/playlist/{playlist_id}"
+    async with httpx.AsyncClient(timeout=15) as http:
+        resp = await http.get(OEMBED_URL, params={"url": url},
+                              headers={"User-Agent": "toolcrate/0.1"})
+    if resp.status_code == 404:
+        raise IntegrationError(f"404 playlist {playlist_id}")
+    if resp.status_code != 200:
+        raise IntegrationError(f"oembed {resp.status_code} for playlist {playlist_id}")
+    data = resp.json()
+    return SpotifyPlaylist(
+        id=playlist_id,
+        name=data.get("title", ""),
+        owner="",
+        image_url=data.get("thumbnail_url"),
+        tracks=[],
+    )
+
+
 class SpotifyClient:
     AUTH_URL = "https://accounts.spotify.com/api/token"
     API_BASE = "https://api.spotify.com/v1"
